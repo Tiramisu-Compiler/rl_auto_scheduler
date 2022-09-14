@@ -27,6 +27,7 @@ from utils.modeling import Model_Recursive_LSTM_v2
 from utils.json_to_tensor import get_schedule_representation, get_sched_rep, get_tree_structure
 import torch
 import logging
+import traceback
 
 logging.basicConfig(filename='app.log', filemode='w', level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s\n')
 
@@ -130,7 +131,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     EXIT=61
     
 
-    MAX_DEPTH = 7
+    MAX_DEPTH = 6
 
     ACTIONS_ARRAY=[ 'INTERCHANGE01', 'INTERCHANGE02', 'INTERCHANGE03', 'INTERCHANGE04', 'INTERCHANGE05', 'INTERCHANGE06', 'INTERCHANGE07',
     'INTERCHANGE12', 'INTERCHANGE13', 'INTERCHANGE14', 'INTERCHANGE15', 'INTERCHANGE16' , 'INTERCHANGE17', 'INTERCHANGE23', 'INTERCHANGE24',
@@ -260,6 +261,27 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     self.initial_execution_time=self.progs_dict[self.prog.name]["initial_execution_time"]
 
                 print("The initial execution time is", self.initial_execution_time)
+                self.schedule_dict = dict()
+                for comp in self.comps:
+                    dim = len(self.annotations['computations'][comp]['iterators'])
+                    self.schedule_dict[comp] = dict()
+                    self.schedule_dict[comp]["dim"] = dim
+                    self.schedule_dict[comp]["transformation_matrix"] = np.eye(dim,dim)
+                    self.schedule_dict[comp]["transformation_matrices"] = [np.eye(dim,dim)]
+                    self.schedule_dict[comp]['parallelized_dim'] = None
+                    self.schedule_dict[comp]['unrolling_factor'] = None
+                    self.schedule_dict[comp]['tiling'] = None
+                self.schedule_dict['tree_structure'] = get_tree_structure(self.annotations)
+                
+                self.templates = dict()
+                (self.templates["prog_tree"],
+                    self.templates["comps_repr_templates_list"],
+                    self.templates["loops_repr_templates_list"],
+                    self.templates["comps_placeholders_indices_dict"],
+                    self.templates["loops_placeholders_indices_dict"]) = get_sched_rep(self.annotations, self.schedule_dict, max_depth=self.MAX_DEPTH-1)
+                print(self.templates["comps_repr_templates_list"])
+
+
 
             except:
                 continue
@@ -371,26 +393,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.steps=0
             self.new_scheds={}
 
-            self.schedule_dict = dict()
-            for comp in self.comps:
-                dim = len(self.annotations['computations'][comp]['iterators'])
-                self.schedule_dict[comp] = dict()
-                self.schedule_dict[comp]["dim"] = dim
-                self.schedule_dict[comp]["transformation_matrix"] = np.eye(dim,dim)
-                self.schedule_dict[comp]["transformation_matrices"] = [np.eye(dim,dim)]
-                self.schedule_dict[comp]['parallelized_dim'] = None
-                self.schedule_dict[comp]['unrolling_factor'] = None
-                self.schedule_dict[comp]['tiling'] = None
-            self.schedule_dict['tree_structure'] = get_tree_structure(self.annotations)
             
-            self.templates = dict()
-            (self.templates["prog_tree"],
-                self.templates["comps_repr_templates_list"],
-                self.templates["loops_repr_templates_list"],
-                self.templates["comps_placeholders_indices_dict"],
-                self.templates["loops_placeholders_indices_dict"]) = get_sched_rep(self.annotations, self.schedule_dict, max_depth=self.MAX_DEPTH-1)
-
-
             self.search_time=time.time()
 
             # print("the rep in reset is",self.obs["representation"])
@@ -400,8 +403,8 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     def step(self, raw_action):
         # print("in step function")
         action_name=self.ACTIONS_ARRAY[raw_action]
-        # print("\nL'action {} est choisie".format(action_name))
-        # print("the curr schedule is: ",len(self.schedule),self.schedule_str)
+        print("\nL'action {} est choisie".format(action_name))
+        print("the curr schedule is: ",len(self.schedule),self.schedule_str)
         exit=False
         done=False
         info={}
@@ -439,7 +442,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     params=[int(action_params["first_dim_index"]), int(action_params["second_dim_index"])]
 
                     optim1 = optimization_command("Interchange", params, self.comps)
-                    # print("got the optim cmd")
+                    print("got the optim cmd")
                     self.schedule.append(optim1)
            
                     
@@ -541,7 +544,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         print("it's not skewed")
 
                         optim3 = optimization_command( "Unrolling", params, self.non_skewed_comps)
-                        
+                        print("obtained tiramisu code")
                         self.schedule.append(optim3)
 
                         start_time = time.time()
@@ -786,7 +789,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 exit=True
                 
             if (not exit and lc_check!=0) and not (action.id in range(41,44) and self.is_skewed):
-                print("in the long cond after actions")
+                # print("in the long cond after actions")
                 self.schedule_str = sched_str(self.schedule_str, action.id, action_params, self.comp_indic_dict)
                 # print("the original iterators were:", self.it_dict)
                 if not action.id in range(41,44):
@@ -806,6 +809,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 return self.obs, reward, done, info
 
             else:
+                print("ERROR_MODEL",traceback.format_exc())
                 ex_type, ex_value, ex_traceback = sys.exc_info()
                 if self.schedule != [] and not skew_params_exception and not skew_unroll:
                     self.schedule.pop()
@@ -843,24 +847,30 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         new_unrolling_optim_params[comp]=[len(self.it_dict[comp])-1, unroll_factor]
                         
                     new_unrolling_optim=optimization_command("Unrolling", new_unrolling_optim_params, self.non_skewed_comps)
-                    
+                    print("Done")
                     new_unrolling_str=""
                     unrolling_str=""
 
+                    print("1")
                     for comp in self.non_skewed_comps: 
                         unroll_factor=unroll_optimisation.params_list[comp][1]
+                        print("1.1")
                         # print("comp", comp)  
                         # print("unroll_factor", unroll_factor)
                         new_unrolling_str+="U(L"+str(len(self.it_dict[comp])-1)+","+str(unroll_factor)+",C"+str(self.comp_indic_dict[comp]) +")"
+                        print("1.2")
                         #print("new_unrolling_str",new_unrolling_str)
                         unrolling_str+="U(L"+str(unroll_optimisation.params_list[comp][0])+","+str(unroll_factor)+",C"+str(self.comp_indic_dict[comp]) +")" 
+                        print("1.3")
                         #print("unrolling_str", unrolling_str)
 
                     self.schedule_str=self.schedule_str.replace(unrolling_str, "") + new_unrolling_str
-                    
+                    print("1.4")
                     self.schedule.remove(unroll_optimisation)      
                     self.schedule.append(new_unrolling_optim)
+                    print("1.5")
                     self.apply_unrolling(new_unrolling_params)
+                    print("2")
                     #no need to update the iterators list because it's the end of the episode
 
 
@@ -988,18 +998,19 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         for i in range(56,61):
             self.obs["action_mask"][i]=0
         
-        dim = self.schedule_dict[self.comp]
-        # print(f"We have {dim} number of loops")
-        interchange_matrix = np.eye(dim,dim)
-        first_iter_index = action_params["first_dim_index"]
-        second_iter_index = action_params["second_dim_index"]
-        interchange_matrix[first_iter_index, first_iter_index] = 0
-        interchange_matrix[second_iter_index, second_iter_index] = 0
-        interchange_matrix[first_iter_index, second_iter_index] = 1
-        interchange_matrix[second_iter_index, first_iter_index] = 1
-        # print("Interchnage matrix is", interchange_matrix)
-        self.schedule_dict[self.comp]["transformation_matrices"].append(interchange_matrix)
-        self.schedule_dict[self.comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[self.comp]["transformation_matrix"]
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            # print(f"We have {dim} number of loops")
+            interchange_matrix = np.eye(dim,dim)
+            first_iter_index = action_params["first_dim_index"]
+            second_iter_index = action_params["second_dim_index"]
+            interchange_matrix[first_iter_index, first_iter_index] = 0
+            interchange_matrix[second_iter_index, second_iter_index] = 0
+            interchange_matrix[first_iter_index, second_iter_index] = 1
+            interchange_matrix[second_iter_index, first_iter_index] = 1
+            # print("Interchnage matrix is", interchange_matrix)
+            self.schedule_dict[comp]["transformation_matrices"].append(interchange_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
 
 
 
@@ -1246,7 +1257,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     def apply_unrolling(self, action_params):
 
         for comp in self.comps:
-
+            print(comp)
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["Unrolled"]] = 1
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["UnrollFactor"]] = action_params[comp]["unrolling_factor"]
 
@@ -1268,7 +1279,14 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         for i in range(56,61):
             self.obs["action_mask"][i]=0
         
-        # self.schedule_dict[self.comp]["unrolling_factor"] = action_params["unrolling_factor"]
+        print("1.6")
+        try:
+            for comp in self.comps:
+                self.schedule_dict[comp]["unrolling_factor"] = action_params[comp]["unrolling_factor"]
+        except Exception:
+            print("ERROR_MODEL",traceback.format_exc())
+
+        print("1.7")
 
     def apply_skewing(self, action_params):
         logging.info("Skewing")
@@ -1332,23 +1350,24 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         for i in range(56,61):
             self.obs["action_mask"][i]=0
         
-        dim = self.dim
-        skewing_matrix = np.eye(dim,dim)
-        first_iter_index = action_params["first_dim_index"]
-        second_iter_index = action_params["second_dim_index"]
-        first_factor = action_params["first_factor"]
-        second_factor = action_params["second_factor"]
-        if (first_factor, second_factor) in global_dioph_sols_dict:
-            a, b = global_dioph_sols_dict[(first_factor, second_factor)]
-        else:
-            a, b = linear_diophantine_default(first_factor, second_factor)
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            skewing_matrix = np.eye(dim,dim)
+            first_iter_index = action_params["first_dim_index"]
+            second_iter_index = action_params["second_dim_index"]
+            first_factor = action_params["first_factor"]
+            second_factor = action_params["second_factor"]
+            if (first_factor, second_factor) in global_dioph_sols_dict:
+                a, b = global_dioph_sols_dict[(first_factor, second_factor)]
+            else:
+                a, b = linear_diophantine_default(first_factor, second_factor)
 
-        skewing_matrix[first_iter_index, first_iter_index] = first_factor
-        skewing_matrix[first_iter_index, second_iter_index] = second_factor
-        skewing_matrix[second_iter_index, first_iter_index] = a
-        skewing_matrix[second_iter_index, second_iter_index] = b
-        self.schedule_dict[self.comp]["transformation_matrices"].append(skewing_matrix)
-        self.schedule_dict[self.comp]["transformation_matrix"] = skewing_matrix @ self.schedule_dict[self.comp]["transformation_matrix"]
+            skewing_matrix[first_iter_index, first_iter_index] = first_factor
+            skewing_matrix[first_iter_index, second_iter_index] = second_factor
+            skewing_matrix[second_iter_index, first_iter_index] = a
+            skewing_matrix[second_iter_index, second_iter_index] = b
+            self.schedule_dict[comp]["transformation_matrices"].append(skewing_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] = skewing_matrix @ self.schedule_dict[comp]["transformation_matrix"]
 
     def apply_parallelization(self, action_params):
         first_comp=list(self.it_dict.keys())[0]
@@ -1369,7 +1388,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         for i in range(56,61):
             self.obs["action_mask"][i]=0
         for comp in self.comps:
-            self.schedule_dict[comp]["parallelized_dim"] = self.it_dict[action_params["dim_index"]]['iterator']
+            self.schedule_dict[comp]["parallelized_dim"] = self.it_dict[comp][action_params["dim_index"]]['iterator']
 
     def apply_reversal(self, action_params):
         for comp in self.comps:
@@ -1397,12 +1416,13 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         for i in range(56,61):
             self.obs["action_mask"][i]=0
         
-        dim = self.dim
-        reversal_matrix = np.eye(dim,dim)
-        dim_index = action_params["dim_index"]
-        reversal_matrix[dim_index, dim_index] = -1
-        self.schedule_dict[self.comp]["transformation_matrices"].append(reversal_matrix)
-        self.schedule_dict[self.comp]["transformation_matrix"] = reversal_matrix @ self.schedule_dict[self.comp]["transformation_matrix"]
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            reversal_matrix = np.eye(dim,dim)
+            dim_index = action_params["dim_index"]
+            reversal_matrix[dim_index, dim_index] = -1
+            self.schedule_dict[comp]["transformation_matrices"].append(reversal_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] = reversal_matrix @ self.schedule_dict[comp]["transformation_matrix"]
     
     def apply_fusion(self, action_params):
         for comp in action_params["fuse_comps"]:
@@ -1527,7 +1547,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             # print(computations_tensor.shape, loops_tensor.shape)
             tree_tensors = (self.templates["prog_tree"], computations_tensor, loops_tensor)
             with torch.no_grad():
-                predicted_speedup = self.model(tree_tensors).item()
+                predicted_speedup = self.model(tree_tensors,num_matrices=self.MAX_DEPTH-1).item()
                 stat["initial_execution_time"]=self.initial_execution_time
                 # print("initial_execution_time", self.initial_execution_time)
                 stat["predicted_speedup"]=predicted_speedup

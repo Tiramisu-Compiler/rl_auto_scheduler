@@ -433,7 +433,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
 
             if action_params["tiling_depth"]==2:
                 if action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
-                    print("in action params == 7 and tiling_loop_1 and tiling_loop_2")
+                    # print("in action params == 7 and tiling_loop_1 and tiling_loop_2")
 
 
                     #update the loop bounds if tiling is applied on loop 1
@@ -455,7 +455,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
 
                 else:
                     if action_params["tiling_loop_1"]:
-                        print("in action params == 7 and tiling_loop_1")
+                        # print("in action params == 7 and tiling_loop_1")
                         #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
                         it_list[comp][depth_1+2]={}
@@ -467,7 +467,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                         added_iterators.append(it_list[comp][depth_1+2]['iterator'])
 
                     elif action_params["tiling_loop_2"]:
-                        print("in action params == 7 and tiling_loop_2")
+                        # print("in action params == 7 and tiling_loop_2")
                         #update the loop bounds if tiling is applied on loop 2
                         it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
                         it_list[comp][depth_2+1]={}
@@ -481,7 +481,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
             elif action_params["tiling_depth"]==3:
 
                 if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                    print("in action params == 10 and tiling_loop_1 and tiling_loop_2 and tiling_loop_3")
+                    # print("in action params == 10 and tiling_loop_1 and tiling_loop_2 and tiling_loop_3")
 
                     #update the loop bounds if tiling is applied on loop 1
                     it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
@@ -514,7 +514,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                     added_iterators.append(it_list[comp][depth_3+3]['iterator'])
                 
                 elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
-                    print("in action params == 10 and tiling_loop_1 and tiling_loop_2")
+                    # print("in action params == 10 and tiling_loop_1 and tiling_loop_2")
 
                     #update the loop bounds if tiling is applied on loop 1
                     it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
@@ -535,7 +535,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                     added_iterators.append(it_list[comp][depth_2+3]['iterator'])
 
                 elif action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                    print("in action params == 10 and tiling_loop_2 and tiling_loop_3")
+                    # print("in action params == 10 and tiling_loop_2 and tiling_loop_3")
 
                     #update the loop bounds if tiling is applied on loop 2
                     it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
@@ -557,7 +557,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                     added_iterators.append(it_list[comp][depth_3+2]['iterator'])
 
                 elif action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                    print("in action params == 10 and tiling_loop_1 and tiling_loop_3")
+                    # print("in action params == 10 and tiling_loop_1 and tiling_loop_3")
 
                     #update the loop bounds if tiling is applied on loop 2
                     it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
@@ -578,7 +578,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                     added_iterators.append(it_list[comp][depth_3+2]['iterator'])
                 else:
                     if action_params["tiling_loop_1"]:
-                        print("in action params == 10 and tiling_loop_1")
+                        # print("in action params == 10 and tiling_loop_1")
 
                         it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
                         it_list[comp][depth_1+3]={}
@@ -589,7 +589,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                         added_iterators.append(it_list[comp][depth_1+3]['iterator']) 
 
                     elif action_params["tiling_loop_2"]:
-                        print("in action params == 10 and tiling_loop_2")
+                        # print("in action params == 10 and tiling_loop_2")
 
                         it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
                         it_list[comp][depth_2+2]={}
@@ -600,7 +600,7 @@ def update_iterators(id, it_list, action_params, added_iterators, comp_indic_dic
                         added_iterators.append(it_list[comp][depth_2+2]['iterator'])
 
                     elif action_params["tiling_loop_3"]:
-                        print("in action params == 10 and tiling_loop_3")
+                        # print("in action params == 10 and tiling_loop_3")
 
                         #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]

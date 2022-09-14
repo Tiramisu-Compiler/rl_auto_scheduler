@@ -1,12 +1,13 @@
 
 class optimization_command():
     def __init__(self, optim_type, params_list, comps):
-        print("init optim cmd")
+        print(f"init optim cmd of type {optim_type}")
         assert optim_type in ['Interchange', 'Skewing', 'Parallelization', 'Tiling', 'Unrolling', 'Reversal', 'Fusion'], 'Unknown transformation: '+ optim_type
         self.type = optim_type
         self.params_list = params_list
         self.comps = comps
         self.tiramisu_optim_str = self.get_tiramisu_optim_str()
+        print(self.tiramisu_optim_str)
         
         
     def get_tiramisu_optim_str(self):

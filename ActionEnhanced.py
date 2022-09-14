@@ -20,7 +20,7 @@ class Action():
 
 
     def parameter(self,comp=None, prog=None):
-        print("in action params function")
+        # print("in action params function")
 
         first_comp=list(self.it_dict.keys())[0]
         """"

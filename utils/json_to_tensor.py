@@ -471,7 +471,7 @@ def get_schedule_representation(
         row_start = loops_placeholders_indices_dict[l_code + "TransfMatRowStart"]
         row_end = loops_placeholders_indices_dict[l_code + "TransfMatRowEnd"]
         nb_row_elements = row_end[1] - row_start[1] + 1
-        # print(len(loop_schedules_dict[loop_name]["TransformationMatrixRow"]),nb_row_elements)
+        print(len(loop_schedules_dict[loop_name]["TransformationMatrixRow"]),nb_row_elements)
         assert (
             len(loop_schedules_dict[loop_name]["TransformationMatrixRow"])
             == nb_row_elements
@@ -648,6 +648,7 @@ def get_padded_transformation_matrix(
             print(final_mat.shape)
             print(padding_ranges)
     return padded_mat
+
 def nest_iterators(root_iterator, iterators):
     if root_iterator['child_iterators'] == []:
         return {'loop_name': root_iterator["loop_name"],

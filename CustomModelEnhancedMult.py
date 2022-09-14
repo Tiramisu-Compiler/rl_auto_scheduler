@@ -25,7 +25,7 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name,**kwargs):
 
-        print("in model init")
+        # print("in model init")
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name,**kwargs)

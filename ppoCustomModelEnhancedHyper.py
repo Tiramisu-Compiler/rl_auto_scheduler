@@ -40,6 +40,7 @@ analysis=tune.run(
     stop={"training_iteration": args.training_iteration},
     max_failures=0,
     checkpoint_freq=args.checkpoint_freq,
+    verbose=0,
     config={
         "env": "Tiramisu_env_v1",
         "num_workers": args.num_workers,

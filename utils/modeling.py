@@ -6,9 +6,10 @@ def seperate_vector(
     X: torch.Tensor, num_matrices: int = 4, pad: bool = True, pad_amount: int = 5
 ) -> torch.Tensor:
     batch_size, _ = X.shape
-    first_part = X[:, :33]
-    second_part = X[:, 33 : 33 + 36 * num_matrices]
-    third_part = X[:, 33 + 36 * num_matrices :]
+    tags_num =  (6*num_matrices+3)
+    first_part = X[:, :tags_num]
+    second_part = X[:, tags_num : tags_num + 36 * num_matrices]
+    third_part = X[:, tags_num + 36 * num_matrices :]
     vectors = []
     for i in range(num_matrices):
         vector = second_part[:, 36 * i : 36 * (i + 1)].reshape(batch_size, 1, -1)
@@ -145,7 +146,7 @@ class Model_Recursive_LSTM_v2(nn.Module):
             x = self.concat_dropouts[i](self.ELU(x))
         return x
 
-    def forward(self, tree_tensors):
+    def forward(self, tree_tensors, num_matrices=6):
         tree, comps_tensor, loops_tensor = tree_tensors
         # computation embbedding layer
         x = comps_tensor.to(self.train_device)
@@ -153,9 +154,9 @@ class Model_Recursive_LSTM_v2(nn.Module):
         batch_size, num_comps, input_size = x.shape
         x = x.view(batch_size * num_comps, -1)
         (first_part, final_matrix, vectors, third_part) = seperate_vector(
-            x, num_matrices=5, pad=False
+            x, num_matrices=num_matrices, pad=False
         )
-        # print(first_part.shape, final_matrix.shape, vectors.shape, third_part.shape)
+        print(first_part.shape, final_matrix.shape, vectors.shape, third_part.shape)
         # mask = (vectors == 0).sum(dim=1).sum(dim=1) == 288
         # vectors = vectors[~mask,:,:]
         # final_matrix = final_matrix[~mask,:,:]
