@@ -14,13 +14,11 @@ class GlobalVarActor:
     def set_progs_list(self, v):
         self.progs_list = v
     def get_progs_list(self,id):
+        # with open(f'file_{id}.txt',"w+") as file:
+        #     file.write(f"Using files which index % self.num_workers = {id % self.num_workers}, such as id = {id} and num_workers = {self.num_workers}")
         return [item for (index,item) in enumerate(self.progs_list) if (index % self.num_workers) == (id % self.num_workers) ]
     def update_progs_dict(self, v):
-        with open("results.txt","a+") as f:
-            f.write("keys before "+ str(self.progs_dict.keys()))
         self.progs_dict.update(v)
-        with open("results.txt","a+") as f:
-            f.write("keys after "+ str(self.progs_dict.keys()))
         return True
     def write_progs_dict(self):
         print("\nSauvegarde de données")

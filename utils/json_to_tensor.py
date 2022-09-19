@@ -444,10 +444,12 @@ def get_schedule_representation(
                 ] = padded_tranf_mat_per_comp[comp_name][iter_i + 1, :]
     if "fusions" in schedule_json and schedule_json["fusions"]:
         for fusion in schedule_json["fusions"]:
-            fused_loop1 = computations_dict[fusion[0]]["iterators"][fusion[2]]
-            fused_loop2 = computations_dict[fusion[1]]["iterators"][fusion[2]]
-            loop_schedules_dict[fused_loop1]["fused"] = 1
-            loop_schedules_dict[fused_loop2]["fused"] = 1
+            iterator = fusion[-1]
+            for loop in fusion[:-1]:
+                fused_loop = computations_dict[loop]["iterators"][iterator]
+            # fused_loop2 = computations_dict[fusion[1]]["iterators"][fusion[2]]
+                loop_schedules_dict[fused_loop]["fused"] = 1
+            # loop_schedules_dict[fused_loop2]["fused"] = 1
     for loop_name in program_json["iterators"]:
         l_code = "L" + loop_name
         p_index = loops_placeholders_indices_dict[l_code + "Parallelized"]

@@ -7,7 +7,7 @@ from Optim_cmd import optimization_command
 import gym
 import numpy as np
 #np.set_printoptions(threshold=sys.maxsize)
-import ujson as json
+import json
 import ray
 np.seterr(invalid='raise')
 import time
@@ -28,10 +28,20 @@ from utils.json_to_tensor import get_schedule_representation, get_sched_rep, get
 import torch
 import logging
 import traceback
+import math
+
 
 logging.basicConfig(filename='app.log', filemode='w', level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s\n')
 
 global_dioph_sols_dict = dict()
+EPSILON = 1e-6
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.flatten().tolist()
+        return json.JSONEncoder.default(self, obj)
 
 class RepresentationLengthException(Exception):
     pass
@@ -142,7 +152,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     'FUSION1', 'FUSION2', 'FUSION3', 'FUSION4','EXIT']
 
 
-    def __init__(self, programs_file, dataset_path, shared_variable_actor, pretrained_weights_path):
+    def __init__(self, programs_file, dataset_path, shared_variable_actor, pretrained_weights_path, **args):
 
         # f = Figlet(font='banner3-D')
         # # print(f.renderText("Tiramisu"))
@@ -154,14 +164,18 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         self.tiramisu_progs=[]
         self.progs_annot={}
         self.programs_file=programs_file
+        self.args = args
+        self.measurement_env = None
 
         print("Récupération des données depuis {} \n".format(dataset_path))
         self.shared_variable_actor = shared_variable_actor
-        id = ray.get(self.shared_variable_actor.increment.remote())
-        self.progs_list = ray.get(self.shared_variable_actor.get_progs_list.remote(id))
+        self.id = ray.get(self.shared_variable_actor.increment.remote())
+        self.progs_list = ray.get(self.shared_variable_actor.get_progs_list.remote(self.id))
         context = ray.runtime_context.get_runtime_context()
         self.progs_dict=ray.get(self.shared_variable_actor.get_progs_dict.remote())
         print("Dataset chargé!\n")
+        
+        # with open(f"app_{self.id}.txt","w+") as file: file.write(f"Starting from worker {self.id}, and working on files {self.progs_list}")
 
         self.scheds = get_schedules_str(
             list(self.progs_dict.keys()), self.progs_dict
@@ -186,7 +200,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         self.prog_ind=0
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(torch.load(pretrained_weights_path, map_location="cpu"))
-
+        self.schedule_list_model = []
 
     def reset(self, file=None):
         print("\nRéinitialisation de l'environnement\n")
@@ -203,6 +217,11 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 
                 # self.prog contains the tiramisu prog from the RL interface
                 self.prog = Tiramisu_Program(file)
+                if "env_type" in self.args:
+                    if self.args["env_type"] == "cpu":
+                        self.measurement_env = self.prog.evaluate_schedule
+                    else:
+                        self.measurement_env = self.get_exec_time_by_model
                 ## print("Le programme numéro {} de la liste, nommé {} est choisi \n".format(init_indc, self.prog.name))
                 # print("\n *-*-*- Le code source -*-*-* \n")
                 # print(self.prog.original_str)
@@ -243,25 +262,32 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     # print("one comp, no need for common iterators")
                     self.common_it= self.annotations["computations"][self.comps[0]]["iterators"]
 
-                if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
-                    try: 
-                        print("getting the intitial exe time by execution")
-                        start_time=time.time()
-                        self.initial_execution_time=self.prog.evaluate_schedule([],'initial_exec', self.nb_executions)
-                        cg_time=time.time()-start_time 
-                        #print("After getting initial exec time:",cg_time, "initial exec time is :", self.initial_execution_time)
-                        self.codegen_total_time +=cg_time
-                    except TimeOutException:
-                        continue
+                
+                if self.args["env_type"] == "cpu":
+                    if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
+                        try: 
+                            print("getting the intitial exe time by execution")
+                            start_time=time.time()
+                            self.initial_execution_time=self.measurement_env([],'initial_exec', self.nb_executions)
+                            cg_time=time.time()-start_time 
+                            #print("After getting initial exec time:",cg_time, "initial exec time is :", self.initial_execution_time)
+                            self.codegen_total_time +=cg_time
+                        except TimeOutException:
+                            continue
+                        self.progs_dict[self.prog.name]={}
+                        self.progs_dict[self.prog.name]["initial_execution_time"]=self.initial_execution_time
+
+                    else:
+                        print("the initial execution time exists")
+                        self.initial_execution_time=self.progs_dict[self.prog.name]["initial_execution_time"]
+                else:
+                    self.initial_execution_time = 1.0
                     self.progs_dict[self.prog.name]={}
                     self.progs_dict[self.prog.name]["initial_execution_time"]=self.initial_execution_time
 
-                else:
-                    print("the initial execution time exists")
-                    self.initial_execution_time=self.progs_dict[self.prog.name]["initial_execution_time"]
-
-                print("The initial execution time is", self.initial_execution_time)
+                # print("The initial execution time is", self.initial_execution_time)
                 self.schedule_dict = dict()
+                self.schedule_dict["fusions"] = None
                 for comp in self.comps:
                     dim = len(self.annotations['computations'][comp]['iterators'])
                     self.schedule_dict[comp] = dict()
@@ -279,11 +305,13 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     self.templates["loops_repr_templates_list"],
                     self.templates["comps_placeholders_indices_dict"],
                     self.templates["loops_placeholders_indices_dict"]) = get_sched_rep(self.annotations, self.schedule_dict, max_depth=self.MAX_DEPTH-1)
+                self.schedule_dict["fusions"] = []
                 print(self.templates["comps_repr_templates_list"])
 
 
 
             except:
+                print("RESET_ERROR",traceback.format_exc())
                 continue
 
             self.placeholders = comps_placeholders
@@ -517,6 +545,10 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     print("\n tiling applied")
 
                     self.is_tiled=True
+                    
+                    # done = True
+                    # exit = True
+                    # self.schedule_str = sched_str(self.schedule_str, action.id, action_params, self.comp_indic_dict)
                 else:
                     print("\n tiling already applied execption")
                     applied_exception=True
@@ -891,6 +923,9 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         params=[int(action_params["dim_index"])]
 
                         optim5 = optimization_command("Parallelization", params, self.comps)
+                        first_comp=list(self.it_dict.keys())[0]
+                        iterator = self.it_dict[first_comp][action_params["dim_index"]]['iterator']
+                        self.schedule_dict[first_comp]["parallelized_dim"] = iterator
                     
                         self.schedule.append(optim5)
 
@@ -920,6 +955,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                             self.schedule.remove(optim5)
                             self.new_scheds[self.prog.name].pop(self.schedule_str)
                             self.schedule_str=self.schedule_str.replace(parallelization_str, "")
+                            self.schedule_dict[first_comp]["parallelized_dim"] = None
                             print("La parallélisation n'améliore pas le temps d'exécution, alors elle n'est pas appliquée.")
                     
 
@@ -935,14 +971,15 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     print("\nLe schedule final trouvé est: ",self.schedule_str)
                     print("The new execution time is ", exec_time)
                     #self.speedup = (self.initial_execution_time - exec_time)/self.initial_execution_time
-                    if self.initial_execution_time >=  exec_time:
+                    self.speedup = (self.initial_execution_time / exec_time) + EPSILON
+                    # if self.initial_execution_time >=  exec_time:
                         
-                        self.speedup = (self.initial_execution_time / exec_time)
-                    else:
-                        self.speedup = -(exec_time / self.initial_execution_time )
+                    #     self.speedup = (self.initial_execution_time / exec_time)
+                    # else:
+                    #     self.speedup = -(exec_time / self.initial_execution_time )
                     
                     print("the speedup is: ", self.speedup)
-                    reward=self.speedup
+                    reward=math.log(self.speedup,2)
                     print('the new scheds are', self.new_scheds)
                     start_time=time.time()
                     try:
@@ -951,7 +988,8 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         writing_time=time.time()-start_time
                         print("Data saved in ",writing_time)
                     except:
-                        print("failed to save schedule")
+                        print(f"failed to save schedule", traceback.format_exc() , file=sys.stderr, flush=True)
+                        # print("failed to save schedule")
 
                 self.episode_total_time= time.time()-self.episode_total_time
                 # print("CODE GEN :",self.codegen_total_time)
@@ -964,9 +1002,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             print("the reward is",reward)
             # print("the rep out of the step fct is",self.obs["representation"])
             return self.obs, reward, done, info
-
-        
-
 
     def apply_interchange(self, action_params):
         logging.info("Interchange")
@@ -1012,8 +1047,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.schedule_dict[comp]["transformation_matrices"].append(interchange_matrix)
             self.schedule_dict[comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
 
-
-
     def apply_tiling(self, action_params):
         logging.info("Tiling")
         for comp in self.comps:
@@ -1022,7 +1055,9 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
        
             first_dim_index=action_params["first_dim_index"]
             second_dim_index=action_params["second_dim_index"]
-
+            self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
+                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'], self.it_dict[comp][second_dim_index]['iterator']],
+                                        'tiling_factors': [action_params["first_factor"], action_params["second_factor"]]}
             l_code = "L" + self.it_dict[comp][first_dim_index]['iterator']
             logging.info(l_code)
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
@@ -1090,6 +1125,13 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
             if action_params["tiling_depth"] == 3:
                 third_dim_index=action_params["third_dim_index"]
+                self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
+                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'],
+                                                        self.it_dict[comp][second_dim_index]['iterator'],
+                                                        self.it_dict[comp][third_dim_index]['iterator']],
+                                        'tiling_factors': [action_params["first_factor"],
+                                                            action_params["second_factor"],
+                                                            action_params["third_factor"]]}
                 l_code = "L" + self.it_dict[comp][third_dim_index]['iterator']
                 self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
                 self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
@@ -1153,106 +1195,104 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.obs["loops_representation"][loop_3][4]=action_params['third_factor']
             
             
-            if self.is_interchaged == False:
+            # if self.is_interchaged == False:
 
-                if len(self.common_it) == 5:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE07, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE17, 
-                        self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE27, self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE37, 
-                        self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE47,self.INTERCHANGE56,self.INTERCHANGE57, self.INTERCHANGE67]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE25, self.INTERCHANGE26, 
-                        self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE15, self.INTERCHANGE25,self.INTERCHANGE35, self.INTERCHANGE45]]=1
+            #     if len(self.common_it) == 5:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE07, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE17, 
+            #             self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE27, self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE37, 
+            #             self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE47,self.INTERCHANGE56,self.INTERCHANGE57, self.INTERCHANGE67]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE25, self.INTERCHANGE26, 
+            #             self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE15, self.INTERCHANGE25,self.INTERCHANGE35, self.INTERCHANGE45]]=1
 
-                if len(self.common_it) == 4:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE14, self.INTERCHANGE15, self.INTERCHANGE16, 
-                        self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE36, 
-                        self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE14, self.INTERCHANGE15,
-                        self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE45]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE14, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
+            #     if len(self.common_it) == 4:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE14, self.INTERCHANGE15, self.INTERCHANGE16, 
+            #             self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE36, 
+            #             self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE14, self.INTERCHANGE15,
+            #             self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE45]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE14, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
 
-                if len(self.common_it) == 3:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE13, self.INTERCHANGE14, self.INTERCHANGE15, 
-                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, 
-                        self.INTERCHANGE45]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE13, self.INTERCHANGE14,
-                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1 
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
+            #     if len(self.common_it) == 3:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE13, self.INTERCHANGE14, self.INTERCHANGE15, 
+            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, 
+            #             self.INTERCHANGE45]]=1    
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE13, self.INTERCHANGE14,
+            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1 
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
                 
-                if len(self.common_it) == 2:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE14, 
-                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE12]]=1 
+            #     if len(self.common_it) == 2:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE14, 
+            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE12]]=1 
 
-                if len(self.common_it) == 1:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE12, self.INTERCHANGE13]]=1    
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][[self.INTERCHANGE01]]=1  
+            #     if len(self.common_it) == 1:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1    
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE12, self.INTERCHANGE13]]=1    
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][[self.INTERCHANGE01]]=1  
 
-            if self.is_reversed == False:
-                if len(self.common_it) == 5:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6, self.REVERSAL7]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][self.REVERSAL5]=1
+            # if self.is_reversed == False:
+            #     if len(self.common_it) == 5:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6, self.REVERSAL7]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][self.REVERSAL5]=1
 
-                elif len(self.common_it) == 4:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5, self.REVERSAL6]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][self.REVERSAL4]=1
+            #     elif len(self.common_it) == 4:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5, self.REVERSAL6]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][self.REVERSAL4]=1
 
-                elif len(self.common_it) == 3:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4, self.REVERSAL5]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][self.REVERSAL3]=1
+            #     elif len(self.common_it) == 3:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4, self.REVERSAL5]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][self.REVERSAL3]=1
 
-                elif len(self.common_it) == 2:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3, self.REVERSAL4]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][self.REVERSAL2]=1
+            #     elif len(self.common_it) == 2:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3, self.REVERSAL4]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][self.REVERSAL2]=1
 
-                elif len(self.common_it) == 1:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2, self.REVERSAL3]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.obs["action_mask"][self.REVERSAL1]=1
+            #     elif len(self.common_it) == 1:
+            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2, self.REVERSAL3]]=1
+            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+            #             self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2]]=1
+            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+            #             self.obs["action_mask"][self.REVERSAL1]=1
         
         for i in range(28,41):
             self.obs["action_mask"][i]=0
 
         for i in range(56,61):
             self.obs["action_mask"][i]=0
-
-            
 
     def apply_unrolling(self, action_params):
 
@@ -1371,7 +1411,9 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
     def apply_parallelization(self, action_params):
         first_comp=list(self.it_dict.keys())[0]
-        l_code = "L" + self.it_dict[first_comp][action_params["dim_index"]]['iterator']
+        iterator = self.it_dict[first_comp][action_params["dim_index"]]['iterator']
+        self.schedule_dict[first_comp]["parallelized_dim"] = iterator
+        l_code = "L" + iterator
 
         self.obs["representation"][0][self.placeholders[first_comp][l_code + "Parallelized"]] = 1
 
@@ -1387,8 +1429,8 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         self.obs["action_mask"][47]=0
         for i in range(56,61):
             self.obs["action_mask"][i]=0
-        for comp in self.comps:
-            self.schedule_dict[comp]["parallelized_dim"] = self.it_dict[comp][action_params["dim_index"]]['iterator']
+        print("The first comp is ", first_comp)
+        print("The result is ", self.schedule_dict[first_comp]["parallelized_dim"])
 
     def apply_reversal(self, action_params):
         for comp in self.comps:
@@ -1425,10 +1467,13 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.schedule_dict[comp]["transformation_matrix"] = reversal_matrix @ self.schedule_dict[comp]["transformation_matrix"]
     
     def apply_fusion(self, action_params):
+        fusion = []
         for comp in action_params["fuse_comps"]:
+            fusion.append(comp)
             l_code = "L" + self.it_dict[comp][action_params["dim_index"]]['iterator']
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Fused"]] = 1
-
+        fusion.append(action_params["dim_index"])
+        self.schedule_dict["fusions"].append(fusion)
         #Update the loop representation
         iterators=list(self.annotations["iterators"].keys())
         if self.it_dict[comp][action_params["dim_index"]]['iterator'] in iterators:
@@ -1439,11 +1484,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
         for i in range(56,61):
             self.obs["action_mask"][i]=0
-
-
-
-
-    
+   
     #add new_scheds to the original schedules list
     def save_sched_to_dataset(self):
         for func in self.new_scheds.keys():
@@ -1523,8 +1564,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 else:
                     self.progs_dict[func]["schedules_list"].append(sched_dict)
             
-       
-
     def write_data(self):
         # print("in write data")
         with open(self.programs_file, 'w') as f:
@@ -1532,11 +1571,17 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         # print("done writing data")
         f.close()
 
-    def get_exec_time_by_model(self):
-        # print(f"schedule={self.schedule_str};",end="")
+    def get_exec_time_by_model(self,optims_list, cmd_type, nb_executions, initial_exec_time):
+        self.schedule_list_model.append({
+            "schedule_str":self.schedule_str,
+            "schedule_dict":self.schedule_dict
+        })
+        print(f"schedule={self.schedule_str};",end="")
         stat=dict()
-        # print(self.schedule_dict)
         try:
+            print("Done saving")
+            # with open("schedule_list_model_{}.json","w+") as file: file.write(json.dumps(self.schedule_list_model,cls=NumpyEncoder))
+            print("Done saving")
             computations_tensor, loops_tensor = get_schedule_representation(self.annotations,
                                         self.schedule_dict,
                                         self.templates["comps_repr_templates_list"],
@@ -1562,7 +1607,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         return  stat["predicted_execution_time"]
 
     def get_exec_time(self):
-        # print("in get_exec_time")
+        # print("in get_exec_time")l
 
         prog_name= self.prog.name
         execution_time=0
@@ -1589,7 +1634,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         curr_sched=copy.deepcopy(self.schedule)
                         # print("Prog in sched: True, sched in scheds: False, shced in new_scheds: False")
                         self.new_scheds[prog_name]={}
-                        execution_time=self.get_exec_time_by_model()
+                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
                         self.new_scheds[prog_name][self.schedule_str]=(curr_sched,execution_time,0)
                         # print("**out of **Prog in sched: True, sched in scheds: False, shced in new_scheds: False")
 
@@ -1611,7 +1656,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                         ## print("Am in 2.1.2")
                         curr_sched=copy.deepcopy(self.schedule)
                         # print("Prog in sched: False, sched in scheds: False Prog in new sched: True, sched in new scheds: False")
-                        execution_time=self.get_exec_time_by_model()
+                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
                         self.new_scheds[prog_name][self.schedule_str]=(curr_sched,execution_time,0)
                         # print("** out of** Prog in sched: False, sched in scheds: False Prog in new sched: True, sched in new scheds: False")
                         
@@ -1622,7 +1667,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     # print("Prog in sched: False, sched in scheds: False Prog in new sched: False")
                     self.new_scheds[prog_name]={}
                     start_time=time.time()
-                    execution_time=self.get_exec_time_by_model()
+                    execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
                     sched_time=time.time()-start_time
                     self.codegen_total_time+=sched_time
 

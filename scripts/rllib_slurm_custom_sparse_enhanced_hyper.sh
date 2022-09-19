@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH --reservation=c2
 #SBATCH -p compute
-#SBATCH --nodes=4
+#SBATCH --nodes=8
 #SBATCH --exclusive
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-task=28
@@ -57,20 +57,24 @@ srun --nodes=1 -N1 --ntasks=1 -w "$head_node" \
 
 # number of nodes other than the head node
 worker_num=$((SLURM_JOB_NUM_NODES - 1))
+worker_per_code=10
 
 for ((i = 1; i <= worker_num; i++)); do
-    echo "$i"
-    node_i=${nodes_array[$i]}
-    echo "Starting WORKER $i at $node_i"
-    srun --nodes=1 -N1 --ntasks=1 -w "$node_i" \
-        ray start --address "$ip_head" \
-        --num-cpus "${SLURM_CPUS_PER_TASK}" --block &
-    sleep 5
+  for ((w = 1; w <= worker_per_code; w++)); do
+      echo "running worker $w on node $i"
+      node_i=${nodes_array[$i]}
+      # echo "tarting WORKER $i at $node_i"
+      srun --nodes=1 -N1 --ntasks=1 -w "$node_i" \
+          ray start --address "$ip_head" \
+          --num-cpus "${SLURM_CPUS_PER_TASK}" --block > /dev/null &
+      # sleep 10
+  done
 done
 # __doc_worker_ray_end__
 
 # __doc_script_start__
 
-python ppoCustomModelEnhancedHyper.py
+echo $(expr $worker_per_code \* $worker_num)
+python ppoCustomModelEnhancedHyper.py --num-workers $(expr $worker_per_code \* $worker_num) --env-type model
 
 #This is the old script

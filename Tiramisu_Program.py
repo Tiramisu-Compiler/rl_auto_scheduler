@@ -172,6 +172,7 @@ class Tiramisu_Program():
 
     
     def evaluate_schedule(self, optims_list, cmd_type, nb_executions, initial_exec_time=None):
+        
         optim_lines = ''
         for optim in optims_list:
             if optim.type == 'Interchange':

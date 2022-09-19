@@ -21,15 +21,16 @@ parser.add_argument("--training-iteration", default=1000, type=int)
 parser.add_argument("--ray-num-cpus", default=112, type=int)
 #parser.add_argument("--ray-num-gpus", default=1, type=int)
 parser.add_argument("--checkpoint-freq", default=5, type=int)
+parser.add_argument("--env-type", default="model",choices=["cpu","model"] ,type=str)
 args = parser.parse_args()
 ray.init(num_cpus=args.ray_num_cpus)
 
 #Register the custom environment and the model
 dataset_path = "../Dataset_multi/"
 programs_file = "./multicomp.json"
-progs_list_registery = GlobalVarActor.remote(programs_file, dataset_path)
+progs_list_registery = GlobalVarActor.remote(programs_file, dataset_path,num_workers=args.num_workers)
 shared_variable_actor = Actor.remote(progs_list_registery)
-register_env("Tiramisu_env_v1", lambda a:SearchSpaceSparseEnhancedMult(programs_file, dataset_path,shared_variable_actor, "/scratch/hb2578/hbenyamina/cost_model/model_published_nn_finale.pt"))
+register_env("Tiramisu_env_v1", lambda a:SearchSpaceSparseEnhancedMult(programs_file, dataset_path,shared_variable_actor, "/scratch/hb2578/hbenyamina/cost_model/model_published_nn_finale.pt", env_type=args.env_type))
 ModelCatalog.register_custom_model("tiramisu_model_v1",TiramisuModelMult)
 
 

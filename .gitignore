@@ -2,3 +2,8 @@ Dataset_copies/
 Dataset/
 ray_results/
 outputs/
+__pycache__/
+.svn/
+*.txt
+*.json
+*.log

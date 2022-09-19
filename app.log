@@ -1,24 +1,10 @@
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 512}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 513}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 256}}, 'comp01': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 512}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 513}, 2: {'iterator': 'i3', 'lower_bound': 0, 'upper_bound': 256}}}
-
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 64}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 32}}}
-
-root - INFO - Interchange
+root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 321}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}, 2rroot - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_broroot - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 32}, 1:root - INFO - Tiling
 
 root - INFO - comp00
 
 root - INFO - Li0
 
-root - INFO - Li1
-
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 384}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 448}, 2: {'iterator': 'i2', 'lower_bound': 1, 'upper_bound': 449}}}
-
-root - INFO - Interchange
-
-root - INFO - comp00
-
-root - INFO - Li1
-
-root - INFO - Li2
+root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 384}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 256}}}
 
 root - INFO - Skewing
 
@@ -26,41 +12,121 @@ root - INFO - comp00
 
 root - INFO - Li0
 
-root - INFO - Li2
+root - INFO - Li1
 
-root - INFO - Tiling
+root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 128}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 192}}}
+
+ot -root - INFroot - INFO - Tiling
 
 root - INFO - comp00
 
 root - INFO - Li0
 
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 65}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}, 2: {'iterator': 'i2', 'lower_bound': 1, 'upper_bound': 321}}, 'comp01': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 65}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}, 2: {'iterator': 'i2', 'lower_bound': 1, 'upper_bound': 321}}}
+- INFO - Li1
 
-root - INFO - Tiling
+root - INFO - Skewing
+
+root - INFO - comp00
+
+root - INFO - Lroot - INFO - Tiling
+
+rroot - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 256}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 64}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 64}}}
+
+troot - INFO - Skewing
 
 root - INFO - comp00
 
 root - INFO - Li1
 
-root - INFO - comp01
+root - INFO - Li0_1
 
-root - INFO - Li1
+root - INroot - INFO - Tiling
+
+root - INFO - comp00
+
+root - INFO - Li0
+
+kewing
+
+root - INFO - comp00
+
+root - INroot - INFO - Tiling
+
+root - INFO - comp00
+
+root - INFO - Li0root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 32}, 1: {'iterator': 'i1', 'lroot - INFO - Interchange
+
+root - INFO - comp00
+
+root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 320}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 128}, 2: {'iterator': 'i2', 'lower_bound': 1, 'upper_bound': 321}, 3: {'iterator': 'i3', 'lower_bound': 0, 'upper_bound': 192}}}
+
+ound': 256}}}
 
 root - INFO - Interchange
 
 root - INFO - comp00
 
+root - INFO - Li1
+
+root - INFO - Li2
+
+oot - INFO - Interchange
+
+root - INFO - comp00
+
+root - INFO - Li0
+
+root - INFO - Li1
+
+per_bound': 32}}}
+
+per_bound': 32}}}
+
+- Li2
+
+ - INFO - Tiling
+
+root - INFO - comp00
+
+root - INroot - WARNING - {'comp00'root - INFO - Interchange
+
+root - INFO - comp00
+
 root - INFO - Li0
 
 root - INFO - Li2
 
-root - INFO - comp01
+lower_bound': 0, 'upper_bound': 256}}, 'comp01': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 257root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 128}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 128},root - INFO - Interchange
+
+root - INFO - comp00
+
+root - INFO - Li0
+
+rootroot - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 96}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 64}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 64}}}
+
+ Tiling
+
+root - INFO - comp00
+
+root - INFO - Li0
+
+omp00': {0: {'iterator': 'root - INFO - Skewing
+
+root - INFO - comp00
+
+root - INFO - Li0
+
+root - INFO - Li1
+
+'upper_bound': 64}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 64}, 3: {'iterator': 'i3', 'lower_bound': 0, 'upper_bound': 32}}}
+
+{'iterator': 'i1',root - INFO - Interchange
+
+root - INFO - comp00
 
 root - INFO - Li0
 
 root - INFO - Li2
 
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 385}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}}, 'comp01': {0: {'iterator': 'i0', 'lower_bound': 1, 'upper_bound': 385}, 1: {'iterator': 'i1', 'lower_bound': 1, 'upper_bound': 65}}}
-
-root - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 64}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 64}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 448}}, 'comp01': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 64}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 64}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 448}}}
+bound': 513}, 3: {'iterator': 'i6', 'lower_bound': 0, 'upper_bound': 512}, 4: {'iterator': 'i7', 'loroot - WARNING - {'comp00': {0: {'iterator': 'i0', 'lower_bound': 0, 'upper_bound': 256}, 1: {'iterator': 'i1', 'lower_bound': 0, 'upper_bound': 1024}, 2: {'iterator': 'i2', 'lower_bound': 0, 'upper_bound': 256}, 3: {'iterator': 'i3', 'lower_bound': 0, 'upper_bound': 512}}}
 

@@ -938,5 +938,5 @@ def generate_programs(output_path, nb_programs, first_seed='auto'):
 
 
 if __name__ == '__main__':
-    generate_programs(output_path='Dataset', first_seed=100100, nb_programs=5000)
+    generate_programs(output_path='Dataset_multi', first_seed=105100, nb_programs=20000)
 
