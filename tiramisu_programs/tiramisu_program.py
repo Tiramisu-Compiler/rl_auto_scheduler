@@ -3,7 +3,8 @@ import os
 import json
 from pathlib import Path
 import random, time
-from cpp_file import TimeOutException, compile_and_run_tiramisu_code, launch_cmd
+from tiramisu_programs.cpp_file import CPP_File
+from tiramisu_programs.schedule import TimeOutException 
 
 class InternalExecException(Exception):
     pass
@@ -26,6 +27,7 @@ class Tiramisu_Program():
             self.buffer_sizes.append(re.findall(r'\d+',sizes_vect))
         self.program_annotations = ''
         self.wrapper_is_compiled = False
+        self.initial_execution_time = 1.0
         
     
     def get_program_annotations(self):
@@ -45,7 +47,7 @@ class Tiramisu_Program():
         # print(get_json_prog)
         with open(output_file, 'w') as f:
             f.write(get_json_prog)
-        compile_and_run_tiramisu_code(output_file, 'Generating program annotations')
+        CPP_File.compile_and_run_tiramisu_code(output_file, 'Generating program annotations')
         with open(self.func_folder+self.name+'_program_annotations.json','r') as f:
             self.program_annotations = json.loads(f.read())
         return self.program_annotations
@@ -101,7 +103,7 @@ class Tiramisu_Program():
             f.write(LC_code)
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
-        compile_and_run_tiramisu_code(output_file, log_message)
+        CPP_File.compile_and_run_tiramisu_code(output_file, log_message)
         lc_result = self.read_legality_check_result_file()
         
         return lc_result
@@ -161,7 +163,7 @@ class Tiramisu_Program():
         self.reset_solver_result_file()
         
         log_message = 'Solver results for: computation {}'.format(comp) + ' '.join([p for p in params])
-        if compile_and_run_tiramisu_code(output_file, log_message):
+        if CPP_File.compile_and_run_tiramisu_code(output_file, log_message):
             solver_result = self.read_solver_result_file()
             if len(solver_result) == 0:
                 return None
@@ -196,7 +198,7 @@ class Tiramisu_Program():
             f.write(codegen_code)
         log_message = 'Applying schedule: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
         start_time=time.time()
-        if(compile_and_run_tiramisu_code(output_file, log_message)): 
+        if(CPP_File.compile_and_run_tiramisu_code(output_file, log_message)): 
             print("COMPILE/RUN SCHEDULE CODEGEN :\n",time.time()- start_time) 
             try:
                 execution_times = self.get_measurements(cmd_type, nb_executions, initial_exec_time)
@@ -232,8 +234,8 @@ class Tiramisu_Program():
             compile_wrapper_cmd = 'cd ${FUNC_DIR};\
             ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
             ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O3 -o ${FUNC_NAME}_wrapper ${FUNC_NAME}_wrapper.cpp ./${FUNC_NAME}.o.so -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl'
-            launch_cmd(log_message_cmd,'')
-            failed = launch_cmd(compile_wrapper_cmd, self.file_path)
+            CPP_File.launch_cmd(log_message_cmd,'')
+            failed = CPP_File.launch_cmd(compile_wrapper_cmd, self.file_path)
             if failed:
                 print('Failed compiling wrapper')
                 return
@@ -243,9 +245,9 @@ class Tiramisu_Program():
         run_wrapper_cmd = 'cd ${FUNC_DIR};\
         ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
         ./${FUNC_NAME}_wrapper '+str(nb_executions)
-        launch_cmd(log_message_cmd, '')
+        CPP_File.launch_cmd(log_message_cmd, '')
         s_time=time.time()
-        failed = launch_cmd(run_wrapper_cmd, self.file_path, cmd_type,nb_executions,initial_exec_time)
+        failed = CPP_File.launch_cmd(run_wrapper_cmd, self.file_path, cmd_type,nb_executions,initial_exec_time)
         print("WRAPPER RUN in : ", time.time()-s_time)
         
         if failed:

@@ -5,12 +5,13 @@ import re
 import sys, os, subprocess
 from pathlib import Path
 from datetime import datetime
-from optimization import optimization_command
+from tiramisu_programs.optimization import optimization_command
 import time
 import re
 import torch
 import json
-from action import Action
+from rl_interface.action import Action
+from surrogate_model_utils.json_to_tensor import get_tree_structure, get_sched_rep
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -275,7 +276,7 @@ class Schedule:
             comp_representation.extend(iterators_repr)
             
             #  Write access representation to computation vector
-            padded_write_matrix = self.pad_access_matrix(self.isl_to_write_matrix(comp_dict['write_access_relation']), max_depth)
+            padded_write_matrix = cls.pad_access_matrix(cls.isl_to_write_matrix(comp_dict['write_access_relation']), max_depth)
             write_access_repr = [comp_dict['write_buffer_id']+1] + padded_write_matrix.flatten().tolist() # buffer_id + flattened access matrix 
 
         #     print('write ', comp_dict['write_buffer_id']+1,'\n',padded_write_matrix)
@@ -286,7 +287,7 @@ class Schedule:
             # Read Access representation 
             read_accesses_repr=[]
             for read_access_dict in comp_dict['accesses']:
-                read_access_matrix = self.pad_access_matrix(read_access_dict['access_matrix'], max_depth)
+                read_access_matrix = cls.pad_access_matrix(read_access_dict['access_matrix'], max_depth)
                 read_access_repr = [read_access_dict['buffer_id']+1] + read_access_matrix.flatten().tolist() # buffer_id + flattened access matrix 
                 read_accesses_repr.extend(read_access_repr)
         #         print('read ', read_access_dict['buffer_id']+1,'\n',read_access_matrix)
@@ -378,7 +379,7 @@ class Schedule:
         comp_repr_template.extend(iterators_repr)
         
         #  Write access representation to computation vector
-        padded_write_matrix = self.pad_access_matrix(self.isl_to_write_matrix(comp_dict['write_access_relation']), max_depth)
+        padded_write_matrix = cls.pad_access_matrix(cls.isl_to_write_matrix(comp_dict['write_access_relation']), max_depth)
         write_access_repr = [comp_dict['write_buffer_id']+1] + padded_write_matrix.flatten().tolist() # buffer_id + flattened access matrix 
 
     #     # print('write ', comp_dict['write_buffer_id']+1,'\n',padded_write_matrix)
@@ -389,7 +390,7 @@ class Schedule:
         # Read Access representation 
         read_accesses_repr=[]
         for read_access_dict in comp_dict['accesses']:
-            read_access_matrix = self.pad_access_matrix(read_access_dict['access_matrix'], max_depth)
+            read_access_matrix = cls.pad_access_matrix(read_access_dict['access_matrix'], max_depth)
             read_access_repr = [read_access_dict['buffer_id']+1] + read_access_matrix.flatten().tolist() # buffer_id + flattened access matrix 
             read_accesses_repr.extend(read_access_repr)
     #         # print('read ', read_access_dict['buffer_id']+1,'\n',read_access_matrix)
@@ -488,27 +489,8 @@ class Schedule:
             # print("one comp, no need for common iterators")
             self.common_it= self.annotations["computations"][self.comps[0]]["iterators"]
 
-        
-        if self.args["env_type"] == "cpu":
-            if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
-                print("getting the intitial exe time by execution")
-                start_time=time.time()
-                self.initial_execution_time=self.measurement_env([],'initial_exec', self.nb_executions)
-                cg_time=time.time()-start_time 
-                #print("After getting initial exec time:",cg_time, "initial exec time is :", self.initial_execution_time)
-                self.codegen_total_time +=cg_time
-                self.progs_dict[self.prog.name]={}
-                self.progs_dict[self.prog.name]["initial_execution_time"]=self.initial_execution_time
 
-            else:
-                print("the initial execution time exists")
-                self.initial_execution_time=self.progs_dict[self.prog.name]["initial_execution_time"]
-        else:
-            self.initial_execution_time = 1.0
-            self.progs_dict[self.prog.name]={}
-            self.progs_dict[self.prog.name]["initial_execution_time"]=self.initial_execution_time
-
-        # print("The initial execution time is", self.initial_execution_time)
+        # print("The initial execution time is", self.prog.initial_execution_time)
         self.schedule_dict = dict()
         self.schedule_dict["fusions"] = None
         for comp in self.comps:
@@ -520,14 +502,14 @@ class Schedule:
             self.schedule_dict[comp]['parallelized_dim'] = None
             self.schedule_dict[comp]['unrolling_factor'] = None
             self.schedule_dict[comp]['tiling'] = None
-        self.schedule_dict['tree_structure'] = self.get_tree_structure(self.annotations)
+        self.schedule_dict['tree_structure'] = get_tree_structure(self.annotations)
         
         self.templates = dict()
         (self.templates["prog_tree"],
             self.templates["comps_repr_templates_list"],
             self.templates["loops_repr_templates_list"],
             self.templates["comps_placeholders_indices_dict"],
-            self.templates["loops_placeholders_indices_dict"]) = self.get_sched_rep(self.annotations, self.schedule_dict, max_depth=self.MAX_DEPTH-1)
+            self.templates["loops_placeholders_indices_dict"]) = get_sched_rep(self.annotations, self.schedule_dict, max_depth=self.MAX_DEPTH-1)
         self.schedule_dict["fusions"] = []
         self.placeholders = self.comps_placeholders
         self.added_iterators=[]   
@@ -543,7 +525,7 @@ class Schedule:
             if i>=len(self.prog_rep):
                 self.obs["representation"]=np.vstack([self.obs["representation"], np.zeros(1052)])
             else:
-                self.obs["representation"]=np.vstack([self.obs["representation"], np.array([prog_rep[i]],dtype=np.float32)])
+                self.obs["representation"]=np.vstack([self.obs["representation"], np.array([self.prog_rep[i]],dtype=np.float32)])
 
         #print("\nLa représentation vectorielle initiale de ce programme est:", self.obs["representation"] )
         
@@ -624,6 +606,7 @@ class Schedule:
         return self.obs
 
     def apply_action(self,action):
+        first_comp = self.comps[0]
         if not action.id in range(44,46):
             action_params = action.parameter()
             # print("action params first are", action_params)
@@ -982,7 +965,7 @@ class Schedule:
                 #reward=-1
 
 
-        if action.id==self.EXIT:
+        if action.id==Action.EXIT:
             print("\n **** it's an exit action ****")
             done=True
             exit=True
@@ -1109,13 +1092,13 @@ class Schedule:
             if exec_time!=0:
                 print("\nLe schedule final trouvé est: ",self.schedule_str)
                 print("The new execution time is ", exec_time)
-                #self.speedup = (self.initial_execution_time - exec_time)/self.initial_execution_time
-                self.speedup = (self.initial_execution_time / exec_time) + EPSILON
-                # if self.initial_execution_time >=  exec_time:
+                #self.speedup = (self.prog.initial_execution_time - exec_time)/self.prog.initial_execution_time
+                self.speedup = (self.prog.initial_execution_time / exec_time) + EPSILON
+                # if self.prog.initial_execution_time >=  exec_time:
                     
-                #     self.speedup = (self.initial_execution_time / exec_time)
+                #     self.speedup = (self.prog.initial_execution_time / exec_time)
                 # else:
-                #     self.speedup = -(exec_time / self.initial_execution_time )
+                #     self.speedup = -(exec_time / self.prog.initial_execution_time )
                 
                 print("the speedup is: ", self.speedup)
                 reward=math.log(self.speedup,2)
@@ -1864,91 +1847,7 @@ class Schedule:
 
         for i in range(56,61):
             self.obs["action_mask"][i]=0
-   
-    def save_sched_to_dataset(self):
-        for func in self.new_scheds.keys():
-            for schedule_str in self.new_scheds[func].keys():#schedule_str represents the key, for example: 'Interchange Unrolling Tiling', the value is a tuple(schedule,execution_time)
 
-                schedule=self.new_scheds[func][schedule_str][0]#here we get the self.obs["schedule"] containing the omtimizations list
-                exec_time=self.new_scheds[func][schedule_str][1]
-                search_time=self.new_scheds[func][schedule_str][2]
-                for comp in self.comps:
-
-                    #Initialize an empty dict
-                    sched_dict={
-                    comp: {
-                    "schedule_str":schedule_str,
-                    "search_time":search_time,
-                    "interchange_dims": [],
-                    "tiling": {
-                        "tiling_depth":None,
-                        "tiling_dims":[],
-                        "tiling_factors":[]
-                    },
-                    "unrolling_factor": None,
-                    "parallelized_dim": None,
-                    "reversed_dim": None,
-                    "skewing": {    
-                        "skewed_dims": [],
-                        "skewing_factors": [],
-                        "average_skewed_extents": [],
-                        "transformed_accesses": []
-                                },
-                    "unfuse_iterators": [],
-                    "tree_structure": {},
-                    "execution_times": []}
-                    }
-
-                    for optim in schedule:
-                        if optim.type == 'Interchange':
-                            sched_dict[comp]["interchange_dims"]=[self.it_dict[comp][optim.params_list[0]]['iterator'], self.it_dict[comp][optim.params_list[1]]['iterator']]
-
-                        elif optim.type == 'Skewing':
-                            first_dim_index=self.it_dict[comp][optim.params_list[0]]['iterator']
-                            second_dim_index= self.it_dict[comp][optim.params_list[1]]['iterator']
-                            first_factor=optim.params_list[2]
-                            second_factor=optim.params_list[3]
-
-                            sched_dict[comp]["skewing"]["skewed_dims"]=[first_dim_index,second_dim_index]
-                            sched_dict[comp]["skewing"]["skewing_factors"]=[first_factor,second_factor]
-
-                        elif optim.type == 'Parallelization':
-                            sched_dict[comp]["parallelized_dim"]=self.it_dict[comp][optim.params_list[0]]['iterator']
-
-                        elif optim.type == 'Tiling':
-                            #Tiling 2D
-                            if len(optim.params_list)==4:
-                                sched_dict[comp]["tiling"]["tiling_depth"]=2
-                                sched_dict[comp]["tiling"]["tiling_dims"]=[self.it_dict[comp][optim.params_list[0]]['iterator'],self.it_dict[comp][optim.params_list[1]]['iterator']]
-                                sched_dict[comp]["tiling"]["tiling_factors"]=[optim.params_list[2],optim.params_list[3]]
-
-                            #Tiling 3D
-                            elif len(optim.params_list)==6:
-                                sched_dict[comp]["tiling"]["tiling_depth"]=3
-                                sched_dict[comp]["tiling"]["tiling_dims"]=[self.it_dict[comp][optim.params_list[0]]['iterator'],self.it_dict[comp][optim.params_list[1]]['iterator'],self.it_dict[comp][optim.params_list[2]]['iterator']]
-                                sched_dict[comp]["tiling"]["tiling_factors"]=[optim.params_list[3],optim.params_list[4],optim.params_list[5]]
-
-                        elif optim.type == 'Unrolling':
-                            sched_dict[comp]["unrolling_factor"]=optim.params_list[comp][1]
-
-                        elif optim.type == 'Reversal':
-                            sched_dict[comp]["reversed_dim"]=self.it_dict[comp][optim.params_list[0]]['iterator']
-                        
-                        elif optim.type == 'Fusion':
-                            pass
-
-                sched_dict[comp]["execution_times"].append(exec_time)
-                if not "schedules_list" in self.progs_dict[func].keys():
-                    self.progs_dict[func]["schedules_list"]=[sched_dict]
-                else:
-                    self.progs_dict[func]["schedules_list"].append(sched_dict)
-            
-    def write_data(self):
-        # print("in write data")
-        with open(self.programs_file, 'w') as f:
-            json.dump(self.progs_dict, f)
-        # print("done writing data")
-        f.close()
 
     def get_exec_time_by_model(self,optims_list, cmd_type, nb_executions, initial_exec_time):
         self.schedule_list_model.append({
@@ -1971,12 +1870,12 @@ class Schedule:
             tree_tensors = (self.templates["prog_tree"], computations_tensor, loops_tensor)
             with torch.no_grad():
                 predicted_speedup = self.model(tree_tensors,num_matrices=self.MAX_DEPTH-1).item()
-                stat["initial_execution_time"]=self.initial_execution_time
-                # print("initial_execution_time", self.initial_execution_time)
+                stat["initial_execution_time"]=self.prog.initial_execution_time
+                # print("initial_execution_time", self.prog.initial_execution_time)
                 stat["predicted_speedup"]=predicted_speedup
                 print(f"predicted_speedup={predicted_speedup}")
-                stat["predicted_execution_time"]=self.initial_execution_time/predicted_speedup
-                # print("predicted_execution_time", self.initial_execution_time/predicted_speedup)
+                stat["predicted_execution_time"]=self.prog.initial_execution_time/predicted_speedup
+                # print("predicted_execution_time", self.prog.initial_execution_time/predicted_speedup)
         except Exception:
             print("ERROR_MODEL",traceback.format_exc())
             # or
@@ -2013,7 +1912,7 @@ class Schedule:
                         curr_sched=copy.deepcopy(self.schedule)
                         # print("Prog in sched: True, sched in scheds: False, shced in new_scheds: False")
                         self.new_scheds[prog_name]={}
-                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
+                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.prog.initial_execution_time)
                         self.new_scheds[prog_name][self.schedule_str]=(curr_sched,execution_time,0)
                         # print("**out of **Prog in sched: True, sched in scheds: False, shced in new_scheds: False")
 
@@ -2035,7 +1934,7 @@ class Schedule:
                         ## print("Am in 2.1.2")
                         curr_sched=copy.deepcopy(self.schedule)
                         # print("Prog in sched: False, sched in scheds: False Prog in new sched: True, sched in new scheds: False")
-                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
+                        execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.prog.initial_execution_time)
                         self.new_scheds[prog_name][self.schedule_str]=(curr_sched,execution_time,0)
                         # print("** out of** Prog in sched: False, sched in scheds: False Prog in new sched: True, sched in new scheds: False")
                         
@@ -2046,7 +1945,7 @@ class Schedule:
                     # print("Prog in sched: False, sched in scheds: False Prog in new sched: False")
                     self.new_scheds[prog_name]={}
                     start_time=time.time()
-                    execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.initial_execution_time)
+                    execution_time=self.measurement_env(self.schedule,'sched_eval',self.nb_executions, self.prog.initial_execution_time)
                     sched_time=time.time()-start_time
                     self.codegen_total_time+=sched_time
 
@@ -2054,7 +1953,7 @@ class Schedule:
                     # print("**out of **Prog in sched: True, sched in scheds: False, shced in new_scheds: False")
 
         else:
-            execution_time=self.initial_execution_time
+            execution_time=self.prog.initial_execution_time
                     
         # print("get_exec_time returned {} for the function {}".format(execution_time,self.prog.name))
         return execution_time

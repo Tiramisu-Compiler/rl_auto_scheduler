@@ -1,5 +1,5 @@
 import random
-from schedule import LoopExtentException
+
 
 
 class Action:
@@ -222,6 +222,7 @@ class Action:
                     print("tiling flag 1 false, loopextent == factor")
                 elif loop_extent_1 < first_fact:
                     print("exceeeption, loop extent 1 smaller than factor")
+                    from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
                 loop_extent_2 = abs(
@@ -235,6 +236,7 @@ class Action:
                     print("tiling flag 2 false, loopextent == factor")
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
+                    from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
                 return {
@@ -291,6 +293,7 @@ class Action:
                     print("tiling flag 1 false, loopextent == factor")
                 elif loop_extent_1 < first_fact:
                     print("exceeeption, loop extent 1 smaller than factor")
+                    from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
                 loop_extent_2 = abs(
@@ -304,6 +307,7 @@ class Action:
                     print("tiling flag 2 false, loopextent == factor")
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
+                    from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
                 loop_extent_3 = abs(
@@ -317,6 +321,7 @@ class Action:
                     print("tiling flag 3 false, loopextent == factor")
                 elif loop_extent_3 < third_fact:
                     print("exceeeption, loop extent 3 smaller than factor")
+                    from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
                 return {

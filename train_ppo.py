@@ -1,27 +1,30 @@
 import ray, argparse
-from model import TiramisuModelMult
-from environment import SearchSpaceSparseEnhancedMult
+from rl_interface.model import TiramisuModelMult
+from rl_interface.environment import SearchSpaceSparseEnhancedMult
 from ray import tune
 from ray.rllib.models.catalog import ModelCatalog
 from ray.tune.registry import register_env
-from global_ray_variables import GlobalVarActor, Actor
+from utils.global_ray_variables import GlobalVarActor, Actor
 from config.environment_variables import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-workers", default=3, type=int)
+    parser.add_argument("--num-workers", default=1, type=int)
     parser.add_argument("--training-iteration", default=1000, type=int)
     parser.add_argument("--ray-num-cpus", default=112, type=int)
     parser.add_argument("--checkpoint-freq", default=5, type=int)
     parser.add_argument("--env-type", default="model", choices=["cpu", "model"], type=str)
     args = parser.parse_args()
+    return args
 
 
 if __name__ == "__main__":
     args = parse_arguments()
-    dataset_path = "../Dataset_multi/"
+    dataset_path = "../../Dataset_multi/"
     programs_file = "./multicomp.json"
-    model_checkpoint = "/scratch/hb2578/hbenyamina/cost_model/model_published_nn_finale.pt"
+    model_checkpoint = "/data/scratch/hbenyamina/model_published_nn_finale.pt"
+    local_dir = "/data/scratch/hbenyamina/cost_model/rl_autoscheduler_multicomp/ray_results"
+    name="Training_multi_enhanced"
 
     with ray.init(num_cpus=args.ray_num_cpus):
         progs_list_registery = GlobalVarActor.remote(
@@ -43,8 +46,8 @@ if __name__ == "__main__":
 
         analysis = tune.run(
             "PPO",
-            local_dir="/scratch/hb2578/hbenyamina/cost_model/rl_autoscheduler_multicomp/ray_results",
-            name="Training_multi_enhanced",
+            local_dir=local_dir,
+            name=name,
             stop={"training_iteration": args.training_iteration},
             max_failures=0,
             checkpoint_freq=args.checkpoint_freq,

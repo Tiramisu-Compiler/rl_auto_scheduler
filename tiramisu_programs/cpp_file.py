@@ -17,20 +17,21 @@ class CPP_File(object):
         os.environ["FILE_PATH"] = file_path
         log_message_cmd = 'printf "' + log_message + '\n">> ${FUNC_DIR}log.txt'
         compile_tiramisu_cmd = 'printf "Compiling ${FILE_PATH}\n" >> ${FUNC_DIR}log.txt;\
-        ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include  -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O0 -o ${FILE_PATH}.o -c ${FILE_PATH};\
-        ${CXX} -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O0 ${FILE_PATH}.o -o ./${FILE_PATH}.out   -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl'
+        c++ -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include  -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 -o ${FILE_PATH}.o -c ${FILE_PATH};\
+        c++ -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 ${FILE_PATH}.o -o ./${FILE_PATH}.out   -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl' 
+
         run_tiramisu_cmd = 'printf "Running ${FILE_PATH}.out\n">> ${FUNC_DIR}log.txt;\
         ./${FILE_PATH}.out>> ${FUNC_DIR}log.txt;'
-        launch_cmd(log_message_cmd, "")
+        cls.launch_cmd(log_message_cmd, "")
 
-        failed = launch_cmd(compile_tiramisu_cmd, file_path)
+        failed = cls.launch_cmd(compile_tiramisu_cmd, file_path)
         if failed:
             print(f"Error occured while compiling {file_path}")
             with open(file_path) as file:
                 print(file.read(), file=sys.stderr, flush=True)
             return False
         else:
-            failed = launch_cmd(run_tiramisu_cmd, file_path)
+            failed = cls.launch_cmd(run_tiramisu_cmd, file_path)
             if failed:
                 print(f"Error occured while running {file_path}")
                 # with open(file_path) as file: print(file.read(), file=sys.stderr,flush=True)
@@ -130,6 +131,9 @@ class CPP_File(object):
         dc_path = Path(Dataset_path).parts[:-1]
         target_path = "{}/Dataset_copies/{}".format(".", func_name)
 
+        if not os.path.isdir("./Dataset_copies/"):
+            os.mkdir("./Dataset_copies/")
+            
         if os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
             print("directory removed")

@@ -8,10 +8,15 @@ class GlobalVarActor:
     def __init__(self, programs_file, dataset_path, num_workers=7):
         self.index = -1
         self.num_workers = num_workers
-        self.progs_list = get_dataset(dataset_path)
+        self.progs_list = self.get_dataset(dataset_path)
         self.programs_file = programs_file
-        with open(programs_file) as f:
-            self.progs_dict = json.load(f)
+        if os.path.isfile(programs_file):
+            with open(programs_file) as f:
+                self.progs_dict = json.load(f)
+        else:
+            self.progs_dict = dict()
+            with open(programs_file,"w+") as f:
+                f.write(json.dumps(self.progs_dict))
 
     def get_dataset(self, path):
         os.getcwd()

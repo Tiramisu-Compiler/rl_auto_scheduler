@@ -1,7 +1,6 @@
-#!/bin/sh
-#SBATCH --reservation=c2
-#SBATCH -p compute
-#SBATCH --nodes=8
+#!/bin/bash
+#SBATCH -p research
+#SBATCH --nodes=2
 #SBATCH --exclusive
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-task=28
@@ -9,9 +8,9 @@
 #SBATCH -o outputs/train.out
 #SBATCH -e outputs/train.err
 
-source ~/.bashrc
-
-conda activate /scratch/hb2578/tiramisu-build-env
+# source ~/.bashrc
+. /data/scratch/hbenyamina/miniconda3/bin/activate
+conda activate /data/scratch/hbenyamina/tiramisu-build-env
 #nodes=dn[096,102-104]
 
 export RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
@@ -75,6 +74,6 @@ done
 # __doc_script_start__
 
 echo $(expr $worker_per_code \* $worker_num)
-python ppoCustomModelEnhancedHyper.py --num-workers $(expr $worker_per_code \* $worker_num) --env-type model
+python train_ppo.py --num-workers $(expr $worker_per_code \* $worker_num) --env-type model
 
 #This is the old script
