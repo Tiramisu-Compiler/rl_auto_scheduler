@@ -26,12 +26,10 @@ from utilsEnhanced import (
 from utils.modeling import Model_Recursive_LSTM_v2
 from utils.json_to_tensor import get_schedule_representation, get_sched_rep, get_tree_structure
 import torch
-import logging
 import traceback
 import math
 
 
-logging.basicConfig(filename='app.log', filemode='w', level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s\n')
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -407,7 +405,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             if len(self.comps)==1:
                 np.put(self.obs["action_mask"],[56,57,58,59,60],[0, 0, 0, 0, 0])   
         
-            logging.warning(self.it_dict)
             self.depth = 0
             self.schedule = []
             self.schedule_str = ""
@@ -1004,14 +1001,10 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             return self.obs, reward, done, info
 
     def apply_interchange(self, action_params):
-        logging.info("Interchange")
         for comp in self.comps:
-            logging.info(comp)
             l_code = "L" + self.it_dict[comp][action_params["first_dim_index"]]['iterator']
-            logging.info(l_code)
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
             l_code = "L" + self.it_dict[comp][action_params["second_dim_index"]]['iterator']
-            logging.info(l_code)
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
 
         #Update the loops representation
@@ -1048,9 +1041,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.schedule_dict[comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
 
     def apply_tiling(self, action_params):
-        logging.info("Tiling")
         for comp in self.comps:
-            logging.info(comp)
             comp_index=self.comp_indic_dict[comp]
        
             first_dim_index=action_params["first_dim_index"]
@@ -1059,7 +1050,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                                         'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'], self.it_dict[comp][second_dim_index]['iterator']],
                                         'tiling_factors': [action_params["first_factor"], action_params["second_factor"]]}
             l_code = "L" + self.it_dict[comp][first_dim_index]['iterator']
-            logging.info(l_code)
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
             self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
                 "first_factor"
@@ -1329,16 +1319,12 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         print("1.7")
 
     def apply_skewing(self, action_params):
-        logging.info("Skewing")
         dim_1=action_params["first_dim_index"]
         dim_2=action_params["second_dim_index"]
 
         for comp in self.comps:
-            logging.info(comp)
             l1_code = "L" + self.it_dict[comp][dim_1]['iterator']
-            logging.info(l1_code)
             l2_code = "L" + self.it_dict[comp][dim_2]['iterator']
-            logging.info(l2_code)
 
             #to get the start of the iterator in the representation template (just after the bounds)
             index1_upper_bound=self.placeholders[comp][l1_code+'Interchanged']-1
