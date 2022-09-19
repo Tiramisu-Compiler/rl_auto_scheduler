@@ -3,6 +3,8 @@ Dataset/
 ray_results/
 outputs/
 __pycache__/
+.ipynb_checkpoints/
+.vscode/
 .svn/
 *.txt
 *.json

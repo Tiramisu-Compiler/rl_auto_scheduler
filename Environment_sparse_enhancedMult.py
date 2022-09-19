@@ -1185,98 +1185,98 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.obs["loops_representation"][loop_3][4]=action_params['third_factor']
             
             
-            # if self.is_interchaged == False:
+            if self.is_interchaged == False:
 
-            #     if len(self.common_it) == 5:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE07, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE17, 
-            #             self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE27, self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE37, 
-            #             self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE47,self.INTERCHANGE56,self.INTERCHANGE57, self.INTERCHANGE67]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE25, self.INTERCHANGE26, 
-            #             self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE15, self.INTERCHANGE25,self.INTERCHANGE35, self.INTERCHANGE45]]=1
+                if len(self.common_it) == 5:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE07, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE17, 
+                        self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE27, self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE37, 
+                        self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE47,self.INTERCHANGE56,self.INTERCHANGE57, self.INTERCHANGE67]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE15, self.INTERCHANGE16, self.INTERCHANGE25, self.INTERCHANGE26, 
+                        self.INTERCHANGE35, self.INTERCHANGE36, self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[self.INTERCHANGE05, self.INTERCHANGE15, self.INTERCHANGE25,self.INTERCHANGE35, self.INTERCHANGE45]]=1
 
-            #     if len(self.common_it) == 4:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE14, self.INTERCHANGE15, self.INTERCHANGE16, 
-            #             self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE36, 
-            #             self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE14, self.INTERCHANGE15,
-            #             self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE45]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE14, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
+                if len(self.common_it) == 4:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE06, self.INTERCHANGE14, self.INTERCHANGE15, self.INTERCHANGE16, 
+                        self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE26, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE36, 
+                        self.INTERCHANGE45, self.INTERCHANGE46, self.INTERCHANGE56]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE14, self.INTERCHANGE15,
+                        self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, self.INTERCHANGE45]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[self.INTERCHANGE04, self.INTERCHANGE14, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
 
-            #     if len(self.common_it) == 3:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE13, self.INTERCHANGE14, self.INTERCHANGE15, 
-            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, 
-            #             self.INTERCHANGE45]]=1    
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE13, self.INTERCHANGE14,
-            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1 
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
+                if len(self.common_it) == 3:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE05, self.INTERCHANGE13, self.INTERCHANGE14, self.INTERCHANGE15, 
+                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE25, self.INTERCHANGE34, self.INTERCHANGE35, 
+                        self.INTERCHANGE45]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE13, self.INTERCHANGE14,
+                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1 
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[self.INTERCHANGE03, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
                 
-            #     if len(self.common_it) == 2:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE14, 
-            #             self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE12]]=1 
+                if len(self.common_it) == 2:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE04, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE14, 
+                        self.INTERCHANGE23, self.INTERCHANGE24, self.INTERCHANGE34]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1 
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[self.INTERCHANGE02, self.INTERCHANGE12]]=1 
 
-            #     if len(self.common_it) == 1:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1    
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE12, self.INTERCHANGE13]]=1    
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][[self.INTERCHANGE01]]=1  
+                if len(self.common_it) == 1:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE03, self.INTERCHANGE12, self.INTERCHANGE13, self.INTERCHANGE23]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.INTERCHANGE01, self.INTERCHANGE02, self.INTERCHANGE12, self.INTERCHANGE13]]=1    
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[self.INTERCHANGE01]]=1  
 
-            # if self.is_reversed == False:
-            #     if len(self.common_it) == 5:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6, self.REVERSAL7]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][self.REVERSAL5]=1
+            if self.is_reversed == False:
+                if len(self.common_it) == 5:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6, self.REVERSAL7]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL5,self.REVERSAL6]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][self.REVERSAL5]=1
 
-            #     elif len(self.common_it) == 4:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5, self.REVERSAL6]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][self.REVERSAL4]=1
+                elif len(self.common_it) == 4:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5, self.REVERSAL6]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL4,self.REVERSAL5]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][self.REVERSAL4]=1
 
-            #     elif len(self.common_it) == 3:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4, self.REVERSAL5]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][self.REVERSAL3]=1
+                elif len(self.common_it) == 3:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4, self.REVERSAL5]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL3,self.REVERSAL4]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][self.REVERSAL3]=1
 
-            #     elif len(self.common_it) == 2:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3, self.REVERSAL4]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][self.REVERSAL2]=1
+                elif len(self.common_it) == 2:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3, self.REVERSAL4]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL2,self.REVERSAL3]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][self.REVERSAL2]=1
 
-            #     elif len(self.common_it) == 1:
-            #         if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2, self.REVERSAL3]]=1
-            #         elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-            #             self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2]]=1
-            #         elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-            #             self.obs["action_mask"][self.REVERSAL1]=1
+                elif len(self.common_it) == 1:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2, self.REVERSAL3]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[self.REVERSAL1,self.REVERSAL2]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][self.REVERSAL1]=1
         
         for i in range(28,41):
             self.obs["action_mask"][i]=0
