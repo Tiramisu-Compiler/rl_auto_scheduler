@@ -81,12 +81,13 @@ class Schedule:
                 self.measurement_env = self.get_exec_time_by_model
         self.comps = list(self.prog.comp_name)
         self.annotations=self.prog.get_program_annotations()
-        self.repr = None
+        self.obs = None
         self.lc_total_time = 0
         self.schedule_list_model = []
 
-    def get_representation(self):
-        if self.repr is not None: return self.repr 
+
+    def get_observation(self):
+        if self.obs is not None: return self.obs 
         self.prog_rep, self.comps_placeholders, self.comp_indic_dict = ScheduleUtils.get_representation(self.annotations)
 
         # print("the length is", len(prog_rep[0]))
@@ -112,7 +113,7 @@ class Schedule:
 
             # print("the common iterators are", self.common_it)
 
-        elif len(self.comps)>5: # To avoid IndexError in self.repr["representation"]
+        elif len(self.comps)>5: # To avoid IndexError in self.obs["representation"]
             raise IndexError
 
         else:
@@ -144,20 +145,20 @@ class Schedule:
         self.placeholders = self.comps_placeholders
         self.added_iterators=[]   
 
-        self.repr={}
-        self.repr["representation"] = np.empty((0,1052),np.float32)
-        self.repr["loops_representation"]=np.empty((0,26),np.float32)
-        self.repr['child_list']=np.empty((0,11),np.float32)
-        self.repr['has_comps']=np.empty((0,12),np.float32)
-        self.repr['computations_indices']=np.empty((0,5),np.float32)
+        self.obs={}
+        self.obs["representation"] = np.empty((0,1052),np.float32)
+        self.obs["loops_representation"]=np.empty((0,26),np.float32)
+        self.obs['child_list']=np.empty((0,11),np.float32)
+        self.obs['has_comps']=np.empty((0,12),np.float32)
+        self.obs['computations_indices']=np.empty((0,5),np.float32)
 
         for i in range (5):
             if i>=len(self.prog_rep):
-                self.repr["representation"]=np.vstack([self.repr["representation"], np.zeros(1052)])
+                self.obs["representation"]=np.vstack([self.obs["representation"], np.zeros(1052)])
             else:
-                self.repr["representation"]=np.vstack([self.repr["representation"], np.array([self.prog_rep[i]],dtype=np.float32)])
+                self.obs["representation"]=np.vstack([self.obs["representation"], np.array([self.prog_rep[i]],dtype=np.float32)])
 
-        #print("\nLa représentation vectorielle initiale de ce programme est:", self.repr["representation"] )
+        #print("\nLa représentation vectorielle initiale de ce programme est:", self.obs["representation"] )
         
         # print("\nLes niveaux de boucles de ce programme sont:")
         self.it_dict={}
@@ -184,555 +185,57 @@ class Schedule:
             loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
             loop_log_rep = list(np.log1p(loop_repr))
             loop_repr.extend(loop_log_rep)
-            self.repr["loops_representation"]=np.vstack([self.repr["loops_representation"],np.array([loop_repr])])
+            self.obs["loops_representation"]=np.vstack([self.obs["loops_representation"],np.array([loop_repr])])
 
             childs_indexes=[iterators.index(child) for child in self.annotations['iterators'][iterators[i]]['child_iterators']]
             if len(childs_indexes)!=11:
                 for j in range(11-len(childs_indexes)):
                     childs_indexes.append(-1)
-            self.repr["child_list"]=np.vstack([self.repr["child_list"], np.array([childs_indexes])])
+            self.obs["child_list"]=np.vstack([self.obs["child_list"], np.array([childs_indexes])])
             
             if self.annotations['iterators'][iterators[i]]['computations_list']!=[]:
-                self.repr['has_comps']=np.append(self.repr['has_comps'],1)
+                self.obs['has_comps']=np.append(self.obs['has_comps'],1)
             else:
-                self.repr['has_comps']=np.append(self.repr['has_comps'],0)
+                self.obs['has_comps']=np.append(self.obs['has_comps'],0)
 
             computations_list=list(self.annotations['computations'].keys())
             loop_comps=[computations_list.index(comp) for comp in self.annotations['iterators'][iterators[i]]['computations_list']]
             if len(loop_comps)!=5:
                 for j in range(5-len(loop_comps)):
                     loop_comps.append(-1)
-            self.repr["computations_indices"]=np.vstack([self.repr["computations_indices"],np.array([loop_comps])])
+            self.obs["computations_indices"]=np.vstack([self.obs["computations_indices"],np.array([loop_comps])])
         
 
         #Add null vectors if needed to avoid mismatching error of env.observation's type and reset_obs's type              
         for i in range(15-len(self.annotations["iterators"])):
             loop_repr=np.full(26,-1)
-            self.repr["loops_representation"]=np.vstack([self.repr["loops_representation"],loop_repr])
+            self.obs["loops_representation"]=np.vstack([self.obs["loops_representation"],loop_repr])
         
         for i in range(12-len(self.annotations["iterators"])):
-            self.repr["child_list"]=np.vstack([self.repr["child_list"], np.full(11,-1)])
-            self.repr['has_comps']=np.append(self.repr['has_comps'],0)
-            self.repr["computations_indices"]=np.vstack([self.repr["computations_indices"],np.full(5,-1)])
+            self.obs["child_list"]=np.vstack([self.obs["child_list"], np.full(11,-1)])
+            self.obs['has_comps']=np.append(self.obs['has_comps'],0)
+            self.obs["computations_indices"]=np.vstack([self.obs["computations_indices"],np.full(5,-1)])
 
         
         if len(self.common_it) == 5:
-            self.repr["action_mask"] = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=np.float32)
+            self.obs["action_mask"] = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=np.float32)
         else:
             if len(self.common_it) == 4:
-                self.repr["action_mask"] = np.array([1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
+                self.obs["action_mask"] = np.array([1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
             else: 
                 if len(self.common_it) == 3:
-                    self.repr["action_mask"] = np.array([1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
+                    self.obs["action_mask"] = np.array([1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
                 else: 
                     if len(self.common_it) == 2:
-                        self.repr["action_mask"] = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
+                        self.obs["action_mask"] = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
                     else:
                         if len(self.common_it) == 1:
-                            self.repr["action_mask"] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
+                            self.obs["action_mask"] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], dtype=np.float32)
     
         if len(self.comps)==1:
-            np.put(self.repr["action_mask"],[56,57,58,59,60],[0, 0, 0, 0, 0])  
-        return self.repr
+            np.put(self.obs["action_mask"],[56,57,58,59,60],[0, 0, 0, 0, 0])  
+        return self.obs
 
-    def apply_interchange(self, action_params):
-        for comp in self.comps:
-            l_code = "L" + self.it_dict[comp][action_params["first_dim_index"]]['iterator']
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
-            l_code = "L" + self.it_dict[comp][action_params["second_dim_index"]]['iterator']
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
-
-        iterators=list(self.annotations["iterators"].keys())
-        if self.it_dict[comp][action_params["first_dim_index"]]['iterator'] in iterators:
-            loop_1=iterators.index(self.it_dict[comp][action_params["first_dim_index"]]['iterator'])
-        elif self.it_dict[comp][action_params["first_dim_index"]]['iterator'] in self.added_iterators:
-            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["first_dim_index"]]['iterator'])  
-        self.repr["loops_representation"][loop_1][2]=1
-        
-        if self.it_dict[comp][action_params["second_dim_index"]]['iterator'] in iterators:
-            loop_2=iterators.index(self.it_dict[comp][action_params["second_dim_index"]]['iterator'])
-        elif self.it_dict[comp][action_params["second_dim_index"]]['iterator'] in self.added_iterators:
-            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["second_dim_index"]]['iterator'])  
-        self.repr["loops_representation"][loop_2][2]=1
-
-        for i in range(28):
-            self.repr["action_mask"][i]=0
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-        
-        for comp in self.comps:
-            dim = self.schedule_dict[comp]["dim"]
-            interchange_matrix = np.eye(dim,dim)
-            first_iter_index = action_params["first_dim_index"]
-            second_iter_index = action_params["second_dim_index"]
-            interchange_matrix[first_iter_index, first_iter_index] = 0
-            interchange_matrix[second_iter_index, second_iter_index] = 0
-            interchange_matrix[first_iter_index, second_iter_index] = 1
-            interchange_matrix[second_iter_index, first_iter_index] = 1
-            self.schedule_dict[comp]["transformation_matrices"].append(interchange_matrix)
-            self.schedule_dict[comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
-
-    def apply_tiling(self, action_params):
-        for comp in self.comps:
-            comp_index=self.comp_indic_dict[comp]
-       
-            first_dim_index=action_params["first_dim_index"]
-            second_dim_index=action_params["second_dim_index"]
-            self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
-                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'], self.it_dict[comp][second_dim_index]['iterator']],
-                                        'tiling_factors': [action_params["first_factor"], action_params["second_factor"]]}
-            l_code = "L" + self.it_dict[comp][first_dim_index]['iterator']
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
-                "first_factor"
-            ]
-
-            #update the loop bounds if tiling is applied on loop 1
-            if action_params["tiling_loop_1"]:
-                # print("inside loop tiling 1")
-                new_upper_bound_1=self.repr["representation"][self.comp_indic_dict[comp]][first_dim_index*20+1]/action_params["first_factor"]
-                self.repr["representation"][self.comp_indic_dict[comp]][first_dim_index*20+1]=new_upper_bound_1
-                new_inner_upper_bound_1=action_params["first_factor"]
-                self.repr["representation"][self.comp_indic_dict[comp]][first_dim_index*20+10]=new_inner_upper_bound_1
-                # print("after loop tiling 1")
-                #Add the loop representation of the newly added iterator
-                loop_added="{}_1".format(self.it_dict[comp][first_dim_index]['iterator'])
-                self.added_iterators.append(loop_added)
-                loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
-                #Initialize lower and upper bounds
-                loop_repr=[]
-                if self.repr["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
-                    lower_bound=self.repr["representation"][comp_index][second_dim_index*20+1]
-                else:
-                    lower_bound=self.repr["representation"][comp_index][second_dim_index*20]                
-                loop_repr.extend([lower_bound, action_params["first_factor"]])
-                #Initialize the different tags
-                loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
-                loop_log_rep = list(np.log1p(loop_repr))
-                loop_repr.extend(loop_log_rep)
-                self.repr["loops_representation"][loop_index]=loop_repr
-
-            l_code = "L" + self.it_dict[comp][second_dim_index]['iterator']
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
-                "second_factor"
-            ]
-            #update the loop bounds if tiling is applied on loop 2
-            if action_params["tiling_loop_2"]:
-                # print("inside loop tiling 2")
-                new_upper_bound_2=self.repr["representation"][self.comp_indic_dict[comp]][second_dim_index*20+1]/action_params["second_factor"]
-                self.repr["representation"][self.comp_indic_dict[comp]][second_dim_index*20+1]=new_upper_bound_2
-                new_inner_upper_bound_2=action_params["second_factor"]
-                self.repr["representation"][self.comp_indic_dict[comp]][second_dim_index*20+10]=new_inner_upper_bound_2
-                # print("after loop tiling 2")
-
-                #Add the loop representation of the newly added iterator
-                loop_added="{}_1".format(self.it_dict[comp][second_dim_index]['iterator'])
-                self.added_iterators.append(loop_added)
-                loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
-                #Initialize lower and upper bounds
-                loop_repr=[]
-
-                if self.repr["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
-                    lower_bound=self.repr["representation"][comp_index][second_dim_index*20+1]
-                else:
-                    lower_bound=self.repr["representation"][comp_index][second_dim_index*20]
-                loop_repr.extend([lower_bound, action_params["second_factor"]])
-
-                #Initialize the different tags
-                loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
-                loop_log_rep = list(np.log1p(loop_repr))
-                loop_repr.extend(loop_log_rep)
-                self.repr["loops_representation"][loop_index]=loop_repr
-
-            if action_params["tiling_depth"] == 3:
-                third_dim_index=action_params["third_dim_index"]
-                self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
-                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'],
-                                                        self.it_dict[comp][second_dim_index]['iterator'],
-                                                        self.it_dict[comp][third_dim_index]['iterator']],
-                                        'tiling_factors': [action_params["first_factor"],
-                                                            action_params["second_factor"],
-                                                            action_params["third_factor"]]}
-                l_code = "L" + self.it_dict[comp][third_dim_index]['iterator']
-                self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
-                self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
-                    "third_factor"
-                ]
-                #update the loop bounds if tiling is applied on loop 3
-                if action_params["tiling_loop_3"]:
-                    # print("inside loop tiling 3")
-                    new_upper_bound_3=self.repr["representation"][self.comp_indic_dict[comp]][third_dim_index*20+1]/action_params["third_factor"]
-                    self.repr["representation"][self.comp_indic_dict[comp]][third_dim_index*20+1]=new_upper_bound_3
-                    new_inner_upper_bound_3=action_params["third_factor"]
-                    self.repr["representation"][self.comp_indic_dict[comp]][third_dim_index*20+10]=new_inner_upper_bound_3
-                    # print("after loop tiling 3")
-
-                    #Add the loop representation of the newly added iterator
-                    loop_added="{}_1".format(self.it_dict[comp][third_dim_index]['iterator'])
-                    self.added_iterators.append(loop_added)
-                    loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
-                    #Initialize lower and upper bounds
-                    loop_repr=[]
-                    if self.repr["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
-                        lower_bound=self.repr["representation"][comp_index][third_dim_index*20+1]
-                    else:
-                        lower_bound=self.repr["representation"][comp_index][third_dim_index*20]
-
-                    loop_repr.extend([lower_bound,action_params["third_factor"]])
-                    #Initialize the different tags
-                    loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
-                    loop_log_rep = list(np.log1p(loop_repr))
-                    loop_repr.extend(loop_log_rep)
-                    self.repr["loops_representation"][loop_index]=loop_repr
-
-        #Update the loops representation
-        iterators=list(self.annotations["iterators"].keys())
-
-        if self.it_dict[comp][first_dim_index]['iterator'] in iterators:
-            loop_1=iterators.index(self.it_dict[comp][first_dim_index]['iterator'])
-        elif self.it_dict[comp][first_dim_index]['iterator'] in self.added_iterators:
-            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][first_dim_index]['iterator'])
-
-        self.repr["loops_representation"][loop_1][3]=1
-        self.repr["loops_representation"][loop_1][4]=action_params['first_factor']
-
-        if self.it_dict[comp][second_dim_index]['iterator'] in iterators:
-            loop_2=iterators.index(self.it_dict[comp][second_dim_index]['iterator'])
-        elif self.it_dict[comp][second_dim_index]['iterator'] in self.added_iterators:
-            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][second_dim_index]['iterator'])  
-
-        self.repr["loops_representation"][loop_2][3]=1
-        self.repr["loops_representation"][loop_2][4]=action_params['second_factor']
-
-        #Update the loop representation
-        if action_params["tiling_depth"] == 3:
-
-            if self.it_dict[comp][third_dim_index]['iterator'] in iterators:
-                loop_3=iterators.index(self.it_dict[comp][third_dim_index]['iterator'])
-            elif self.it_dict[comp][third_dim_index]['iterator'] in self.added_iterators:
-                loop_3=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][third_dim_index]['iterator'])  
-
-            self.repr["loops_representation"][loop_3][3]=1
-            self.repr["loops_representation"][loop_3][4]=action_params['third_factor']
-            
-            
-            if self.is_interchaged == False:
-
-                if len(self.common_it) == 5:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE07, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE17, 
-                        Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE27, Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE37, 
-                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE47,Action.INTERCHANGE56,Action.INTERCHANGE57, Action.INTERCHANGE67]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE25, Action.INTERCHANGE26, 
-                        Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE15, Action.INTERCHANGE25,Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
-
-                if len(self.common_it) == 4:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE14, Action.INTERCHANGE15, Action.INTERCHANGE16, 
-                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE36, 
-                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE14, Action.INTERCHANGE15,
-                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE14, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
-
-                if len(self.common_it) == 3:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE13, Action.INTERCHANGE14, Action.INTERCHANGE15, 
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, 
-                        Action.INTERCHANGE45]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE13, Action.INTERCHANGE14,
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1 
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
-                
-                if len(self.common_it) == 2:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE14, 
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE12]]=1 
-
-                if len(self.common_it) == 1:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE12, Action.INTERCHANGE13]]=1    
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE01]]=1  
-
-            if self.is_reversed == False:
-                if len(self.common_it) == 5:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL5,Action.REVERSAL6, Action.REVERSAL7]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL5,Action.REVERSAL6]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL5]=1
-
-                elif len(self.common_it) == 4:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL4,Action.REVERSAL5, Action.REVERSAL6]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL4,Action.REVERSAL5]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL4]=1
-
-                elif len(self.common_it) == 3:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL3,Action.REVERSAL4, Action.REVERSAL5]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL3,Action.REVERSAL4]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL3]=1
-
-                elif len(self.common_it) == 2:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL2,Action.REVERSAL3, Action.REVERSAL4]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL2,Action.REVERSAL3]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL2]=1
-
-                elif len(self.common_it) == 1:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL1,Action.REVERSAL2, Action.REVERSAL3]]=1
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL1,Action.REVERSAL2]]=1
-                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL1]=1
-        
-        for i in range(28,41):
-            self.repr["action_mask"][i]=0
-
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-
-    def apply_unrolling(self, action_params):
-
-        for comp in self.comps:
-            # print(comp)
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["Unrolled"]] = 1
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["UnrollFactor"]] = action_params[comp]["unrolling_factor"]
-
-            l_code = "L" + self.it_dict[comp][action_params[comp]["dim_index"]]['iterator']
-            index_upper_bound=self.placeholders[comp][l_code+'Interchanged']-1
-            self.repr["representation"][self.comp_indic_dict[comp]][index_upper_bound]=self.repr["representation"][self.comp_indic_dict[comp]][index_upper_bound]/action_params[comp]["unrolling_factor"]
-
-            #Update the loop representation
-            iterators=list(self.annotations["iterators"].keys())
-            if self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'] in iterators:
-                loop_index=iterators.index(self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'])
-            elif self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'] in self.added_iterators:
-                loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'])           
-            self.repr["loops_representation"][loop_index][5]=1
-            self.repr["loops_representation"][loop_index][6]=action_params[comp]['unrolling_factor']
-
-        for i in range(41,44):
-            self.repr["action_mask"][i]=0
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-        
-        # print("1.6")
-        try:
-            for comp in self.comps:
-                self.schedule_dict[comp]["unrolling_factor"] = action_params[comp]["unrolling_factor"]
-        except Exception:
-            print("ERROR_MODEL",traceback.format_exc())
-
-        # print("1.7")
-
-    def apply_skewing(self, action_params):
-        dim_1=action_params["first_dim_index"]
-        dim_2=action_params["second_dim_index"]
-
-        for comp in self.comps:
-            l1_code = "L" + self.it_dict[comp][dim_1]['iterator']
-            l2_code = "L" + self.it_dict[comp][dim_2]['iterator']
-
-            #to get the start of the iterator in the representation template (just after the bounds)
-            index1_upper_bound=self.placeholders[comp][l1_code+'Interchanged']-1
-            index1_lower_bound=self.placeholders[comp][l1_code+'Interchanged']-2
-            index2_upper_bound=self.placeholders[comp][l2_code+'Interchanged']-1
-            index2_lower_bound=self.placeholders[comp][l2_code+'Interchanged']-2
-
-            l1_lower_bound=self.repr["representation"][self.comp_indic_dict[comp]][index1_lower_bound]
-            l1_upper_bound=self.repr["representation"][self.comp_indic_dict[comp]][index1_upper_bound]
-            l2_lower_bound=self.repr["representation"][self.comp_indic_dict[comp]][index2_lower_bound]
-            l2_upper_bound=self.repr["representation"][self.comp_indic_dict[comp]][index2_upper_bound]
-
-            l1_extent = l1_upper_bound - l1_lower_bound
-            l2_extent = l2_upper_bound - l2_lower_bound
-
-            skew_factor = action_params["first_factor"]
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l1_code + "Skewed"]] = 1
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l1_code + "SkewFactor"]] = skew_factor
-            self.repr["representation"][self.comp_indic_dict[comp]][index1_lower_bound]= abs(action_params["first_factor"]) * l1_lower_bound
-            self.repr["representation"][self.comp_indic_dict[comp]][index1_upper_bound]= l1_lower_bound + abs(action_params["first_factor"]) * l1_extent + abs(action_params["second_factor"]) * l2_extent
-
-            skew_factor = action_params["second_factor"]
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l2_code + "Skewed"]] = 1
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l2_code + "SkewFactor"]] = skew_factor
-            self.repr["representation"][self.comp_indic_dict[comp]][index2_lower_bound]= 0
-            self.repr["representation"][self.comp_indic_dict[comp]][index2_upper_bound]=(l2_extent) + 1
-
-        #Update the loop representation
-        iterators=list(self.annotations["iterators"].keys())
-        if self.it_dict[comp][dim_1]['iterator'] in iterators:
-            loop_1=iterators.index(self.it_dict[comp][dim_1]['iterator'])
-        elif self.it_dict[comp][dim_1]['iterator'] in self.added_iterators:
-            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][dim_1]['iterator'])        
-        self.repr["loops_representation"][loop_1][7]=1
-        self.repr["loops_representation"][loop_1][8]=action_params['first_factor']
-        #Skewing is applied on common loop levels so loop bounds are equal for all computations
-        self.repr["loops_representation"][loop_1][9]=self.repr["representation"][0][index1_upper_bound]-self.repr["representation"][0][index1_lower_bound]
-
-        if self.it_dict[comp][dim_2]['iterator'] in iterators:
-            loop_2=iterators.index(self.it_dict[comp][dim_2]['iterator'])
-        elif self.it_dict[comp][dim_2]['iterator'] in self.added_iterators:
-            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][dim_2]['iterator']) 
-        self.repr["loops_representation"][loop_2][7]=1
-        self.repr["loops_representation"][loop_2][8]=action_params['second_factor']
-        self.repr["loops_representation"][loop_2][9]=self.repr["representation"][0][index2_upper_bound]-self.repr["representation"][0][index2_lower_bound]
-
-        self.repr["action_mask"][44]=0
-        self.repr["action_mask"][45]=0
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-        
-        for comp in self.comps:
-            dim = self.schedule_dict[comp]["dim"]
-            skewing_matrix = np.eye(dim,dim)
-            first_iter_index = action_params["first_dim_index"]
-            second_iter_index = action_params["second_dim_index"]
-            first_factor = action_params["first_factor"]
-            second_factor = action_params["second_factor"]
-            if (first_factor, second_factor) in global_dioph_sols_dict:
-                a, b = global_dioph_sols_dict[(first_factor, second_factor)]
-            else:
-                a, b = ScheduleUtils.linear_diophantine_default(first_factor, second_factor)
-
-            skewing_matrix[first_iter_index, first_iter_index] = first_factor
-            skewing_matrix[first_iter_index, second_iter_index] = second_factor
-            skewing_matrix[second_iter_index, first_iter_index] = a
-            skewing_matrix[second_iter_index, second_iter_index] = b
-            self.schedule_dict[comp]["transformation_matrices"].append(skewing_matrix)
-            self.schedule_dict[comp]["transformation_matrix"] = skewing_matrix @ self.schedule_dict[comp]["transformation_matrix"]
-
-    def apply_parallelization(self, action_params):
-        first_comp=list(self.it_dict.keys())[0]
-        iterator = self.it_dict[first_comp][action_params["dim_index"]]['iterator']
-        self.schedule_dict[first_comp]["parallelized_dim"] = iterator
-        l_code = "L" + iterator
-
-        self.repr["representation"][0][self.placeholders[first_comp][l_code + "Parallelized"]] = 1
-
-        #Update the loop representation
-        iterators=list(self.annotations["iterators"].keys())
-        if self.it_dict[first_comp][action_params["dim_index"]]['iterator'] in iterators:
-            loop_index=iterators.index(self.it_dict[first_comp][action_params["dim_index"]]['iterator'])
-        elif self.it_dict[first_comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
-            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[first_comp][action_params["dim_index"]]['iterator'])
-        self.repr["loops_representation"][loop_index][10]=1
-        #Update the action mask
-        self.repr["action_mask"][46]=0
-        self.repr["action_mask"][47]=0
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-        # print("The first comp is ", first_comp)
-        # print("The result is ", self.schedule_dict[first_comp]["parallelized_dim"])
-
-    def apply_reversal(self, action_params):
-        for comp in self.comps:
-            l_code = "L" + self.it_dict[comp][action_params["dim_index"]]['iterator']
-
-            index_upper_bound=self.placeholders[comp][l_code+'Interchanged']-1
-            index_lower_bound=self.placeholders[comp][l_code+'Interchanged']-2
-
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Reversed"]] = 1
-
-            tmp=self.repr["representation"][self.comp_indic_dict[comp]][index_lower_bound]
-            self.repr["representation"][self.comp_indic_dict[comp]][index_lower_bound]=self.repr["representation"][self.comp_indic_dict[comp]][index_upper_bound]
-            self.repr["representation"][self.comp_indic_dict[comp]][index_upper_bound]=tmp 
-
-        #Update the loop representation
-        iterators=list(self.annotations["iterators"].keys())
-        if self.it_dict[comp][action_params["dim_index"]]['iterator'] in iterators:
-            loop_index=iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])
-        elif self.it_dict[comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
-            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])        
-        self.repr["loops_representation"][loop_index][11]=1
-
-        for i in range(48,56):
-            self.repr["action_mask"][i]=0
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-        
-        for comp in self.comps:
-            dim = self.schedule_dict[comp]["dim"]
-            reversal_matrix = np.eye(dim,dim)
-            dim_index = action_params["dim_index"]
-            reversal_matrix[dim_index, dim_index] = -1
-            self.schedule_dict[comp]["transformation_matrices"].append(reversal_matrix)
-            self.schedule_dict[comp]["transformation_matrix"] = reversal_matrix @ self.schedule_dict[comp]["transformation_matrix"]
-    
-    def apply_fusion(self, action_params):
-        fusion = []
-        for comp in action_params["fuse_comps"]:
-            fusion.append(comp)
-            l_code = "L" + self.it_dict[comp][action_params["dim_index"]]['iterator']
-            self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Fused"]] = 1
-        fusion.append(action_params["dim_index"])
-        self.schedule_dict["fusions"].append(fusion)
-        #Update the loop representation
-        iterators=list(self.annotations["iterators"].keys())
-        if self.it_dict[comp][action_params["dim_index"]]['iterator'] in iterators:
-            loop_index=iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])
-        elif self.it_dict[comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
-            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])        
-        self.repr["loops_representation"][loop_index][12]=1
-
-        for i in range(56,61):
-            self.repr["action_mask"][i]=0
-
-class ScheduleController:
-    def __init__(self, model=None,nb_executions=5,scheds=None,**args):
-        self.depth = 0
-        self.schedule = []
-        self.scheds = scheds
-        self.nb_executions = nb_executions
-        self.schedule_str = ""
-        self.speedup = 0
-        self.is_interchaged=False
-        self.is_tiled=False
-        self.is_unrolled=False
-        self.is_skewed=False
-        self.is_parallelized=False
-        self.is_reversed=False
-        self.steps = 0
-        self.new_scheds = {}
-        self.search_time = time.time()
-        self.model = model
-        self.args = args
-        if "env_type" in self.args:
-            if self.args["env_type"] == "cpu":
-                self.measurement_env = self.prog.evaluate_schedule
-            else:
-                self.measurement_env = self.get_exec_time_by_model
-        self.comps = list(self.prog.comp_name)
-        self.annotations=self.prog.get_program_annotations()
-        self.repr = None
-        self.lc_total_time = 0
-        self.schedule_list_model = []
-    
     def apply_action(self,action):
         exit = False
         done = False
@@ -770,7 +273,7 @@ class ScheduleController:
 
                 if lc_check == -1: 
                     print("The action produced an error.")
-                    self.repr["action_mask"][action.id]=0
+                    self.obs["action_mask"][action.id]=0
                     self.schedule.pop() 
                     raise LCException
 
@@ -779,7 +282,7 @@ class ScheduleController:
                     self.schedule.pop()
                     info = {"illegal_action": True}
                     done = False
-                    return self.repr, reward, done, info
+                    return self.obs, reward, done, info
                 
                 self.apply_interchange(action_params)
                 print("Interchange applied")
@@ -826,7 +329,7 @@ class ScheduleController:
                     self.schedule.pop()
                     info = {"illegal_action": True}
                     done = False
-                    return self.repr, reward, done, info
+                    return self.obs, reward, done, info
 
                 self.apply_tiling(action_params)
                 print("\n tiling applied")
@@ -851,7 +354,7 @@ class ScheduleController:
                 self.non_skewed_comps = []
                 for comp in self.comps:
                     it_skewed="L"+self.it_dict[comp][action_params[comp]["dim_index"]]["iterator"]+"Skewed"
-                    if self.repr["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][it_skewed]]!=1:
+                    if self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][it_skewed]]!=1:
                         self.non_skewed_comps.append(comp)
                 
                 #for mult comps, unrolling returns a dict of parameters, each for each comp
@@ -885,12 +388,12 @@ class ScheduleController:
                         #reward = -1
                         info = {"illegal_action": True}
                         done = False
-                        return self.repr, reward, done, info
+                        return self.obs, reward, done, info
 
                     self.apply_unrolling(action_params)
                     print("Unrolling applied")
                     for i in range(41,44):
-                        self.repr["action_mask"][i]=0
+                        self.obs["action_mask"][i]=0
                     self.is_unrolled=True
                 else:
                     #reward=-1
@@ -950,7 +453,7 @@ class ScheduleController:
                             #reward = -1
                             info = {"illegal_action": True}
                             done = False
-                            return self.repr, reward, done, info
+                            return self.obs, reward, done, info
 
                         self.apply_skewing(action_params)
                         print("Skewing is applied")
@@ -1004,7 +507,7 @@ class ScheduleController:
                     #reward = -1
                     info = {"illegal_action": True}
                     done = False
-                    return self.repr, reward, done, info
+                    return self.obs, reward, done, info
 
                 self.apply_parallelization(action_params)
                 print("Parallelisation applied")
@@ -1038,17 +541,17 @@ class ScheduleController:
                 if lc_check == -1: 
                     print("\nCette action a généré une erreur")
                     self.schedule.pop()
-                    self.repr["action_mask"][action.id]=0
+                    self.obs["action_mask"][action.id]=0
                     raise LCException
 
                 if lc_check == 0:
                     print("Illegal action")
                     self.schedule.pop()
-                    #self.repr["action_mask"][action.id]=0
+                    #self.obs["action_mask"][action.id]=0
                     #reward = -1
                     info = {"illegal_action": True}
                     done = False
-                    return self.repr, reward, done, info
+                    return self.obs, reward, done, info
 
                 self.apply_reversal(action_params)
                 print("Loop reversal applied")
@@ -1086,7 +589,7 @@ class ScheduleController:
 
                 if lc_check == -1: 
                     print("This action produces an error")
-                    self.repr["action_mask"][action.id]=0
+                    self.obs["action_mask"][action.id]=0
                     self.schedule.pop()
                     raise LCException
 
@@ -1095,7 +598,7 @@ class ScheduleController:
                     self.schedule.pop()
                     info = {"illegal_action": True}
                     done = False
-                    return self.repr, reward, done, info
+                    return self.obs, reward, done, info
 
                 self.apply_fusion(action_params)
                 print("Loop fusion applied")
@@ -1116,7 +619,7 @@ class ScheduleController:
             self.schedule_str = ScheduleUtils.sched_str(self.schedule_str, action.id, action_params, self.comp_indic_dict)
             # print("the original iterators were:", self.it_dict)
             if not action.id in range(41,44):
-                self.it_dict=ScheduleUtils.update_iterators(action.id, self.it_dict, action_params, self.added_iterators, self.comp_indic_dict)
+                self.it_dict=self.update_iterators(action.id, self.it_dict, action_params, self.added_iterators, self.comp_indic_dict)
                 # print("after update iterators with the schedule", self.schedule_str, "it is", self.it_dict)
 
             self.depth += 1
@@ -1230,7 +733,7 @@ class ScheduleController:
                 #reward=-1
 
                 print("error with get execution time, going out")
-                return self.repr, reward, done, info
+                return self.obs, reward, done, info
 
             if exec_time!=0:
                 print("\nLe schedule final trouvé est: ",self.schedule_str)
@@ -1258,7 +761,733 @@ class ScheduleController:
         info["depth"] =  self.depth
 
 
-        return self.repr, reward, done, info   
+        return self.obs, reward, done, info        
+    
+    def update_iterators(self,id, it_list, action_params, added_iterators, comp_indic_dict):
+        for comp in it_list:
+            if id in range(28):
+                tmp=it_list[comp][action_params["first_dim_index"]]
+                it_list[comp][action_params["first_dim_index"]]=it_list[comp].pop(action_params["second_dim_index"])
+                it_list[comp][action_params["second_dim_index"]]=tmp
+
+            if id in range(28,41):
+                depth_1=action_params["first_dim_index"]
+                depth_2=action_params["second_dim_index"]
+
+                keys=list(it_list[comp].keys())
+                # print("keys: ", keys)
+
+                i=len(keys)-1
+
+                
+                if action_params["tiling_depth"]==2:
+                    while i>depth_2:
+                        if action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
+                                it_list[comp][i+2]=it_list[comp][i]
+                        elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"]:   
+                                it_list[comp][i+1]=it_list[comp][i]
+                        i-=1
+
+                else:
+                    if action_params["tiling_depth"]==3:
+                        depth_3=action_params["third_dim_index"]
+                        # print("third depth is", depth_3)
+                        while i>depth_3:
+                            if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:   
+                                it_list[comp][i+3]=it_list[comp][i]
+                            else:
+                                booleans=[action_params["tiling_loop_1"], action_params["tiling_loop_2"], action_params["tiling_loop_3"]]
+                                if booleans.count(True)==2:
+                                    it_list[comp][i+2]=it_list[comp][i]
+                                elif booleans.count(True)==1:
+                                    it_list[comp][i+1]=it_list[comp][i]
+                            i-=1
+                
+                                
+
+                if action_params["tiling_depth"]==2:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
+                        # print("in action params == 7 and tiling_loop_1 and tiling_loop_2")
+
+
+                        #update the loop bounds if tiling is applied on loop 1
+                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                        it_list[comp][depth_1+2]={}
+                        it_list[comp][depth_1+2]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
+                        it_list[comp][depth_1+2]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                        it_list[comp][depth_1+2]['upper_bound']=action_params["first_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_1+2]['iterator'])
+                        #update the loop bounds if tiling is applied on loop 2
+                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                        it_list[comp][depth_2+2]={}
+                        it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                        it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                        it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_2+2]['iterator'])
+
+                    else:
+                        if action_params["tiling_loop_1"]:
+                            # print("in action params == 7 and tiling_loop_1")
+                            #update the loop bounds if tiling is applied on loop 1
+                            it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                            it_list[comp][depth_1+2]={}
+                            it_list[comp][depth_1+2]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
+                            it_list[comp][depth_1+2]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                            it_list[comp][depth_1+2]['upper_bound']=action_params["first_factor"]
+
+                            #Add the new iterator to added_iterators
+                            added_iterators.append(it_list[comp][depth_1+2]['iterator'])
+
+                        elif action_params["tiling_loop_2"]:
+                            # print("in action params == 7 and tiling_loop_2")
+                            #update the loop bounds if tiling is applied on loop 2
+                            it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                            it_list[comp][depth_2+1]={}
+                            it_list[comp][depth_2+1]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                            it_list[comp][depth_2+1]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                            it_list[comp][depth_2+1]['upper_bound']=action_params["second_factor"]
+
+                            #Add the new iterator to added_iterators
+                            added_iterators.append(it_list[comp][depth_2+1]['iterator'])
+
+                elif action_params["tiling_depth"]==3:
+
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2 and tiling_loop_3")
+
+                        #update the loop bounds if tiling is applied on loop 1
+                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                        it_list[comp][depth_1+3]={}
+                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
+                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
+
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
+
+                        #update the loop bounds if tiling is applied on loop 2
+                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                        it_list[comp][depth_2+3]={}
+                        it_list[comp][depth_2+3]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                        it_list[comp][depth_2+3]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                        it_list[comp][depth_2+3]['upper_bound']=action_params["second_factor"]
+
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_2+3]['iterator'])
+
+                        #update the loop bounds if tiling is applied on loop 1=3
+                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]             
+                        it_list[comp][depth_3+3]={}
+                        it_list[comp][depth_3+3]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])
+                        it_list[comp][depth_3+3]['lower_bound']=it_list[comp][depth_3]['lower_bound']
+                        it_list[comp][depth_3+3]['upper_bound']=action_params["third_factor"]
+
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_3+3]['iterator'])
+                    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
+                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2")
+
+                        #update the loop bounds if tiling is applied on loop 1
+                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                        it_list[comp][depth_1+3]={}
+                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
+                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
+
+                        #update the loop bounds if tiling is applied on loop 2
+                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                        it_list[comp][depth_2+3]={}
+                        it_list[comp][depth_2+3]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                        it_list[comp][depth_2+3]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                        it_list[comp][depth_2+3]['upper_bound']=action_params["second_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_2+3]['iterator'])
+
+                    elif action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        # print("in action params == 10 and tiling_loop_2 and tiling_loop_3")
+
+                        #update the loop bounds if tiling is applied on loop 2
+                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                        it_list[comp][depth_2+2]={}
+                        it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                        it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                        it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
+
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_2+2]['iterator'])
+
+                        #update the loop bounds if tiling is applied on loop 1
+                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
+                        it_list[comp][depth_3+2]={}
+                        it_list[comp][depth_3+2]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
+                        it_list[comp][depth_3+2]['lower_bound']=it_list[comp][depth_3]['lower_bound']
+                        it_list[comp][depth_3+2]['upper_bound']=action_params["third_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_3+2]['iterator'])
+
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_3")
+
+                        #update the loop bounds if tiling is applied on loop 2
+                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                        it_list[comp][depth_1+3]={}
+                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
+                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
+
+                        #update the loop bounds if tiling is applied on loop 3
+                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
+                        it_list[comp][depth_3+2]={}
+                        it_list[comp][depth_3+2]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
+                        it_list[comp][depth_3+2]['lower_bound']=it_list[comp][depth_3]['lower_bound']
+                        it_list[comp][depth_3+2]['upper_bound']=action_params["third_factor"]
+                        #Add the new iterator to added_iterators
+                        added_iterators.append(it_list[comp][depth_3+2]['iterator'])
+                    else:
+                        if action_params["tiling_loop_1"]:
+                            # print("in action params == 10 and tiling_loop_1")
+
+                            it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
+                            it_list[comp][depth_1+3]={}
+                            it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
+                            it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
+                            it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"] 
+                            #Add the new iterator to added_iterators
+                            added_iterators.append(it_list[comp][depth_1+3]['iterator']) 
+
+                        elif action_params["tiling_loop_2"]:
+                            # print("in action params == 10 and tiling_loop_2")
+
+                            it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
+                            it_list[comp][depth_2+2]={}
+                            it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
+                            it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
+                            it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
+                            #Add the new iterator to added_iterators
+                            added_iterators.append(it_list[comp][depth_2+2]['iterator'])
+
+                        elif action_params["tiling_loop_3"]:
+                            # print("in action params == 10 and tiling_loop_3")
+
+                            #update the loop bounds if tiling is applied on loop 1
+                            it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
+                            it_list[comp][depth_3+1]={}
+                            it_list[comp][depth_3+1]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
+                            it_list[comp][depth_3+1]['lower_bound']=it_list[comp][depth_3]['lower_bound']
+                            it_list[comp][depth_3+1]['upper_bound']=action_params["third_factor"]
+                            #Add the new iterator to added_iterators
+                            added_iterators.append(it_list[comp][depth_3+1]['iterator'])
+
+            elif id in range(41,44): #Unrolling
+                it_list[comp][action_params["dim_index"]]['upper_bound']=it_list[comp][action_params["dim_index"]]['upper_bound']/action_params['unrolling_factor']
+            
+            elif id in range(44,46):#Skewing
+                depth_1=action_params["first_dim_index"]
+                depth_2=action_params["second_dim_index"]
+
+                l1_lower_bound=it_list[comp][depth_1]["lower_bound"]
+                l1_upper_bound=it_list[comp][depth_1]["upper_bound"]
+                l2_lower_bound=it_list[comp][depth_2]["lower_bound"]
+                l2_upper_bound=it_list[comp][depth_2]["upper_bound"]
+
+                l1_extent = abs(l1_upper_bound - l1_lower_bound)
+                l2_extent = abs(l2_upper_bound - l2_lower_bound)
+
+                l2_lower_bound = 0
+                l1_lower_bound = abs(action_params["first_factor"]) * l1_lower_bound
+                l1_upper_bound = l1_lower_bound + abs(action_params["first_factor"]) * l1_extent + abs(action_params["second_factor"]) * l2_extent
+                l2_upper_bound = ((l1_extent * l2_extent) / (l1_upper_bound - l1_lower_bound)) + 1
+
+                it_list[comp][depth_1]["lower_bound"]=l1_lower_bound
+                it_list[comp][depth_1]["upper_bound"]=l1_upper_bound
+                it_list[comp][depth_2]["lower_bound"]=l2_lower_bound
+                it_list[comp][depth_2]["upper_bound"]=l2_upper_bound  
+                
+            elif id in range(48,56):#Reversal
+                tmp=it_list[comp][action_params["dim_index"]]['lower_bound']
+                it_list[comp][action_params["dim_index"]]['lower_bound']=it_list[comp][action_params["dim_index"]]['upper_bound']
+                it_list[comp][action_params["dim_index"]]['upper_bound']=tmp 
+
+        
+        it_list=dict(sorted(it_list.items()))
+
+        return it_list
+
+    def apply_interchange(self, action_params):
+        for comp in self.comps:
+            l_code = "L" + self.it_dict[comp][action_params["first_dim_index"]]['iterator']
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
+            l_code = "L" + self.it_dict[comp][action_params["second_dim_index"]]['iterator']
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Interchanged"]] = 1
+
+        iterators=list(self.annotations["iterators"].keys())
+        if self.it_dict[comp][action_params["first_dim_index"]]['iterator'] in iterators:
+            loop_1=iterators.index(self.it_dict[comp][action_params["first_dim_index"]]['iterator'])
+        elif self.it_dict[comp][action_params["first_dim_index"]]['iterator'] in self.added_iterators:
+            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["first_dim_index"]]['iterator'])  
+        self.obs["loops_representation"][loop_1][2]=1
+        
+        if self.it_dict[comp][action_params["second_dim_index"]]['iterator'] in iterators:
+            loop_2=iterators.index(self.it_dict[comp][action_params["second_dim_index"]]['iterator'])
+        elif self.it_dict[comp][action_params["second_dim_index"]]['iterator'] in self.added_iterators:
+            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["second_dim_index"]]['iterator'])  
+        self.obs["loops_representation"][loop_2][2]=1
+
+        for i in range(28):
+            self.obs["action_mask"][i]=0
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+        
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            interchange_matrix = np.eye(dim,dim)
+            first_iter_index = action_params["first_dim_index"]
+            second_iter_index = action_params["second_dim_index"]
+            interchange_matrix[first_iter_index, first_iter_index] = 0
+            interchange_matrix[second_iter_index, second_iter_index] = 0
+            interchange_matrix[first_iter_index, second_iter_index] = 1
+            interchange_matrix[second_iter_index, first_iter_index] = 1
+            self.schedule_dict[comp]["transformation_matrices"].append(interchange_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] =  interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+
+    def apply_tiling(self, action_params):
+        for comp in self.comps:
+            comp_index=self.comp_indic_dict[comp]
+       
+            first_dim_index=action_params["first_dim_index"]
+            second_dim_index=action_params["second_dim_index"]
+            self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
+                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'], self.it_dict[comp][second_dim_index]['iterator']],
+                                        'tiling_factors': [action_params["first_factor"], action_params["second_factor"]]}
+            l_code = "L" + self.it_dict[comp][first_dim_index]['iterator']
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
+                "first_factor"
+            ]
+
+            #update the loop bounds if tiling is applied on loop 1
+            if action_params["tiling_loop_1"]:
+                # print("inside loop tiling 1")
+                new_upper_bound_1=self.obs["representation"][self.comp_indic_dict[comp]][first_dim_index*20+1]/action_params["first_factor"]
+                self.obs["representation"][self.comp_indic_dict[comp]][first_dim_index*20+1]=new_upper_bound_1
+                new_inner_upper_bound_1=action_params["first_factor"]
+                self.obs["representation"][self.comp_indic_dict[comp]][first_dim_index*20+10]=new_inner_upper_bound_1
+                # print("after loop tiling 1")
+                #Add the loop representation of the newly added iterator
+                loop_added="{}_1".format(self.it_dict[comp][first_dim_index]['iterator'])
+                self.added_iterators.append(loop_added)
+                loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
+                #Initialize lower and upper bounds
+                loop_repr=[]
+                if self.obs["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
+                    lower_bound=self.obs["representation"][comp_index][second_dim_index*20+1]
+                else:
+                    lower_bound=self.obs["representation"][comp_index][second_dim_index*20]                
+                loop_repr.extend([lower_bound, action_params["first_factor"]])
+                #Initialize the different tags
+                loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
+                loop_log_rep = list(np.log1p(loop_repr))
+                loop_repr.extend(loop_log_rep)
+                self.obs["loops_representation"][loop_index]=loop_repr
+
+            l_code = "L" + self.it_dict[comp][second_dim_index]['iterator']
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
+                "second_factor"
+            ]
+            #update the loop bounds if tiling is applied on loop 2
+            if action_params["tiling_loop_2"]:
+                # print("inside loop tiling 2")
+                new_upper_bound_2=self.obs["representation"][self.comp_indic_dict[comp]][second_dim_index*20+1]/action_params["second_factor"]
+                self.obs["representation"][self.comp_indic_dict[comp]][second_dim_index*20+1]=new_upper_bound_2
+                new_inner_upper_bound_2=action_params["second_factor"]
+                self.obs["representation"][self.comp_indic_dict[comp]][second_dim_index*20+10]=new_inner_upper_bound_2
+                # print("after loop tiling 2")
+
+                #Add the loop representation of the newly added iterator
+                loop_added="{}_1".format(self.it_dict[comp][second_dim_index]['iterator'])
+                self.added_iterators.append(loop_added)
+                loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
+                #Initialize lower and upper bounds
+                loop_repr=[]
+
+                if self.obs["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
+                    lower_bound=self.obs["representation"][comp_index][second_dim_index*20+1]
+                else:
+                    lower_bound=self.obs["representation"][comp_index][second_dim_index*20]
+                loop_repr.extend([lower_bound, action_params["second_factor"]])
+
+                #Initialize the different tags
+                loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
+                loop_log_rep = list(np.log1p(loop_repr))
+                loop_repr.extend(loop_log_rep)
+                self.obs["loops_representation"][loop_index]=loop_repr
+
+            if action_params["tiling_depth"] == 3:
+                third_dim_index=action_params["third_dim_index"]
+                self.schedule_dict[comp]['tiling']= {'tiling_depth': action_params["tiling_depth"],
+                                        'tiling_dims': [self.it_dict[comp][first_dim_index]['iterator'],
+                                                        self.it_dict[comp][second_dim_index]['iterator'],
+                                                        self.it_dict[comp][third_dim_index]['iterator']],
+                                        'tiling_factors': [action_params["first_factor"],
+                                                            action_params["second_factor"],
+                                                            action_params["third_factor"]]}
+                l_code = "L" + self.it_dict[comp][third_dim_index]['iterator']
+                self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Tiled"]] = 1
+                self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "TileFactor"]] = action_params[
+                    "third_factor"
+                ]
+                #update the loop bounds if tiling is applied on loop 3
+                if action_params["tiling_loop_3"]:
+                    # print("inside loop tiling 3")
+                    new_upper_bound_3=self.obs["representation"][self.comp_indic_dict[comp]][third_dim_index*20+1]/action_params["third_factor"]
+                    self.obs["representation"][self.comp_indic_dict[comp]][third_dim_index*20+1]=new_upper_bound_3
+                    new_inner_upper_bound_3=action_params["third_factor"]
+                    self.obs["representation"][self.comp_indic_dict[comp]][third_dim_index*20+10]=new_inner_upper_bound_3
+                    # print("after loop tiling 3")
+
+                    #Add the loop representation of the newly added iterator
+                    loop_added="{}_1".format(self.it_dict[comp][third_dim_index]['iterator'])
+                    self.added_iterators.append(loop_added)
+                    loop_index=len(self.annotations['iterators']) + self.added_iterators.index(loop_added)
+                    #Initialize lower and upper bounds
+                    loop_repr=[]
+                    if self.obs["representation"][comp_index][self.placeholders[comp][l_code + "Reversed"]]==1:
+                        lower_bound=self.obs["representation"][comp_index][third_dim_index*20+1]
+                    else:
+                        lower_bound=self.obs["representation"][comp_index][third_dim_index*20]
+
+                    loop_repr.extend([lower_bound,action_params["third_factor"]])
+                    #Initialize the different tags
+                    loop_repr.extend([0,0,0,0,0,0,0,0,0,0,0])
+                    loop_log_rep = list(np.log1p(loop_repr))
+                    loop_repr.extend(loop_log_rep)
+                    self.obs["loops_representation"][loop_index]=loop_repr
+
+        #Update the loops representation
+        iterators=list(self.annotations["iterators"].keys())
+
+        if self.it_dict[comp][first_dim_index]['iterator'] in iterators:
+            loop_1=iterators.index(self.it_dict[comp][first_dim_index]['iterator'])
+        elif self.it_dict[comp][first_dim_index]['iterator'] in self.added_iterators:
+            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][first_dim_index]['iterator'])
+
+        self.obs["loops_representation"][loop_1][3]=1
+        self.obs["loops_representation"][loop_1][4]=action_params['first_factor']
+
+        if self.it_dict[comp][second_dim_index]['iterator'] in iterators:
+            loop_2=iterators.index(self.it_dict[comp][second_dim_index]['iterator'])
+        elif self.it_dict[comp][second_dim_index]['iterator'] in self.added_iterators:
+            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][second_dim_index]['iterator'])  
+
+        self.obs["loops_representation"][loop_2][3]=1
+        self.obs["loops_representation"][loop_2][4]=action_params['second_factor']
+
+        #Update the loop representation
+        if action_params["tiling_depth"] == 3:
+
+            if self.it_dict[comp][third_dim_index]['iterator'] in iterators:
+                loop_3=iterators.index(self.it_dict[comp][third_dim_index]['iterator'])
+            elif self.it_dict[comp][third_dim_index]['iterator'] in self.added_iterators:
+                loop_3=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][third_dim_index]['iterator'])  
+
+            self.obs["loops_representation"][loop_3][3]=1
+            self.obs["loops_representation"][loop_3][4]=action_params['third_factor']
+            
+            
+            if self.is_interchaged == False:
+
+                if len(self.common_it) == 5:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE07, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE17, 
+                        Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE27, Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE37, 
+                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE47,Action.INTERCHANGE56,Action.INTERCHANGE57, Action.INTERCHANGE67]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE25, Action.INTERCHANGE26, 
+                        Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE15, Action.INTERCHANGE25,Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
+
+                if len(self.common_it) == 4:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE14, Action.INTERCHANGE15, Action.INTERCHANGE16, 
+                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE36, 
+                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE14, Action.INTERCHANGE15,
+                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE14, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
+
+                if len(self.common_it) == 3:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE13, Action.INTERCHANGE14, Action.INTERCHANGE15, 
+                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, 
+                        Action.INTERCHANGE45]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE13, Action.INTERCHANGE14,
+                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1 
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
+                
+                if len(self.common_it) == 2:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE14, 
+                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE12]]=1 
+
+                if len(self.common_it) == 1:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1    
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE12, Action.INTERCHANGE13]]=1    
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][[Action.INTERCHANGE01]]=1  
+
+            if self.is_reversed == False:
+                if len(self.common_it) == 5:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL5,Action.REVERSAL6, Action.REVERSAL7]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL5,Action.REVERSAL6]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][Action.REVERSAL5]=1
+
+                elif len(self.common_it) == 4:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL4,Action.REVERSAL5, Action.REVERSAL6]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL4,Action.REVERSAL5]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][Action.REVERSAL4]=1
+
+                elif len(self.common_it) == 3:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL3,Action.REVERSAL4, Action.REVERSAL5]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL3,Action.REVERSAL4]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][Action.REVERSAL3]=1
+
+                elif len(self.common_it) == 2:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL2,Action.REVERSAL3, Action.REVERSAL4]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL2,Action.REVERSAL3]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][Action.REVERSAL2]=1
+
+                elif len(self.common_it) == 1:
+                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL1,Action.REVERSAL2, Action.REVERSAL3]]=1
+                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"] or action_params["tiling_loop_2"] and action_params["tiling_loop_3"] or action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
+                        self.obs["action_mask"][[Action.REVERSAL1,Action.REVERSAL2]]=1
+                    elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"] or action_params["tiling_loop_3"] :
+                        self.obs["action_mask"][Action.REVERSAL1]=1
+        
+        for i in range(28,41):
+            self.obs["action_mask"][i]=0
+
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+
+    def apply_unrolling(self, action_params):
+
+        for comp in self.comps:
+            # print(comp)
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["Unrolled"]] = 1
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp]["UnrollFactor"]] = action_params[comp]["unrolling_factor"]
+
+            l_code = "L" + self.it_dict[comp][action_params[comp]["dim_index"]]['iterator']
+            index_upper_bound=self.placeholders[comp][l_code+'Interchanged']-1
+            self.obs["representation"][self.comp_indic_dict[comp]][index_upper_bound]=self.obs["representation"][self.comp_indic_dict[comp]][index_upper_bound]/action_params[comp]["unrolling_factor"]
+
+            #Update the loop representation
+            iterators=list(self.annotations["iterators"].keys())
+            if self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'] in iterators:
+                loop_index=iterators.index(self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'])
+            elif self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'] in self.added_iterators:
+                loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params[comp]["dim_index"]]['iterator'])           
+            self.obs["loops_representation"][loop_index][5]=1
+            self.obs["loops_representation"][loop_index][6]=action_params[comp]['unrolling_factor']
+
+        for i in range(41,44):
+            self.obs["action_mask"][i]=0
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+        
+        # print("1.6")
+        try:
+            for comp in self.comps:
+                self.schedule_dict[comp]["unrolling_factor"] = action_params[comp]["unrolling_factor"]
+        except Exception:
+            print("ERROR_MODEL",traceback.format_exc())
+
+        # print("1.7")
+
+    def apply_skewing(self, action_params):
+        dim_1=action_params["first_dim_index"]
+        dim_2=action_params["second_dim_index"]
+
+        for comp in self.comps:
+            l1_code = "L" + self.it_dict[comp][dim_1]['iterator']
+            l2_code = "L" + self.it_dict[comp][dim_2]['iterator']
+
+            #to get the start of the iterator in the representation template (just after the bounds)
+            index1_upper_bound=self.placeholders[comp][l1_code+'Interchanged']-1
+            index1_lower_bound=self.placeholders[comp][l1_code+'Interchanged']-2
+            index2_upper_bound=self.placeholders[comp][l2_code+'Interchanged']-1
+            index2_lower_bound=self.placeholders[comp][l2_code+'Interchanged']-2
+
+            l1_lower_bound=self.obs["representation"][self.comp_indic_dict[comp]][index1_lower_bound]
+            l1_upper_bound=self.obs["representation"][self.comp_indic_dict[comp]][index1_upper_bound]
+            l2_lower_bound=self.obs["representation"][self.comp_indic_dict[comp]][index2_lower_bound]
+            l2_upper_bound=self.obs["representation"][self.comp_indic_dict[comp]][index2_upper_bound]
+
+            l1_extent = l1_upper_bound - l1_lower_bound
+            l2_extent = l2_upper_bound - l2_lower_bound
+
+            skew_factor = action_params["first_factor"]
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l1_code + "Skewed"]] = 1
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l1_code + "SkewFactor"]] = skew_factor
+            self.obs["representation"][self.comp_indic_dict[comp]][index1_lower_bound]= abs(action_params["first_factor"]) * l1_lower_bound
+            self.obs["representation"][self.comp_indic_dict[comp]][index1_upper_bound]= l1_lower_bound + abs(action_params["first_factor"]) * l1_extent + abs(action_params["second_factor"]) * l2_extent
+
+            skew_factor = action_params["second_factor"]
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l2_code + "Skewed"]] = 1
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l2_code + "SkewFactor"]] = skew_factor
+            self.obs["representation"][self.comp_indic_dict[comp]][index2_lower_bound]= 0
+            self.obs["representation"][self.comp_indic_dict[comp]][index2_upper_bound]=(l2_extent) + 1
+
+        #Update the loop representation
+        iterators=list(self.annotations["iterators"].keys())
+        if self.it_dict[comp][dim_1]['iterator'] in iterators:
+            loop_1=iterators.index(self.it_dict[comp][dim_1]['iterator'])
+        elif self.it_dict[comp][dim_1]['iterator'] in self.added_iterators:
+            loop_1=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][dim_1]['iterator'])        
+        self.obs["loops_representation"][loop_1][7]=1
+        self.obs["loops_representation"][loop_1][8]=action_params['first_factor']
+        #Skewing is applied on common loop levels so loop bounds are equal for all computations
+        self.obs["loops_representation"][loop_1][9]=self.obs["representation"][0][index1_upper_bound]-self.obs["representation"][0][index1_lower_bound]
+
+        if self.it_dict[comp][dim_2]['iterator'] in iterators:
+            loop_2=iterators.index(self.it_dict[comp][dim_2]['iterator'])
+        elif self.it_dict[comp][dim_2]['iterator'] in self.added_iterators:
+            loop_2=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][dim_2]['iterator']) 
+        self.obs["loops_representation"][loop_2][7]=1
+        self.obs["loops_representation"][loop_2][8]=action_params['second_factor']
+        self.obs["loops_representation"][loop_2][9]=self.obs["representation"][0][index2_upper_bound]-self.obs["representation"][0][index2_lower_bound]
+
+        self.obs["action_mask"][44]=0
+        self.obs["action_mask"][45]=0
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+        
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            skewing_matrix = np.eye(dim,dim)
+            first_iter_index = action_params["first_dim_index"]
+            second_iter_index = action_params["second_dim_index"]
+            first_factor = action_params["first_factor"]
+            second_factor = action_params["second_factor"]
+            if (first_factor, second_factor) in global_dioph_sols_dict:
+                a, b = global_dioph_sols_dict[(first_factor, second_factor)]
+            else:
+                a, b = ScheduleUtils.linear_diophantine_default(first_factor, second_factor)
+
+            skewing_matrix[first_iter_index, first_iter_index] = first_factor
+            skewing_matrix[first_iter_index, second_iter_index] = second_factor
+            skewing_matrix[second_iter_index, first_iter_index] = a
+            skewing_matrix[second_iter_index, second_iter_index] = b
+            self.schedule_dict[comp]["transformation_matrices"].append(skewing_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] = skewing_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+
+    def apply_parallelization(self, action_params):
+        first_comp=list(self.it_dict.keys())[0]
+        iterator = self.it_dict[first_comp][action_params["dim_index"]]['iterator']
+        self.schedule_dict[first_comp]["parallelized_dim"] = iterator
+        l_code = "L" + iterator
+
+        self.obs["representation"][0][self.placeholders[first_comp][l_code + "Parallelized"]] = 1
+
+        #Update the loop representation
+        iterators=list(self.annotations["iterators"].keys())
+        if self.it_dict[first_comp][action_params["dim_index"]]['iterator'] in iterators:
+            loop_index=iterators.index(self.it_dict[first_comp][action_params["dim_index"]]['iterator'])
+        elif self.it_dict[first_comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
+            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[first_comp][action_params["dim_index"]]['iterator'])
+        self.obs["loops_representation"][loop_index][10]=1
+        #Update the action mask
+        self.obs["action_mask"][46]=0
+        self.obs["action_mask"][47]=0
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+        # print("The first comp is ", first_comp)
+        # print("The result is ", self.schedule_dict[first_comp]["parallelized_dim"])
+
+    def apply_reversal(self, action_params):
+        for comp in self.comps:
+            l_code = "L" + self.it_dict[comp][action_params["dim_index"]]['iterator']
+
+            index_upper_bound=self.placeholders[comp][l_code+'Interchanged']-1
+            index_lower_bound=self.placeholders[comp][l_code+'Interchanged']-2
+
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Reversed"]] = 1
+
+            tmp=self.obs["representation"][self.comp_indic_dict[comp]][index_lower_bound]
+            self.obs["representation"][self.comp_indic_dict[comp]][index_lower_bound]=self.obs["representation"][self.comp_indic_dict[comp]][index_upper_bound]
+            self.obs["representation"][self.comp_indic_dict[comp]][index_upper_bound]=tmp 
+
+        #Update the loop representation
+        iterators=list(self.annotations["iterators"].keys())
+        if self.it_dict[comp][action_params["dim_index"]]['iterator'] in iterators:
+            loop_index=iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])
+        elif self.it_dict[comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
+            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])        
+        self.obs["loops_representation"][loop_index][11]=1
+
+        for i in range(48,56):
+            self.obs["action_mask"][i]=0
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+        
+        for comp in self.comps:
+            dim = self.schedule_dict[comp]["dim"]
+            reversal_matrix = np.eye(dim,dim)
+            dim_index = action_params["dim_index"]
+            reversal_matrix[dim_index, dim_index] = -1
+            self.schedule_dict[comp]["transformation_matrices"].append(reversal_matrix)
+            self.schedule_dict[comp]["transformation_matrix"] = reversal_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+    
+    def apply_fusion(self, action_params):
+        fusion = []
+        for comp in action_params["fuse_comps"]:
+            fusion.append(comp)
+            l_code = "L" + self.it_dict[comp][action_params["dim_index"]]['iterator']
+            self.obs["representation"][self.comp_indic_dict[comp]][self.placeholders[comp][l_code + "Fused"]] = 1
+        fusion.append(action_params["dim_index"])
+        self.schedule_dict["fusions"].append(fusion)
+        #Update the loop representation
+        iterators=list(self.annotations["iterators"].keys())
+        if self.it_dict[comp][action_params["dim_index"]]['iterator'] in iterators:
+            loop_index=iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])
+        elif self.it_dict[comp][action_params["dim_index"]]['iterator'] in self.added_iterators:
+            loop_index=len(self.annotations['iterators'])+ self.added_iterators.index(self.it_dict[comp][action_params["dim_index"]]['iterator'])        
+        self.obs["loops_representation"][loop_index][12]=1
+
+        for i in range(56,61):
+            self.obs["action_mask"][i]=0
+
 
     def get_exec_time_by_model(self,optims_list, cmd_type, nb_executions, initial_exec_time):
         self.schedule_list_model.append({
@@ -1368,6 +1597,9 @@ class ScheduleController:
                     
         # print("get_exec_time returned {} for the function {}".format(execution_time,self.prog.name))
         return execution_time
+
+class ScheduleController:
+    pass
 
 class ScheduleUtils:
     @classmethod
@@ -1747,261 +1979,3 @@ class ScheduleUtils:
         for child_iterator in program_json['iterators'][root_iterator]['child_iterators']:
             tree_struct['child_list'].append(self.get_orig_tree_struct(program_json,child_iterator))
         return tree_struct
-
-    @classmethod
-    def update_iterators(cls,id, it_list, action_params, added_iterators, comp_indic_dict):
-        for comp in it_list:
-            if id in range(28):
-                tmp=it_list[comp][action_params["first_dim_index"]]
-                it_list[comp][action_params["first_dim_index"]]=it_list[comp].pop(action_params["second_dim_index"])
-                it_list[comp][action_params["second_dim_index"]]=tmp
-
-            if id in range(28,41):
-                depth_1=action_params["first_dim_index"]
-                depth_2=action_params["second_dim_index"]
-
-                keys=list(it_list[comp].keys())
-                # print("keys: ", keys)
-
-                i=len(keys)-1
-
-                
-                if action_params["tiling_depth"]==2:
-                    while i>depth_2:
-                        if action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
-                                it_list[comp][i+2]=it_list[comp][i]
-                        elif action_params["tiling_loop_1"] or action_params["tiling_loop_2"]:   
-                                it_list[comp][i+1]=it_list[comp][i]
-                        i-=1
-
-                else:
-                    if action_params["tiling_depth"]==3:
-                        depth_3=action_params["third_dim_index"]
-                        # print("third depth is", depth_3)
-                        while i>depth_3:
-                            if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:   
-                                it_list[comp][i+3]=it_list[comp][i]
-                            else:
-                                booleans=[action_params["tiling_loop_1"], action_params["tiling_loop_2"], action_params["tiling_loop_3"]]
-                                if booleans.count(True)==2:
-                                    it_list[comp][i+2]=it_list[comp][i]
-                                elif booleans.count(True)==1:
-                                    it_list[comp][i+1]=it_list[comp][i]
-                            i-=1
-                
-                                
-
-                if action_params["tiling_depth"]==2:
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
-                        # print("in action params == 7 and tiling_loop_1 and tiling_loop_2")
-
-
-                        #update the loop bounds if tiling is applied on loop 1
-                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                        it_list[comp][depth_1+2]={}
-                        it_list[comp][depth_1+2]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
-                        it_list[comp][depth_1+2]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                        it_list[comp][depth_1+2]['upper_bound']=action_params["first_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_1+2]['iterator'])
-                        #update the loop bounds if tiling is applied on loop 2
-                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                        it_list[comp][depth_2+2]={}
-                        it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                        it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                        it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_2+2]['iterator'])
-
-                    else:
-                        if action_params["tiling_loop_1"]:
-                            # print("in action params == 7 and tiling_loop_1")
-                            #update the loop bounds if tiling is applied on loop 1
-                            it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                            it_list[comp][depth_1+2]={}
-                            it_list[comp][depth_1+2]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
-                            it_list[comp][depth_1+2]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                            it_list[comp][depth_1+2]['upper_bound']=action_params["first_factor"]
-
-                            #Add the new iterator to added_iterators
-                            added_iterators.append(it_list[comp][depth_1+2]['iterator'])
-
-                        elif action_params["tiling_loop_2"]:
-                            # print("in action params == 7 and tiling_loop_2")
-                            #update the loop bounds if tiling is applied on loop 2
-                            it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                            it_list[comp][depth_2+1]={}
-                            it_list[comp][depth_2+1]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                            it_list[comp][depth_2+1]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                            it_list[comp][depth_2+1]['upper_bound']=action_params["second_factor"]
-
-                            #Add the new iterator to added_iterators
-                            added_iterators.append(it_list[comp][depth_2+1]['iterator'])
-
-                elif action_params["tiling_depth"]==3:
-
-                    if action_params["tiling_loop_1"] and action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2 and tiling_loop_3")
-
-                        #update the loop bounds if tiling is applied on loop 1
-                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                        it_list[comp][depth_1+3]={}
-                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
-                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
-
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
-
-                        #update the loop bounds if tiling is applied on loop 2
-                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                        it_list[comp][depth_2+3]={}
-                        it_list[comp][depth_2+3]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                        it_list[comp][depth_2+3]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                        it_list[comp][depth_2+3]['upper_bound']=action_params["second_factor"]
-
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_2+3]['iterator'])
-
-                        #update the loop bounds if tiling is applied on loop 1=3
-                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]             
-                        it_list[comp][depth_3+3]={}
-                        it_list[comp][depth_3+3]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])
-                        it_list[comp][depth_3+3]['lower_bound']=it_list[comp][depth_3]['lower_bound']
-                        it_list[comp][depth_3+3]['upper_bound']=action_params["third_factor"]
-
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_3+3]['iterator'])
-                    
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_2"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2")
-
-                        #update the loop bounds if tiling is applied on loop 1
-                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                        it_list[comp][depth_1+3]={}
-                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
-                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
-
-                        #update the loop bounds if tiling is applied on loop 2
-                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                        it_list[comp][depth_2+3]={}
-                        it_list[comp][depth_2+3]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                        it_list[comp][depth_2+3]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                        it_list[comp][depth_2+3]['upper_bound']=action_params["second_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_2+3]['iterator'])
-
-                    elif action_params["tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_2 and tiling_loop_3")
-
-                        #update the loop bounds if tiling is applied on loop 2
-                        it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                        it_list[comp][depth_2+2]={}
-                        it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                        it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                        it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
-
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_2+2]['iterator'])
-
-                        #update the loop bounds if tiling is applied on loop 1
-                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
-                        it_list[comp][depth_3+2]={}
-                        it_list[comp][depth_3+2]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
-                        it_list[comp][depth_3+2]['lower_bound']=it_list[comp][depth_3]['lower_bound']
-                        it_list[comp][depth_3+2]['upper_bound']=action_params["third_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_3+2]['iterator'])
-
-                    elif action_params["tiling_loop_1"] and action_params["tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_3")
-
-                        #update the loop bounds if tiling is applied on loop 2
-                        it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                        it_list[comp][depth_1+3]={}
-                        it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])
-                        it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                        it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_1+3]['iterator'])
-
-                        #update the loop bounds if tiling is applied on loop 3
-                        it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
-                        it_list[comp][depth_3+2]={}
-                        it_list[comp][depth_3+2]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
-                        it_list[comp][depth_3+2]['lower_bound']=it_list[comp][depth_3]['lower_bound']
-                        it_list[comp][depth_3+2]['upper_bound']=action_params["third_factor"]
-                        #Add the new iterator to added_iterators
-                        added_iterators.append(it_list[comp][depth_3+2]['iterator'])
-                    else:
-                        if action_params["tiling_loop_1"]:
-                            # print("in action params == 10 and tiling_loop_1")
-
-                            it_list[comp][depth_1]['upper_bound']=it_list[comp][depth_1]['upper_bound']/action_params["first_factor"]
-                            it_list[comp][depth_1+3]={}
-                            it_list[comp][depth_1+3]['iterator']="{}_1".format(it_list[comp][depth_1]['iterator'])   
-                            it_list[comp][depth_1+3]['lower_bound']=it_list[comp][depth_1]['lower_bound']
-                            it_list[comp][depth_1+3]['upper_bound']=action_params["first_factor"] 
-                            #Add the new iterator to added_iterators
-                            added_iterators.append(it_list[comp][depth_1+3]['iterator']) 
-
-                        elif action_params["tiling_loop_2"]:
-                            # print("in action params == 10 and tiling_loop_2")
-
-                            it_list[comp][depth_2]['upper_bound']=it_list[comp][depth_2]['upper_bound']/action_params["second_factor"]
-                            it_list[comp][depth_2+2]={}
-                            it_list[comp][depth_2+2]['iterator']="{}_1".format(it_list[comp][depth_2]['iterator'])
-                            it_list[comp][depth_2+2]['lower_bound']=it_list[comp][depth_2]['lower_bound']
-                            it_list[comp][depth_2+2]['upper_bound']=action_params["second_factor"]
-                            #Add the new iterator to added_iterators
-                            added_iterators.append(it_list[comp][depth_2+2]['iterator'])
-
-                        elif action_params["tiling_loop_3"]:
-                            # print("in action params == 10 and tiling_loop_3")
-
-                            #update the loop bounds if tiling is applied on loop 1
-                            it_list[comp][depth_3]['upper_bound']=it_list[comp][depth_3]['upper_bound']/action_params["third_factor"]
-                            it_list[comp][depth_3+1]={}
-                            it_list[comp][depth_3+1]['iterator']="{}_1".format(it_list[comp][depth_3]['iterator'])   
-                            it_list[comp][depth_3+1]['lower_bound']=it_list[comp][depth_3]['lower_bound']
-                            it_list[comp][depth_3+1]['upper_bound']=action_params["third_factor"]
-                            #Add the new iterator to added_iterators
-                            added_iterators.append(it_list[comp][depth_3+1]['iterator'])
-
-            elif id in range(41,44): #Unrolling
-                it_list[comp][action_params["dim_index"]]['upper_bound']=it_list[comp][action_params["dim_index"]]['upper_bound']/action_params['unrolling_factor']
-            
-            elif id in range(44,46):#Skewing
-                depth_1=action_params["first_dim_index"]
-                depth_2=action_params["second_dim_index"]
-
-                l1_lower_bound=it_list[comp][depth_1]["lower_bound"]
-                l1_upper_bound=it_list[comp][depth_1]["upper_bound"]
-                l2_lower_bound=it_list[comp][depth_2]["lower_bound"]
-                l2_upper_bound=it_list[comp][depth_2]["upper_bound"]
-
-                l1_extent = abs(l1_upper_bound - l1_lower_bound)
-                l2_extent = abs(l2_upper_bound - l2_lower_bound)
-
-                l2_lower_bound = 0
-                l1_lower_bound = abs(action_params["first_factor"]) * l1_lower_bound
-                l1_upper_bound = l1_lower_bound + abs(action_params["first_factor"]) * l1_extent + abs(action_params["second_factor"]) * l2_extent
-                l2_upper_bound = ((l1_extent * l2_extent) / (l1_upper_bound - l1_lower_bound)) + 1
-
-                it_list[comp][depth_1]["lower_bound"]=l1_lower_bound
-                it_list[comp][depth_1]["upper_bound"]=l1_upper_bound
-                it_list[comp][depth_2]["lower_bound"]=l2_lower_bound
-                it_list[comp][depth_2]["upper_bound"]=l2_upper_bound  
-                
-            elif id in range(48,56):#Reversal
-                tmp=it_list[comp][action_params["dim_index"]]['lower_bound']
-                it_list[comp][action_params["dim_index"]]['lower_bound']=it_list[comp][action_params["dim_index"]]['upper_bound']
-                it_list[comp][action_params["dim_index"]]['upper_bound']=tmp 
-
-        
-        it_list=dict(sorted(it_list.items()))
-
-        return it_list
