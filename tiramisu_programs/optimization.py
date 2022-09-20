@@ -1,4 +1,4 @@
-class optimization_command:
+class OptimizationCommand:
     def __init__(self, optim_type, params_list, comps):
         # print(f"init optim cmd of type {optim_type}")
         assert optim_type in [

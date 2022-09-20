@@ -9,8 +9,9 @@ import ray
 
 # from pyfiglet import Figlet
 from rl_interface.action import Action
-from tiramisu_programs.optimization import optimization_command
-from tiramisu_programs.schedule import Schedule, ScheduleUtils
+from tiramisu_programs.schedule import Schedule
+from tiramisu_programs.schedule_controller import ScheduleController
+from tiramisu_programs.schedule_utils import ScheduleUtils
 from tiramisu_programs.tiramisu_program import Tiramisu_Program
 
 np.seterr(invalid="raise")
@@ -24,6 +25,7 @@ import torch
 
 from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
 from tiramisu_programs.cpp_file import CPP_File
+from rl_interface.reward import Reward
 
 
 
@@ -104,13 +106,14 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 init_indc = random.randint(0, len(self.progs_list) - 1)
                 file = CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
                 self.prog = Tiramisu_Program(file)
-                self.schedule_object = Schedule(self.prog, self.model, nb_executions = self.nb_executions, scheds=self.scheds,**self.args)
-                self.obs = self.schedule_object.get_observation()
+                self.schedule_object = Schedule(self.prog)
+                self.schedule_controller = ScheduleController(model=self.model, schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds,**self.args)
+                self.obs = self.schedule_object.get_representation()
                 if self.args["env_type"] == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
                         print("Getting the intitial exe time by execution")
                         start_time=time.time()
-                        self.prog.initial_execution_time=self.schedule_object.measurement_env([],'initial_exec', self.nb_executions)
+                        self.prog.initial_execution_time=self.schedule_controller.measurement_env([],'initial_exec', self.nb_executions)
                         cg_time=time.time()-start_time 
                         #print("After getting initial exec time:",cg_time, "initial exec time is :", self.prog.initial_execution_time)
                         # self.codegen_total_time +=cg_time
@@ -137,14 +140,10 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     def step(self, raw_action):
         # print("in step function")
         action_name = Action.ACTIONS_ARRAY[raw_action]
-        print("\nThe current schedule is: ", len(self.schedule), self.schedule_object.schedule_str)
-        print("The action {} has been chosen\n".format(action_name))
-        exit = False
-        done = False
+        # print("\nThe current schedule is: ", len(self.schedule), self.schedule_object.schedule_str)
+        print("\n ----> {} [ {} ] \n".format(action_name, self.schedule_object.schedule_str))
         info = {}
         applied_exception = False
-        skew_params_exception = False
-        skew_unroll = False
         reward = 0
         self.steps += 1
 
@@ -152,11 +151,15 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             action = Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
             # print("after creating the action")
             self.obs = copy.deepcopy(
-                self.schedule_object.get_observation()
+                self.schedule_object.get_representation()
             )  # get current observation
-            self.obs, reward, done, info = self.schedule_object.apply_action(action) # Should return speedup instead of reward
+            self.obs, speedup, done, info = self.schedule_controller.apply_action(action) # Should return speedup instead of reward
+            # print(f"The speedup is {speedup}")
+            reward_object = Reward(speedup)
+            reward = reward_object.log_reward()
+            
         except Exception as e:
-            print(e.__class__.__name__)
+            print("STEP_ERROR: ", e.__class__.__name__, end=" ")
             if applied_exception:
                 # reward = -1
                 print("Already Applied exception")
@@ -165,7 +168,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 return self.obs, reward, done, info
 
             else:
-                print("ERROR_STEP", traceback.format_exc())
+                # print("ERROR_STEP", traceback.format_exc())
                 ex_type, ex_value, ex_traceback = sys.exc_info()
                 # if (
                 #     self.schedule != []
@@ -175,7 +178,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 #     self.schedule.pop()
                 # reward = -1
                 print("This action yields an error. It won't be applied.")
-                print("else exception", ex_type.__name__, ex_value, ex_traceback)
                 done = False
                 info = {
                     "depth": self.depth,
