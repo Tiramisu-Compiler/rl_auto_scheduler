@@ -62,7 +62,7 @@ class Tiramisu_Program():
 '''
 #         if_not_legal_quit = ""
 #         check_legality_for_func_line = 
-        print("optim list in lc check", optims_list)
+        # print("optim list in lc check", optims_list)
         for optim in optims_list:
             if optim.type == 'Interchange':
                 legality_check_lines += optim.tiramisu_optim_str+'\n'
@@ -199,7 +199,7 @@ class Tiramisu_Program():
         log_message = 'Applying schedule: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
         start_time=time.time()
         if(CPP_File.compile_and_run_tiramisu_code(output_file, log_message)): 
-            print("COMPILE/RUN SCHEDULE CODEGEN :\n",time.time()- start_time) 
+            #print("COMPILE/RUN SCHEDULE CODEGEN :\n",time.time()- start_time) 
             try:
                 execution_times = self.get_measurements(cmd_type, nb_executions, initial_exec_time)
                 if len(execution_times)!=0:
@@ -248,7 +248,7 @@ class Tiramisu_Program():
         CPP_File.launch_cmd(log_message_cmd, '')
         s_time=time.time()
         failed = CPP_File.launch_cmd(run_wrapper_cmd, self.file_path, cmd_type,nb_executions,initial_exec_time)
-        print("WRAPPER RUN in : ", time.time()-s_time)
+        # print("WRAPPER RUN in : ", time.time()-s_time)
         
         if failed:
             print('Failed running wrapper')

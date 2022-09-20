@@ -1,6 +1,6 @@
 class optimization_command:
     def __init__(self, optim_type, params_list, comps):
-        print(f"init optim cmd of type {optim_type}")
+        # print(f"init optim cmd of type {optim_type}")
         assert optim_type in [
             "Interchange",
             "Skewing",
@@ -16,7 +16,7 @@ class optimization_command:
         self.params_list = params_list
         self.comps = comps
         self.tiramisu_optim_str = self.get_tiramisu_optim_str()
-        print(self.tiramisu_optim_str)
+        # print(self.tiramisu_optim_str)
 
     def get_tiramisu_optim_str(self):
         if self.type == "Interchange":
@@ -51,7 +51,7 @@ class optimization_command:
             # format of params_list must be [firts_loop, second_loop, first_factor, second_factor] in the case of tiling 2D
             # or [firts_loop, second_loop, third_loop, first_factor, second_factor, third_factor] in the case of tiling 3D
             assert len(self.params_list) == 4 or len(self.params_list) == 6
-            print("in tiling, optim str")
+            # print("in tiling, optim str")
             tiling_str = ".tile(" + ",".join([str(p) for p in self.params_list]) + ");"
             optim_str = ""
             for comp in self.comps:

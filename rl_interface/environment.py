@@ -10,7 +10,7 @@ import ray
 # from pyfiglet import Figlet
 from rl_interface.action import Action
 from tiramisu_programs.optimization import optimization_command
-from tiramisu_programs.schedule import Schedule
+from tiramisu_programs.schedule import Schedule, ScheduleUtils
 from tiramisu_programs.tiramisu_program import Tiramisu_Program
 
 np.seterr(invalid="raise")
@@ -22,7 +22,7 @@ import traceback
 
 import torch
 
-from surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
+from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
 from tiramisu_programs.cpp_file import CPP_File
 
 
@@ -39,7 +39,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
         # f = Figlet(font='banner3-D')
         # # print(f.renderText("Tiramisu"))
-        print("Initialisation de l'environnement")
+        print("Initializing the environment")
 
         self.placeholders = []
         self.speedup = 0
@@ -57,9 +57,9 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.shared_variable_actor.get_progs_list.remote(self.id)
         )
         self.progs_dict = ray.get(self.shared_variable_actor.get_progs_dict.remote())
-        print("Dataset chargé!\n")
+        print("Loaded the dataset!")
 
-        self.scheds = Schedule.get_schedules_str(
+        self.scheds = ScheduleUtils.get_schedules_str(
             list(self.progs_dict.keys()), self.progs_dict
         )  # to use it to get the execution time
 
@@ -85,40 +85,40 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         self.depth = 0
         self.nb_executions = 5
         self.episode_total_time = 0
-        self.lc_total_time = 0
-        self.codegen_total_time = 0
+        # self.lc_total_time = 0
+        # self.codegen_total_time = 0
         self.prog_ind = 0
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
             torch.load(pretrained_weights_path, map_location="cpu")
         )
-        self.schedule_list_model = []
+        
 
     def reset(self, file=None):
-        print("\nRéinitialisation de l'environnement\n")
+        print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
-        self.lc_total_time = 0
-        self.codegen_total_time = 0
+        # self.lc_total_time = 0
+        # self.codegen_total_time = 0
         while True:
             try:
                 init_indc = random.randint(0, len(self.progs_list) - 1)
                 file = CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
                 self.prog = Tiramisu_Program(file)
-                self.schedule_object = Schedule(self.prog, self.model, **self.args)
+                self.schedule_object = Schedule(self.prog, self.model, nb_executions = self.nb_executions, scheds=self.scheds,**self.args)
                 self.obs = self.schedule_object.get_observation()
                 if self.args["env_type"] == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
-                        print("getting the intitial exe time by execution")
+                        print("Getting the intitial exe time by execution")
                         start_time=time.time()
                         self.prog.initial_execution_time=self.schedule_object.measurement_env([],'initial_exec', self.nb_executions)
                         cg_time=time.time()-start_time 
                         #print("After getting initial exec time:",cg_time, "initial exec time is :", self.prog.initial_execution_time)
-                        self.codegen_total_time +=cg_time
+                        # self.codegen_total_time +=cg_time
                         self.progs_dict[self.prog.name]={}
                         self.progs_dict[self.prog.name]["initial_execution_time"]=self.prog.initial_execution_time
 
                     else:
-                        print("the initial execution time exists")
+                        print("The initial execution time exists")
                         self.prog.initial_execution_time=self.progs_dict[self.prog.name]["initial_execution_time"]
                 else:
                     self.prog.initial_execution_time = 1.0
@@ -127,7 +127,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
             except:
                 print("RESET_ERROR", traceback.format_exc())
-                exit()
+                continue
 
             self.steps = 0
             self.new_scheds = {}
@@ -137,8 +137,8 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     def step(self, raw_action):
         # print("in step function")
         action_name = Action.ACTIONS_ARRAY[raw_action]
-        print("\nL'action {} est choisie".format(action_name))
-        print("the curr schedule is: ", len(self.schedule), self.schedule_object.schedule_str)
+        print("\nThe current schedule is: ", len(self.schedule), self.schedule_object.schedule_str)
+        print("The action {} has been chosen\n".format(action_name))
         exit = False
         done = False
         info = {}
@@ -154,33 +154,40 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
             self.obs = copy.deepcopy(
                 self.schedule_object.get_observation()
             )  # get current observation
-            self.obs, reward, done, info = self.schedule_object.apply_action(action)
+            self.obs, reward, done, info = self.schedule_object.apply_action(action) # Should return speedup instead of reward
         except Exception as e:
             print(e.__class__.__name__)
             if applied_exception:
                 # reward = -1
-                print("applied exception")
+                print("Already Applied exception")
                 info = {"more than one time": True}
                 done = False
                 return self.obs, reward, done, info
 
             else:
-                print("ERROR_MODEL", traceback.format_exc())
+                print("ERROR_STEP", traceback.format_exc())
                 ex_type, ex_value, ex_traceback = sys.exc_info()
-                if (
-                    self.schedule != []
-                    and not skew_params_exception
-                    and not skew_unroll
-                ):
-                    self.schedule.pop()
+                # if (
+                #     self.schedule != []
+                #     and not skew_params_exception
+                #     and not skew_unroll
+                # ):
+                #     self.schedule.pop()
                 # reward = -1
-                print("\nCette action a généré une erreur, elle ne sera pas appliquée.")
+                print("This action yields an error. It won't be applied.")
                 print("else exception", ex_type.__name__, ex_value, ex_traceback)
                 done = False
                 info = {
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
+        # try:
+        #     self.save_sched_to_dataset()
+        #     self.write_data()
+        #     writing_time=time.time()-start_time
+        #     print("Data saved in ",writing_time)
+        # except:
+        #     print(f"failed to save schedule", traceback.format_exc() , file=sys.stderr, flush=True)
         return self.obs, reward, done, info
 
    

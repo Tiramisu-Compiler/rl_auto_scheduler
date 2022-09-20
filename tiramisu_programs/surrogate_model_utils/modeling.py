@@ -156,7 +156,7 @@ class Model_Recursive_LSTM_v2(nn.Module):
         (first_part, final_matrix, vectors, third_part) = seperate_vector(
             x, num_matrices=num_matrices, pad=False
         )
-        print(first_part.shape, final_matrix.shape, vectors.shape, third_part.shape)
+        # print(first_part.shape, final_matrix.shape, vectors.shape, third_part.shape)
         # mask = (vectors == 0).sum(dim=1).sum(dim=1) == 288
         # vectors = vectors[~mask,:,:]
         # final_matrix = final_matrix[~mask,:,:]

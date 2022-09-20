@@ -96,7 +96,7 @@ class Action:
         self.common_it = common_it
 
     def parameter(self, comp=None, prog=None):
-        # print("in action params function")
+        # #print("in action params function")
 
         first_comp = list(self.it_dict.keys())[0]
         """"
@@ -207,7 +207,7 @@ class Action:
 
                 first_fact = random.choice([32, 64, 128])
                 second_fact = random.choice([32, 64, 128])
-                # print("after choosing first and second params and factors")
+                # #print("after choosing first and second params and factors")
 
                 # calculate the loop extent to see if we should create new iterators or not
                 # since it's applicable on the common on the common iterators, we retrieve the information from the first computation
@@ -215,8 +215,8 @@ class Action:
                     self.it_dict[first_comp][first_it]["upper_bound"]
                     - self.it_dict[first_comp][first_it]["lower_bound"]
                 )
-                # print("\n first loop extent is ", loop_extent_1)
-                print("first factor is", first_fact)
+                # #print("\n first loop extent is ", loop_extent_1)
+                #print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
                     print("tiling flag 1 false, loopextent == factor")
@@ -230,10 +230,10 @@ class Action:
                     - self.it_dict[first_comp][second_it]["lower_bound"]
                 )
                 # print("\n second loop extent is ", loop_extent_2)
-                print("second factor is", second_fact)
+                #print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
                     tiling_flag_2 = False
-                    print("tiling flag 2 false, loopextent == factor")
+                    #print("tiling flag 2 false, loopextent == factor")
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
@@ -286,8 +286,8 @@ class Action:
                     self.it_dict[first_comp][first_it]["upper_bound"]
                     - self.it_dict[first_comp][first_it]["lower_bound"]
                 )
-                # print("\n first loop extent is ", loop_extent_1)
-                print("first factor is", first_fact)
+                # #print("\n first loop extent is ", loop_extent_1)
+                #print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
                     print("tiling flag 1 false, loopextent == factor")
@@ -301,7 +301,7 @@ class Action:
                     - self.it_dict[first_comp][second_it]["lower_bound"]
                 )
                 # print("\n second loop extent is ", loop_extent_2)
-                print("second factor is", second_fact)
+                #print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
                     tiling_flag_2 = False
                     print("tiling flag 2 false, loopextent == factor")
@@ -315,7 +315,7 @@ class Action:
                     - self.it_dict[first_comp][third_it]["lower_bound"]
                 )
                 # print("\n third loop extent is ", loop_extent_3)
-                print("third factor is", third_fact)
+                #print("third factor is", third_fact)
                 if loop_extent_3 == third_fact:
                     tiling_flag_3 = False
                     print("tiling flag 3 false, loopextent == factor")

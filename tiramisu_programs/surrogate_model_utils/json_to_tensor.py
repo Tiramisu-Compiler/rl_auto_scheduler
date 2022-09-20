@@ -337,7 +337,7 @@ def get_schedule_representation(
             if comp_schedule_dict["tiling"] and (
                 iterator_name in comp_schedule_dict["tiling"]["tiling_dims"]
             ):
-                print("-------tiled-------", comp_schedule_dict["tiling"])
+                # print("-------tiled-------", comp_schedule_dict["tiling"])
                 tiled = 1
                 tile_factor_index = comp_schedule_dict["tiling"]["tiling_dims"].index(
                     iterator_name
@@ -473,7 +473,7 @@ def get_schedule_representation(
         row_start = loops_placeholders_indices_dict[l_code + "TransfMatRowStart"]
         row_end = loops_placeholders_indices_dict[l_code + "TransfMatRowEnd"]
         nb_row_elements = row_end[1] - row_start[1] + 1
-        print(len(loop_schedules_dict[loop_name]["TransformationMatrixRow"]),nb_row_elements)
+        # print(len(loop_schedules_dict[loop_name]["TransformationMatrixRow"]),nb_row_elements)
         assert (
             len(loop_schedules_dict[loop_name]["TransformationMatrixRow"])
             == nb_row_elements

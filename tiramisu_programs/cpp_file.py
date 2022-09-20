@@ -136,7 +136,7 @@ class CPP_File(object):
             
         if os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
-            print("directory removed")
+            # print("directory removed")
 
         os.mkdir(target_path)
         os.system("cp -r {} {}".format(original_path, target_path))
