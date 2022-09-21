@@ -9,3 +9,6 @@ __pycache__/
 *.txt
 *.json
 *.log
+.svn/
+*.yaml
+*.yml

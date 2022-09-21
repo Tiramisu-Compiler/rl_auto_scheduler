@@ -1,0 +1,20 @@
+ray:
+    num_workers: 1
+    training_iteration: 1000
+    ray_num_cpus: 112
+    checkpoint_freq: 5
+    base_path: "/home/user/rl_autoscheduler"
+    name: "Training_multi_enhanced"
+
+environment:
+    dataset_path: "./Dataset_multi/"
+    programs_file: "./multicomp.json"
+
+
+tiramisu:
+    tiramisu_path: "/home/user/tiramisu/" 
+    env_type:  "cpu"
+    model_checkpoint: "/home/user/model.pt"
+
+defaults:
+  - override hydra/launcher: ray
