@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import numpy as np
 import re
 import sys, os, subprocess
@@ -11,29 +12,21 @@ from tiramisu_programs.schedule_utils import TimeOutException
 class CPP_File(object):
 
     @classmethod
-    def compile_and_run_tiramisu_code(cls,file_path, log_message="No message"):
+    def compile_and_run_tiramisu_code(cls, config,file_path, log_message="No message"):
         # print("inside compile and run")
         os.environ["FUNC_DIR"] = (
             "/".join(Path(file_path).parts[:-1]) if len(Path(file_path).parts) > 1 else "."
         ) + "/"
         os.environ["FILE_PATH"] = file_path
-        log_message_cmd = 'printf "' + log_message + '\n">> ${FUNC_DIR}log.txt'
-        compile_tiramisu_cmd = 'printf "Compiling ${FILE_PATH}\n" >> ${FUNC_DIR}log.txt;\
-        c++ -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include  -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 -o ${FILE_PATH}.o -c ${FILE_PATH};\
-        c++ -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 ${FILE_PATH}.o -o ./${FILE_PATH}.out   -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl' 
 
-        run_tiramisu_cmd = 'printf "Running ${FILE_PATH}.out\n">> ${FUNC_DIR}log.txt;\
-        ./${FILE_PATH}.out>> ${FUNC_DIR}log.txt;'
-        cls.launch_cmd(log_message_cmd, "")
-
-        failed = cls.launch_cmd(compile_tiramisu_cmd, file_path)
+        failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd, file_path)
         if failed:
             print(f"Error occured while compiling {file_path}")
             with open(file_path) as file:
                 print(file.read(), file=sys.stderr, flush=True)
             return False
         else:
-            failed = cls.launch_cmd(run_tiramisu_cmd, file_path)
+            failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd, file_path)
             if failed:
                 print(f"Error occured while running {file_path}")
                 # with open(file_path) as file: print(file.read(), file=sys.stderr,flush=True)

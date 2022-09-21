@@ -28,6 +28,16 @@ class TiramisuConfig:
     tiramisu_path: str = "/data/scratch/hbenyamina/tiramisu_rl/"
     env_type: Literal["model", "cpu"] = "cpu"
     model_checkpoint: str = "/data/scratch/hbenyamina/model_published_nn_finale.pt"
+    compile_tiramisu_cmd : str = 'printf "Compiling ${FILE_PATH}\n" >> ${FUNC_DIR}log.txt;\
+        c++ -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include  -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 -o ${FILE_PATH}.o -c ${FILE_PATH};\
+        c++ -Wl,--no-as-needed -ldl -g -fno-rtti -lz -lpthread -std=c++11 -O0 ${FILE_PATH}.o -o ./${FILE_PATH}.out   -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl'
+    run_tiramisu_cmd : str = 'printf "Running ${FILE_PATH}.out\n">> ${FUNC_DIR}log.txt;\
+        ./${FILE_PATH}.out>> ${FUNC_DIR}log.txt;'
+    compile_wrapper_cmd = 'cd ${FUNC_DIR};\
+            g++ -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
+            g++ -std=c++11 -fno-rtti -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/3rdParty/isl/include/ -I${TIRAMISU_ROOT}/benchmarks -L${TIRAMISU_ROOT}/build -L${TIRAMISU_ROOT}/3rdParty/Halide/lib/ -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib -o ${FUNC_NAME}_wrapper -ltiramisu -lHalide -ldl -lpthread -lz -lm -Wl,-rpath,${TIRAMISU_ROOT}/build ./${FUNC_NAME}_wrapper.cpp ./${FUNC_NAME}.o.so -ltiramisu -lHalide -ldl -lpthread -lz -lm'
+            
+        
 
 
 @dataclass
@@ -36,7 +46,6 @@ class TrainingConfig:
     sgd_minibatch_size: int = 256
     lr: float = 1e-4
     num_sgd_iter: int = 4
-
 
 @dataclass
 class ModelConfig:
