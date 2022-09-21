@@ -8,7 +8,7 @@
 #SBATCH -o outputs/train.out
 #SBATCH -e outputs/train.err
 
-bash scripts/env.sh
+. scripts/env.sh
 
 export RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
 export RAY_ALLOW_SLOW_STORAGE=1
@@ -51,12 +51,8 @@ srun --nodes=1 -N1 --ntasks=1 -w "$head_node" \
 # __doc_head_ray_end__
 
 
-# number of nodes other than the head node
-worker_num=$((SLURM_JOB_NUM_NODES - 1))
-worker_per_code=10
-
-for ((i = 1; i <= worker_num; i++)); do
-  for ((w = 1; w <= worker_per_code; w++)); do
+for ((i = 1; i <= ${WORKER_NUM}; i++)); do
+  for ((w = 1; w <= ${WORKER_PER_NODE}; w++)); do
       echo "running worker $w on node $i"
       node_i=${nodes_array[$i]}
       # echo "tarting WORKER $i at $node_i"
