@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal
 
-import torch
 import yaml
 
 USE_WANDB = False
@@ -15,6 +14,7 @@ class RayConfig:
     checkpoint_freq: int = 5
     base_path: str = "/data/scratch/hbenyamina/github/rl_autoscheduler"
     name: str = "Training_multi_enhanced"
+    log_directory: str = "ray_results"
 
 
 @dataclass
@@ -31,10 +31,26 @@ class TiramisuConfig:
 
 
 @dataclass
+class TrainingConfig:
+    train_batch_size: int = 1024
+    sgd_minibatch_size: int = 256
+    lr: float = 1e-4
+    num_sgd_iter: int = 4
+
+
+@dataclass
+class ModelConfig:
+    layer_sizes: List[int] = field(default_factory=lambda: [600, 350, 200, 180])
+    drops: List[float] = field(default_factory=lambda: [0.225, 0.225, 0.225, 0.225])
+
+
+@dataclass
 class RLAutoSchedulerConfig:
     ray: RayConfig
     environment: EnvironmentConfig
     tiramisu: TiramisuConfig
+    training: TrainingConfig
+    model: ModelConfig
 
     def __post_init__(self):
         if isinstance(self.ray, dict):
@@ -42,12 +58,20 @@ class RLAutoSchedulerConfig:
 
     def __post_init__(self):
         if isinstance(self.environment, dict):
-            self.environment = EnvironmentConfig(
-                **self.environment )
+            self.environment = EnvironmentConfig(**self.environment)
 
     def __post_init__(self):
-        if isinstance(self.tiramisu , dict):
-            self.tiramisu  = TiramisuConfig(**self.tiramisu)
+        if isinstance(self.tiramisu, dict):
+            self.tiramisu = TiramisuConfig(**self.tiramisu)
+
+    def __post_init__(self):
+        if isinstance(self.training, dict):
+            self.training = TrainingConfig(**self.training)
+
+    def __post_init__(self):
+        if isinstance(self.model, dict):
+            self.model = ModelConfig(**self.model)
+
 
 def read_yaml_file(path):
     with open(path) as yaml_file:
@@ -59,7 +83,9 @@ def parse_yaml_file(yaml_string: str) -> Dict[Any, Any]:
 
 
 def dict_to_config(parsed_yaml: Dict[Any, Any]) -> RLAutoSchedulerConfig:
-    ray  = RayConfig(**parsed_yaml["ray"])
-    environment  = EnvironmentConfig(**parsed_yaml["environment"])
-    tiramisu  =  TiramisuConfig(**parsed_yaml["tiramisu"])
-    return RLAutoSchedulerConfig(ray , environment , tiramisu )
+    ray = RayConfig(**parsed_yaml["ray"])
+    environment = EnvironmentConfig(**parsed_yaml["environment"])
+    tiramisu = TiramisuConfig(**parsed_yaml["tiramisu"])
+    training = TrainingConfig(**parsed_yaml["training"])
+    model = ModelConfig(**parsed_yaml["model"])
+    return RLAutoSchedulerConfig(ray, environment, tiramisu, training, model)
