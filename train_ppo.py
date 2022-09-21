@@ -19,10 +19,7 @@ from utils.global_ray_variables import Actor, GlobalVarActor
 
 # @hydra.main(config_path="config", config_name="config")
 def main(config):
-    print("Here")
     configure_env_variables(config)
-    print("We are in", os.getcwd())
-    print("There are the following files:",os.listdir())
     local_dir = os.path.join(config.ray.base_path,"ray_results")
     with ray.init(num_cpus=config.ray.ray_num_cpus):
         progs_list_registery = GlobalVarActor.remote(
