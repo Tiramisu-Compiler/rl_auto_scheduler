@@ -74,6 +74,6 @@ done
 # __doc_script_start__
 
 echo $(expr $worker_per_code \* $worker_num)
-python src/train_ppo.py --num-workers $(expr $worker_per_code \* $worker_num) --env-type model
+python src/train_ppo.py ray.num-workers=$(expr $worker_per_code \* $worker_num) ray.env_type=model
 
 #This is the old script

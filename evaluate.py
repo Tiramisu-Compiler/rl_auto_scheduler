@@ -6,7 +6,7 @@ import ray.rllib.agents.ppo as ppo
 from ray.rllib.models.catalog import ModelCatalog
 from ray.tune.registry import register_env
 
-from config_utils.environment_variables import *
+from utils.environment_variables import *
 from rl_interface.environment import TiramisuScheduleEnvironment
 from rl_interface.model import TiramisuModelMult
 from utils.global_ray_variables import Actor, GlobalVarActor

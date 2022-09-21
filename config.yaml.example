@@ -16,3 +16,5 @@ tiramisu:
     env_type:  "cpu"
     model_checkpoint: "/home/user/model.pt"
 
+defaults:
+  - override hydra/launcher: ray

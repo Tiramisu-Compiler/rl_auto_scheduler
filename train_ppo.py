@@ -1,38 +1,43 @@
 import argparse
 import os
+import sys
+sys.path.append("/data/scratch/hbenyamina/github/rl_autoscheduler/rl_interface")
 
-import hydra
+# import hydra
 import ray
-from hydra.core.config_store import ConfigStore
+# from hydra.core.config_store import ConfigStore
 from ray import tune
 from ray.rllib.models.catalog import ModelCatalog
 from ray.tune.registry import register_env
 
-from config_utils.environment_variables import configure_env_variables
-from config_utils.rl_autoscheduler_config import RLAutoSchedulerConfig
+from utils.environment_variables import configure_env_variables
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig, dict_to_config, parse_yaml_file, read_yaml_file
 from rl_interface.environment import TiramisuScheduleEnvironment
 from rl_interface.model import TiramisuModelMult
 from utils.global_ray_variables import Actor, GlobalVarActor
 
 
-@hydra.main(config_path="conf", config_name="config")
+# @hydra.main(config_path="config", config_name="config")
 def main(config):
+    print("Here")
     configure_env_variables(config)
-    local_dir = os.path.join(config.base_path,"ray_results")
-    with ray.init(num_cpus=config.ray_num_cpus):
+    print("We are in", os.getcwd())
+    print("There are the following files:",os.listdir())
+    local_dir = os.path.join(config.ray.base_path,"ray_results")
+    with ray.init(num_cpus=config.ray.ray_num_cpus):
         progs_list_registery = GlobalVarActor.remote(
-            config.programs_file, config.dataset_path, num_workers=config.num_workers
+            config.environment.programs_file, config.environment.dataset_path, num_workers=config.ray.num_workers
         )
         shared_variable_actor = Actor.remote(progs_list_registery)
 
         register_env(
             "Tiramisu_env_v1",
             lambda a: TiramisuScheduleEnvironment(
-                config.programs_file,
-                config.dataset_path,
+                config.environment.programs_file,
+                config.environment.dataset_path,
                 shared_variable_actor,
-                config.model_checkpoint,
-                env_type=config.env_type,
+                config.tiramisu.model_checkpoint,
+                env_type=config.tiramisu.env_type,
             ),
         )
         ModelCatalog.register_custom_model("tiramisu_model_v1", TiramisuModelMult)
@@ -40,14 +45,14 @@ def main(config):
         analysis = tune.run(
             "PPO",
             local_dir=local_dir,
-            name=config.name,
-            stop={"training_iteration": config.training_iteration},
+            name=config.ray.name,
+            stop={"training_iteration": config.ray.training_iteration},
             max_failures=0,
-            checkpoint_freq=config.checkpoint_freq,
+            checkpoint_freq=config.ray.checkpoint_freq,
             verbose=0,
             config={
                 "env": "Tiramisu_env_v1",
-                "num_workers": config.num_workers,
+                "num_workers": config.ray.num_workers,
                 "batch_mode": "complete_episodes",
                 "train_batch_size": 1024,
                 "sgd_minibatch_size": 256,
@@ -66,9 +71,9 @@ def main(config):
         )
 
 if __name__ == "__main__":
-    cs = ConfigStore.instance()
-    cs.store(name="experiment_config", node=RLAutoSchedulerConfig)
-    main()
+    parsed_yaml_dict = parse_yaml_file(read_yaml_file("config.yaml"))
+    config = dict_to_config(parsed_yaml_dict)
+    main(config)
 
 
     

@@ -1,8 +1,7 @@
-Hydra == 2.5
 PyYAML == 6.0
-gym == 0.26.1
-numpy == 1.23.2
-ray-framework == 0.2.0
-sympy == 1.11.1
+gym == 0.21.0
+numpy == 1.23.1
+ray[rllib] == 1.13.0
+sympy == 1.10.1
 torch == 1.12.1
-tqdm == 4.46.0
+tqdm == 4.64.0
