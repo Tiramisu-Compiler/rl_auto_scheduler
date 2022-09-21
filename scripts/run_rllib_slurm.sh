@@ -10,9 +10,6 @@
 
 . scripts/env.sh
 
-export RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
-export RAY_ALLOW_SLOW_STORAGE=1
-
 # Getting the node names
 nodes=$(scontrol show hostnames "$SLURM_JOB_NODELIST")
 #nodes_array=dn[096,102-104]
@@ -37,8 +34,7 @@ fi
 # __doc_head_address_end__
 
 # __doc_head_ray_start__
-port=6379
-ip_head=$head_node_ip:$port
+ip_head=$head_node_ip:$PORT
 export ip_head
 echo "IP Head: $ip_head"
 
@@ -59,12 +55,9 @@ for ((i = 1; i <= ${WORKER_NUM}; i++)); do
       srun --nodes=1 -N1 --ntasks=1 -w "$node_i" \
           ray start --address "$ip_head" \
           --num-cpus "${SLURM_CPUS_PER_TASK}" --block > /dev/null &
-      # sleep 10
   done
 done
 # __doc_worker_ray_end__
 
 # __doc_script_start__
-
-echo $(expr $worker_per_code \* $worker_num)
-python train_ppo.py ray.num-workers=$(expr $worker_per_code \* $worker_num) ray.env_type=model
+python train_ppo.py
