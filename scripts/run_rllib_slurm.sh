@@ -8,10 +8,7 @@
 #SBATCH -o outputs/train.out
 #SBATCH -e outputs/train.err
 
-# source ~/.bashrc
-. /data/scratch/hbenyamina/miniconda3/bin/activate
-conda activate /data/scratch/hbenyamina/tiramisu-build-env
-#nodes=dn[096,102-104]
+bash scripts/env.sh
 
 export RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
 export RAY_ALLOW_SLOW_STORAGE=1
@@ -74,6 +71,4 @@ done
 # __doc_script_start__
 
 echo $(expr $worker_per_code \* $worker_num)
-python src/train_ppo.py ray.num-workers=$(expr $worker_per_code \* $worker_num) ray.env_type=model
-
-#This is the old script
+python train_ppo.py ray.num-workers=$(expr $worker_per_code \* $worker_num) ray.env_type=model
