@@ -10,7 +10,8 @@ class InternalExecException(Exception):
     pass
 
 class Tiramisu_Program():
-    def __init__(self, file_path):
+    def __init__(self, config,file_path):
+        self.config = config
         self.file_path = file_path
         with open(file_path, 'r') as f:
             self.original_str = f.read()
@@ -47,7 +48,7 @@ class Tiramisu_Program():
         # print(get_json_prog)
         with open(output_file, 'w') as f:
             f.write(get_json_prog)
-        CPP_File.compile_and_run_tiramisu_code(output_file, 'Generating program annotations')
+        CPP_File.compile_and_run_tiramisu_code(self.config,output_file, 'Generating program annotations')
         with open(self.func_folder+self.name+'_program_annotations.json','r') as f:
             self.program_annotations = json.loads(f.read())
         return self.program_annotations
@@ -103,7 +104,7 @@ class Tiramisu_Program():
             f.write(LC_code)
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
-        CPP_File.compile_and_run_tiramisu_code(output_file, log_message)
+        CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)
         lc_result = self.read_legality_check_result_file()
         
         return lc_result
@@ -163,7 +164,7 @@ class Tiramisu_Program():
         self.reset_solver_result_file()
         
         log_message = 'Solver results for: computation {}'.format(comp) + ' '.join([p for p in params])
-        if CPP_File.compile_and_run_tiramisu_code(output_file, log_message):
+        if CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message):
             solver_result = self.read_solver_result_file()
             if len(solver_result) == 0:
                 return None
@@ -198,7 +199,7 @@ class Tiramisu_Program():
             f.write(codegen_code)
         log_message = 'Applying schedule: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
         start_time=time.time()
-        if(CPP_File.compile_and_run_tiramisu_code(output_file, log_message)): 
+        if(CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)): 
             #print("COMPILE/RUN SCHEDULE CODEGEN :\n",time.time()- start_time) 
             try:
                 execution_times = self.get_measurements(cmd_type, nb_executions, initial_exec_time)
@@ -208,7 +209,7 @@ class Tiramisu_Program():
                     return 0
             except TimeOutException: 
                 print("time out exception")
-                return 10*nb_executions*initial_exec_time
+                return 10*nb_executions*(initial_exec_time if initial_exec_time else 1.0)
         else:
             raise InternalExecException
         
@@ -231,11 +232,8 @@ class Tiramisu_Program():
         if not self.wrapper_is_compiled:
             self.write_wrapper_code()
             log_message_cmd = 'printf "Compiling wrapper\n">> ${FUNC_DIR}log.txt'
-            compile_wrapper_cmd = 'cd ${FUNC_DIR};\
-            ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
-            ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O3 -o ${FUNC_NAME}_wrapper ${FUNC_NAME}_wrapper.cpp ./${FUNC_NAME}.o.so -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl'
             CPP_File.launch_cmd(log_message_cmd,'')
-            failed = CPP_File.launch_cmd(compile_wrapper_cmd, self.file_path)
+            failed = CPP_File.launch_cmd(self.config.tiramisu.compile_wrapper_cmd, self.file_path)
             if failed:
                 print('Failed compiling wrapper')
                 return

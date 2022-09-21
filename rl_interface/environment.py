@@ -14,10 +14,7 @@ from tiramisu_programs.schedule_controller import ScheduleController
 from tiramisu_programs.schedule_utils import ScheduleUtils
 from tiramisu_programs.tiramisu_program import Tiramisu_Program
 
-np.seterr(invalid="raise")
 import copy
-import math
-import os
 import time
 import traceback
 
@@ -27,32 +24,30 @@ from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LST
 from tiramisu_programs.cpp_file import CPP_File
 from rl_interface.reward import Reward
 
+np.seterr(invalid="raise")
 
 
 class TiramisuScheduleEnvironment(gym.Env):
     def __init__(
         self,
-        programs_file,
-        dataset_path,
-        shared_variable_actor,
-        pretrained_weights_path,
-        **args
+        config,
+        shared_variable_actor
     ):
 
         # f = Figlet(font='banner3-D')
         # # print(f.renderText("Tiramisu"))
         print("Initializing the environment")
 
+        self.config = config
         self.placeholders = []
         self.speedup = 0
         self.schedule = []
         self.tiramisu_progs = []
         self.progs_annot = {}
-        self.programs_file = programs_file
-        self.args = args
+        self.programs_file = config.environment.programs_file
         self.measurement_env = None
 
-        print("Récupération des données depuis {} \n".format(dataset_path))
+        print("Récupération des données depuis {} \n".format(config.environment.dataset_path))
         self.shared_variable_actor = shared_variable_actor
         self.id = ray.get(self.shared_variable_actor.increment.remote())
         self.progs_list = ray.get(
@@ -83,15 +78,12 @@ class TiramisuScheduleEnvironment(gym.Env):
             }
         )
 
-        self.dataset_path = dataset_path
+        self.dataset_path = config.environment.dataset_path
         self.depth = 0
         self.nb_executions = 5
         self.episode_total_time = 0
         self.prog_ind = 0
-        self.model = Model_Recursive_LSTM_v2()
-        self.model.load_state_dict(
-            torch.load(pretrained_weights_path, map_location="cpu")
-        )
+        
         
 
     def reset(self, file=None):
@@ -101,14 +93,14 @@ class TiramisuScheduleEnvironment(gym.Env):
             try:
                 init_indc = random.randint(0, len(self.progs_list) - 1)
                 file = CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
-                self.prog = Tiramisu_Program(file)
+                self.prog = Tiramisu_Program(self.config,file)
                 self.schedule_object = Schedule(self.prog)
-                self.schedule_controller = ScheduleController(model=self.model, schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds,**self.args)
+                self.schedule_controller = ScheduleController(schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds, config=self.config)
                 self.obs = self.schedule_object.get_representation()
-                if self.args["env_type"] == "cpu":
+                if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
                         print("Getting the intitial exe time by execution")
-                        self.prog.initial_execution_time=self.schedule_controller.measurement_env([],'initial_exec', self.nb_executions)
+                        self.prog.initial_execution_time=self.schedule_controller.measurement_env([],'initial_exec', self.nb_executions, self.prog.initial_execution_time)
                         self.progs_dict[self.prog.name]={}
                         self.progs_dict[self.prog.name]["initial_execution_time"]=self.prog.initial_execution_time
 
@@ -160,93 +152,4 @@ class TiramisuScheduleEnvironment(gym.Env):
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
-        try:
-            self.save_sched_to_dataset()
-            self.write_data()
-        except:
-            print(f"failed to save schedule", traceback.format_exc() , file=sys.stderr, flush=True)
         return self.obs, reward, done, info
-
-   
-    def save_sched_to_dataset(self):
-        for func in self.schedule_controller.new_scheds.keys():
-            for schedule_str in self.schedule_controller.new_scheds[func].keys():#schedule_str represents the key, for example: 'Interchange Unrolling Tiling', the value is a tuple(schedule,execution_time)
-
-                schedule=self.schedule_controller.new_scheds[func][schedule_str][0]#here we get the self.obs["schedule"] containing the omtimizations list
-                exec_time=self.schedule_controller.new_scheds[func][schedule_str][1]
-                search_time=self.schedule_controller.new_scheds[func][schedule_str][2]
-                for comp in self.schedule_object.comps:
-
-                    #Initialize an empty dict
-                    sched_dict={
-                    comp: {
-                    "schedule_str":schedule_str,
-                    "search_time":search_time,
-                    "interchange_dims": [],
-                    "tiling": {
-                        "tiling_depth":None,
-                        "tiling_dims":[],
-                        "tiling_factors":[]
-                    },
-                    "unrolling_factor": None,
-                    "parallelized_dim": None,
-                    "reversed_dim": None,
-                    "skewing": {    
-                        "skewed_dims": [],
-                        "skewing_factors": [],
-                        "average_skewed_extents": [],
-                        "transformed_accesses": []
-                                },
-                    "unfuse_iterators": [],
-                    "tree_structure": {},
-                    "execution_times": []}
-                    }
-
-                    for optim in schedule:
-                        if optim.type == 'Interchange':
-                            sched_dict[comp]["interchange_dims"]=[self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator'], self.schedule_object.it_dict[comp][optim.params_list[1]]['iterator']]
-
-                        elif optim.type == 'Skewing':
-                            first_dim_index=self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator']
-                            second_dim_index= self.schedule_object.it_dict[comp][optim.params_list[1]]['iterator']
-                            first_factor=optim.params_list[2]
-                            second_factor=optim.params_list[3]
-
-                            sched_dict[comp]["skewing"]["skewed_dims"]=[first_dim_index,second_dim_index]
-                            sched_dict[comp]["skewing"]["skewing_factors"]=[first_factor,second_factor]
-
-                        elif optim.type == 'Parallelization':
-                            sched_dict[comp]["parallelized_dim"]=self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator']
-
-                        elif optim.type == 'Tiling':
-                            #Tiling 2D
-                            if len(optim.params_list)==4:
-                                sched_dict[comp]["tiling"]["tiling_depth"]=2
-                                sched_dict[comp]["tiling"]["tiling_dims"]=[self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator'],self.schedule_object.it_dict[comp][optim.params_list[1]]['iterator']]
-                                sched_dict[comp]["tiling"]["tiling_factors"]=[optim.params_list[2],optim.params_list[3]]
-
-                            #Tiling 3D
-                            elif len(optim.params_list)==6:
-                                sched_dict[comp]["tiling"]["tiling_depth"]=3
-                                sched_dict[comp]["tiling"]["tiling_dims"]=[self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator'],self.schedule_object.it_dict[comp][optim.params_list[1]]['iterator'],self.schedule_object.it_dict[comp][optim.params_list[2]]['iterator']]
-                                sched_dict[comp]["tiling"]["tiling_factors"]=[optim.params_list[3],optim.params_list[4],optim.params_list[5]]
-
-                        elif optim.type == 'Unrolling':
-                            sched_dict[comp]["unrolling_factor"]=optim.params_list[comp][1]
-
-                        elif optim.type == 'Reversal':
-                            sched_dict[comp]["reversed_dim"]=self.schedule_object.it_dict[comp][optim.params_list[0]]['iterator']
-                        
-                        elif optim.type == 'Fusion':
-                            pass
-
-                sched_dict[comp]["execution_times"].append(exec_time)
-                if not "schedules_list" in self.progs_dict[func].keys():
-                    self.progs_dict[func]["schedules_list"]=[sched_dict]
-                else:
-                    self.progs_dict[func]["schedules_list"].append(sched_dict)
-            
-    def write_data(self):
-        with open(self.programs_file, 'w') as f:
-            json.dump(self.progs_dict, f)
-        f.close()

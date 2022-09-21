@@ -29,11 +29,8 @@ def main(config: RLAutoSchedulerConfig):
         register_env(
             "Tiramisu_env_v1",
             lambda a: TiramisuScheduleEnvironment(
-                config.environment.programs_file,
-                config.environment.dataset_path,
-                shared_variable_actor,
-                config.tiramisu.model_checkpoint,
-                env_type=config.tiramisu.env_type,
+                config,
+                shared_variable_actor
             ),
         )
         ModelCatalog.register_custom_model("tiramisu_model_v1",

@@ -9,6 +9,7 @@ import math
 from rl_interface.action import Action
 from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_schedule_representation
 from tiramisu_programs.schedule_utils import *
+from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -18,10 +19,9 @@ class ScheduleController:
 
     def __init__(self,
                  schedule=None,
-                 model=None,
                  nb_executions=5,
                  scheds=None,
-                 **args):
+                 config=None):
         self.depth = 0
         self.schedule = []
         self.schedule_object = schedule
@@ -31,15 +31,17 @@ class ScheduleController:
         self.steps = 0
         self.new_scheds = {}
         self.search_time = time.time()
-        self.model = model
-        self.args = args
-        if "env_type" in self.args:
-            if self.args["env_type"] == "cpu":
-                self.measurement_env = self.schedule_object.prog.evaluate_schedule
-            else:
-                self.measurement_env = self.get_exec_time_by_model
+        self.config = config
+        if self.config.tiramisu.env_type == "cpu":
+            self.measurement_env = self.schedule_object.prog.evaluate_schedule
+        else:
+            self.measurement_env = self.get_exec_time_by_model
         self.lc_total_time = 0
         self.schedule_list_model = []
+        self.model = Model_Recursive_LSTM_v2()
+        self.model.load_state_dict(
+            torch.load(config.tiramisu.model_checkpoint, map_location="cpu")
+        )
 
     def apply_action(self, action):
         exit = False
@@ -779,3 +781,5 @@ class ScheduleController:
 
         # print("get_exec_time returned {} for the function {}".format(execution_time,self.schedule_object.prog.name))
         return execution_time
+
+    
