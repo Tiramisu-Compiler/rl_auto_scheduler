@@ -42,7 +42,7 @@ echo "IP Head: $ip_head"
 
 echo "Starting HEAD at $head_node"
 srun --nodes=1 -N1 --ntasks=1 -w "$head_node" \
-    ray start --head --object-store-memory=1000000000 --node-ip-address="$head_node_ip" --port=$port \
+    ray start --head --object-store-memory=1000000000 --node-ip-address="$head_node_ip" --port=$PORT \
     --num-cpus "${SLURM_CPUS_PER_TASK}" --num-gpus 1 --block &
 # __doc_head_ray_end__
 
