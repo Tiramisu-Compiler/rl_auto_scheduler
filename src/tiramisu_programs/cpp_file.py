@@ -6,6 +6,8 @@ from datetime import datetime
 import re
 import torch
 
+from tiramisu_programs.schedule_utils import TimeOutException
+
 class CPP_File(object):
 
     @classmethod

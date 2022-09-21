@@ -1,6 +1,6 @@
 class OptimizationCommand:
     def __init__(self, optim_type, params_list, comps):
-        # print(f"init optim cmd of type {optim_type}")
+        # print(f"init optim cmd of type {optim_type}")zzzzzz
         assert optim_type in [
             "Interchange",
             "Skewing",

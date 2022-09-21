@@ -29,7 +29,7 @@ from rl_interface.reward import Reward
 
 
 
-class SearchSpaceSparseEnhancedMult(gym.Env):
+class TiramisuScheduleEnvironment(gym.Env):
     def __init__(
         self,
         programs_file,
@@ -87,8 +87,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
         self.depth = 0
         self.nb_executions = 5
         self.episode_total_time = 0
-        # self.lc_total_time = 0
-        # self.codegen_total_time = 0
         self.prog_ind = 0
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
@@ -99,8 +97,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
     def reset(self, file=None):
         print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
-        # self.lc_total_time = 0
-        # self.codegen_total_time = 0
         while True:
             try:
                 init_indc = random.randint(0, len(self.progs_list) - 1)
@@ -112,11 +108,7 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 if self.args["env_type"] == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
                         print("Getting the intitial exe time by execution")
-                        start_time=time.time()
                         self.prog.initial_execution_time=self.schedule_controller.measurement_env([],'initial_exec', self.nb_executions)
-                        cg_time=time.time()-start_time 
-                        #print("After getting initial exec time:",cg_time, "initial exec time is :", self.prog.initial_execution_time)
-                        # self.codegen_total_time +=cg_time
                         self.progs_dict[self.prog.name]={}
                         self.progs_dict[self.prog.name]["initial_execution_time"]=self.prog.initial_execution_time
 
@@ -133,14 +125,11 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                 continue
 
             self.steps = 0
-            self.new_scheds = {}
             self.search_time = time.time()
             return self.obs
 
     def step(self, raw_action):
-        # print("in step function")
         action_name = Action.ACTIONS_ARRAY[raw_action]
-        # print("\nThe current schedule is: ", len(self.schedule), self.schedule_object.schedule_str)
         print("\n ----> {} [ {} ] \n".format(action_name, self.schedule_object.schedule_str))
         info = {}
         applied_exception = False
@@ -149,58 +138,44 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
 
         try:
             action = Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
-            # print("after creating the action")
             self.obs = copy.deepcopy(
                 self.schedule_object.get_representation()
-            )  # get current observation
+            )
             self.obs, speedup, done, info = self.schedule_controller.apply_action(action) # Should return speedup instead of reward
-            # print(f"The speedup is {speedup}")
             reward_object = Reward(speedup)
             reward = reward_object.log_reward()
             
         except Exception as e:
             print("STEP_ERROR: ", e.__class__.__name__, end=" ")
             if applied_exception:
-                # reward = -1
                 print("Already Applied exception")
                 info = {"more than one time": True}
                 done = False
                 return self.obs, reward, done, info
 
             else:
-                # print("ERROR_STEP", traceback.format_exc())
-                ex_type, ex_value, ex_traceback = sys.exc_info()
-                # if (
-                #     self.schedule != []
-                #     and not skew_params_exception
-                #     and not skew_unroll
-                # ):
-                #     self.schedule.pop()
-                # reward = -1
                 print("This action yields an error. It won't be applied.")
                 done = False
                 info = {
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
-        # try:
-        #     self.save_sched_to_dataset()
-        #     self.write_data()
-        #     writing_time=time.time()-start_time
-        #     print("Data saved in ",writing_time)
-        # except:
-        #     print(f"failed to save schedule", traceback.format_exc() , file=sys.stderr, flush=True)
+        try:
+            self.save_sched_to_dataset()
+            self.write_data()
+        except:
+            print(f"failed to save schedule", traceback.format_exc() , file=sys.stderr, flush=True)
         return self.obs, reward, done, info
 
    
     def save_sched_to_dataset(self):
-        for func in self.new_scheds.keys():
-            for schedule_str in self.schedule_object.new_scheds[func].keys():#schedule_str represents the key, for example: 'Interchange Unrolling Tiling', the value is a tuple(schedule,execution_time)
+        for func in self.schedule_controller.new_scheds.keys():
+            for schedule_str in self.schedule_controller.new_scheds[func].keys():#schedule_str represents the key, for example: 'Interchange Unrolling Tiling', the value is a tuple(schedule,execution_time)
 
-                schedule=self.new_scheds[func][schedule_str][0]#here we get the self.obs["schedule"] containing the omtimizations list
-                exec_time=self.new_scheds[func][schedule_str][1]
-                search_time=self.new_scheds[func][schedule_str][2]
-                for comp in self.comps:
+                schedule=self.schedule_controller.new_scheds[func][schedule_str][0]#here we get the self.obs["schedule"] containing the omtimizations list
+                exec_time=self.schedule_controller.new_scheds[func][schedule_str][1]
+                search_time=self.schedule_controller.new_scheds[func][schedule_str][2]
+                for comp in self.schedule_object.comps:
 
                     #Initialize an empty dict
                     sched_dict={
@@ -272,8 +247,6 @@ class SearchSpaceSparseEnhancedMult(gym.Env):
                     self.progs_dict[func]["schedules_list"].append(sched_dict)
             
     def write_data(self):
-        # print("in write data")
         with open(self.programs_file, 'w') as f:
             json.dump(self.progs_dict, f)
-        # print("done writing data")
         f.close()
