@@ -1,28 +1,19 @@
 # np.set_printoptions(threshold=sys.maxsize)
+import copy
 import json
 import random
 import sys
+import time
+import traceback
 
 import gym
 import numpy as np
 import ray
-
-# from pyfiglet import Figlet
-from rl_interface.action import Action
-from tiramisu_programs.schedule import Schedule
-from tiramisu_programs.schedule_controller import ScheduleController
-from tiramisu_programs.schedule_utils import ScheduleUtils
-from tiramisu_programs.tiramisu_program import Tiramisu_Program
-
-import copy
-import time
-import traceback
-
+import tiramisu_programs
 import torch
 
-from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
-from tiramisu_programs.cpp_file import CPP_File
-from rl_interface.reward import Reward
+# from pyfiglet import Figlet
+import rl_interface
 
 np.seterr(invalid="raise")
 
@@ -56,7 +47,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.progs_dict = ray.get(self.shared_variable_actor.get_progs_dict.remote())
         print("Loaded the dataset!")
 
-        self.scheds = ScheduleUtils.get_schedules_str(
+        self.scheds = tiramisu_programs.schedule_utils.ScheduleUtils.get_schedules_str(
             list(self.progs_dict.keys()), self.progs_dict
         )  # to use it to get the execution time
 
@@ -93,10 +84,10 @@ class TiramisuScheduleEnvironment(gym.Env):
         while True:
             try:
                 init_indc = random.randint(0, len(self.progs_list) - 1)
-                file = CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
-                self.prog = Tiramisu_Program(self.config,file)
-                self.schedule_object = Schedule(self.prog)
-                self.schedule_controller = ScheduleController(schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds, config=self.config)
+                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
+                self.prog = tiramisu_programs.tiramisu_program.Tiramisu_Program(self.config,file)
+                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
+                self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds, config=self.config)
                 self.obs = self.schedule_object.get_representation()
                 if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
@@ -122,7 +113,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             return self.obs
 
     def step(self, raw_action):
-        action_name = Action.ACTIONS_ARRAY[raw_action]
+        action_name = rl_interface.Action.ACTIONS_ARRAY[raw_action]
         print("\n ----> {} [ {} ] \n".format(action_name, self.schedule_object.schedule_str))
         info = {}
         applied_exception = False
@@ -130,13 +121,10 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.steps += 1
 
         try:
-            action = Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
-            self.obs = copy.deepcopy(
-                self.schedule_object.get_representation()
-            )
-            self.obs, speedup, done, info = self.schedule_controller.apply_action(action) # Should return speedup instead of reward
-            reward_object = Reward(speedup)
-            reward = reward_object.log_reward()
+            action = rl_interface.Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
+            _ , speedup, done, info = self.schedule_controller.apply_action(action) # Should return speedup instead of reward
+            reward_object = rl_interface.Reward(speedup)
+            reward = reward_object.reward
             
         except Exception as e:
             print("STEP_ERROR: ", traceback.format_exc(),file=sys.stderr, end=" ")
@@ -153,4 +141,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
+        self.obs = copy.deepcopy(
+                self.schedule_object.get_representation()
+            )
         return self.obs, reward, done, info

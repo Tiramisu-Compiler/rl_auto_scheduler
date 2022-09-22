@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import random, time
 from tiramisu_programs.cpp_file import CPP_File
-from tiramisu_programs.schedule import TimeOutException 
+import tiramisu_programs
 
 class InternalExecException(Exception):
     pass
@@ -207,7 +207,7 @@ class Tiramisu_Program():
                     return min(execution_times)
                 else:
                     return 0
-            except TimeOutException: 
+            except tiramisu_programs.schedule.TimeOutException: 
                 print("time out exception")
                 return 10*nb_executions*(initial_exec_time if initial_exec_time else 1.0)
         else:

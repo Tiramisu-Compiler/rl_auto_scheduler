@@ -1,6 +1,6 @@
 import traceback
 import numpy as np
-from rl_interface.action import Action
+import rl_interface
 from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_tree_structure, get_sched_rep
 from tiramisu_programs.schedule_utils import *
 
@@ -359,94 +359,94 @@ class Schedule:
 
                 if len(self.common_it) == 5:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE07, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE17, 
-                        Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE27, Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE37, 
-                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE47,Action.INTERCHANGE56,Action.INTERCHANGE57, Action.INTERCHANGE67]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE06, rl_interface.action.Action.INTERCHANGE07, rl_interface.action.Action.INTERCHANGE15, rl_interface.action.Action.INTERCHANGE16, rl_interface.action.Action.INTERCHANGE17, 
+                        rl_interface.action.Action.INTERCHANGE25, rl_interface.action.Action.INTERCHANGE26, rl_interface.action.Action.INTERCHANGE27, rl_interface.action.Action.INTERCHANGE35, rl_interface.action.Action.INTERCHANGE36, rl_interface.action.Action.INTERCHANGE37, 
+                        rl_interface.action.Action.INTERCHANGE45, rl_interface.action.Action.INTERCHANGE46, rl_interface.action.Action.INTERCHANGE47,rl_interface.action.Action.INTERCHANGE56,rl_interface.action.Action.INTERCHANGE57, rl_interface.action.Action.INTERCHANGE67]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE15, Action.INTERCHANGE16, Action.INTERCHANGE25, Action.INTERCHANGE26, 
-                        Action.INTERCHANGE35, Action.INTERCHANGE36, Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE06, rl_interface.action.Action.INTERCHANGE15, rl_interface.action.Action.INTERCHANGE16, rl_interface.action.Action.INTERCHANGE25, rl_interface.action.Action.INTERCHANGE26, 
+                        rl_interface.action.Action.INTERCHANGE35, rl_interface.action.Action.INTERCHANGE36, rl_interface.action.Action.INTERCHANGE45, rl_interface.action.Action.INTERCHANGE46, rl_interface.action.Action.INTERCHANGE56]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE05, Action.INTERCHANGE15, Action.INTERCHANGE25,Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE15, rl_interface.action.Action.INTERCHANGE25,rl_interface.action.Action.INTERCHANGE35, rl_interface.action.Action.INTERCHANGE45]]=1
 
                 if len(self.common_it) == 4:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE06, Action.INTERCHANGE14, Action.INTERCHANGE15, Action.INTERCHANGE16, 
-                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE26, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE36, 
-                        Action.INTERCHANGE45, Action.INTERCHANGE46, Action.INTERCHANGE56]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE06, rl_interface.action.Action.INTERCHANGE14, rl_interface.action.Action.INTERCHANGE15, rl_interface.action.Action.INTERCHANGE16, 
+                        rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE25, rl_interface.action.Action.INTERCHANGE26, rl_interface.action.Action.INTERCHANGE34, rl_interface.action.Action.INTERCHANGE35, rl_interface.action.Action.INTERCHANGE36, 
+                        rl_interface.action.Action.INTERCHANGE45, rl_interface.action.Action.INTERCHANGE46, rl_interface.action.Action.INTERCHANGE56]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE14, Action.INTERCHANGE15,
-                        Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, Action.INTERCHANGE45]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE14, rl_interface.action.Action.INTERCHANGE15,
+                        rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE25, rl_interface.action.Action.INTERCHANGE34, rl_interface.action.Action.INTERCHANGE35, rl_interface.action.Action.INTERCHANGE45]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE04, Action.INTERCHANGE14, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE14, rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE34]]=1    
 
                 if len(self.common_it) == 3:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE05, Action.INTERCHANGE13, Action.INTERCHANGE14, Action.INTERCHANGE15, 
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE25, Action.INTERCHANGE34, Action.INTERCHANGE35, 
-                        Action.INTERCHANGE45]]=1    
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE05, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE14, rl_interface.action.Action.INTERCHANGE15, 
+                        rl_interface.action.Action.INTERCHANGE23, rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE25, rl_interface.action.Action.INTERCHANGE34, rl_interface.action.Action.INTERCHANGE35, 
+                        rl_interface.action.Action.INTERCHANGE45]]=1    
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE13, Action.INTERCHANGE14,
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1 
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE14,
+                        rl_interface.action.Action.INTERCHANGE23, rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE34]]=1 
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE03, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE23]]=1 
                 
                 if len(self.common_it) == 2:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE04, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE14, 
-                        Action.INTERCHANGE23, Action.INTERCHANGE24, Action.INTERCHANGE34]]=1    
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE02, rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE04, rl_interface.action.Action.INTERCHANGE12, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE14, 
+                        rl_interface.action.Action.INTERCHANGE23, rl_interface.action.Action.INTERCHANGE24, rl_interface.action.Action.INTERCHANGE34]]=1    
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1 
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE02, rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE12, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE23]]=1 
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE02, Action.INTERCHANGE12]]=1 
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE02, rl_interface.action.Action.INTERCHANGE12]]=1 
 
                 if len(self.common_it) == 1:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE03, Action.INTERCHANGE12, Action.INTERCHANGE13, Action.INTERCHANGE23]]=1    
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE01, rl_interface.action.Action.INTERCHANGE02, rl_interface.action.Action.INTERCHANGE03, rl_interface.action.Action.INTERCHANGE12, rl_interface.action.Action.INTERCHANGE13, rl_interface.action.Action.INTERCHANGE23]]=1    
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.INTERCHANGE01, Action.INTERCHANGE02, Action.INTERCHANGE12, Action.INTERCHANGE13]]=1    
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE01, rl_interface.action.Action.INTERCHANGE02, rl_interface.action.Action.INTERCHANGE12, rl_interface.action.Action.INTERCHANGE13]]=1    
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][[Action.INTERCHANGE01]]=1  
+                        self.repr["action_mask"][[rl_interface.action.Action.INTERCHANGE01]]=1  
 
             if self.is_reversed == False:
                 if len(self.common_it) == 5:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL5,Action.REVERSAL6, Action.REVERSAL7]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL5,rl_interface.action.Action.REVERSAL6, rl_interface.action.Action.REVERSAL7]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL5,Action.REVERSAL6]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL5,rl_interface.action.Action.REVERSAL6]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL5]=1
+                        self.repr["action_mask"][rl_interface.action.Action.REVERSAL5]=1
 
                 elif len(self.common_it) == 4:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL4,Action.REVERSAL5, Action.REVERSAL6]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL4,rl_interface.action.Action.REVERSAL5, rl_interface.action.Action.REVERSAL6]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL4,Action.REVERSAL5]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL4,rl_interface.action.Action.REVERSAL5]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL4]=1
+                        self.repr["action_mask"][rl_interface.action.Action.REVERSAL4]=1
 
                 elif len(self.common_it) == 3:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL3,Action.REVERSAL4, Action.REVERSAL5]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL3,rl_interface.action.Action.REVERSAL4, rl_interface.action.Action.REVERSAL5]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL3,Action.REVERSAL4]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL3,rl_interface.action.Action.REVERSAL4]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL3]=1
+                        self.repr["action_mask"][rl_interface.action.Action.REVERSAL3]=1
 
                 elif len(self.common_it) == 2:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL2,Action.REVERSAL3, Action.REVERSAL4]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL2,rl_interface.action.Action.REVERSAL3, rl_interface.action.Action.REVERSAL4]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL2,Action.REVERSAL3]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL2,rl_interface.action.Action.REVERSAL3]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL2]=1
+                        self.repr["action_mask"][rl_interface.action.Action.REVERSAL2]=1
 
                 elif len(self.common_it) == 1:
                     if params["tiling_loop_1"] and params["tiling_loop_2"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL1,Action.REVERSAL2, Action.REVERSAL3]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL1,rl_interface.action.Action.REVERSAL2, rl_interface.action.Action.REVERSAL3]]=1
                     elif params["tiling_loop_1"] and params["tiling_loop_2"] or params["tiling_loop_2"] and params["tiling_loop_3"] or params["tiling_loop_1"] and params["tiling_loop_3"]:
-                        self.repr["action_mask"][[Action.REVERSAL1,Action.REVERSAL2]]=1
+                        self.repr["action_mask"][[rl_interface.action.Action.REVERSAL1,rl_interface.action.Action.REVERSAL2]]=1
                     elif params["tiling_loop_1"] or params["tiling_loop_2"] or params["tiling_loop_3"] :
-                        self.repr["action_mask"][Action.REVERSAL1]=1
+                        self.repr["action_mask"][rl_interface.action.Action.REVERSAL1]=1
         
         for i in range(28,41):
             self.repr["action_mask"][i]=0
