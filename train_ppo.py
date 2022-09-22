@@ -1,5 +1,6 @@
 import os
 # import hydra
+import argparse
 import ray
 # from hydra.core.config_store import ConfigStore
 from ray import tune
@@ -13,6 +14,12 @@ from utils.global_ray_variables import Actor, GlobalVarActor
 from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
                                            dict_to_config, parse_yaml_file,
                                            read_yaml_file)
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num-workers", default=-1, type=int)
+    return parser.parse_args()
 
 
 # @hydra.main(config_path="config", config_name="config")
@@ -68,4 +75,7 @@ def main(config: RLAutoSchedulerConfig):
 if __name__ == "__main__":
     parsed_yaml_dict = parse_yaml_file(read_yaml_file("config.yaml"))
     config = dict_to_config(parsed_yaml_dict)
+    args = get_arguments()
+    if args.num_workers  != -1:
+        config.ray.num_workers = args.num_workers
     main(config)

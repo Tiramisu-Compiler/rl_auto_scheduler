@@ -83,6 +83,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.nb_executions = 5
         self.episode_total_time = 0
         self.prog_ind = 0
+        self.steps = 0
         
         
 
@@ -138,7 +139,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             reward = reward_object.log_reward()
             
         except Exception as e:
-            print("STEP_ERROR: ", e.__class__.__name__,file=sys.stderr, end=" ")
+            print("STEP_ERROR: ", traceback.format_exc(),file=sys.stderr, end=" ")
             if applied_exception:
                 print("Already Applied exception")
                 info = {"more than one time": True}
