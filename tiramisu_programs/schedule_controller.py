@@ -50,6 +50,7 @@ class ScheduleController:
         applied_exception = False
         skew_params_exception = False
         skew_unroll = False
+        self.speedup = 1.0
         #reward = 0
         first_comp = self.schedule_object.comps[0]
         if not action.id in range(44, 46):
