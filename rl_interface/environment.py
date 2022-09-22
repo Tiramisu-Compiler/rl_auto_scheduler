@@ -113,7 +113,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                     self.progs_dict[self.prog.name]["initial_execution_time"]=self.prog.initial_execution_time
 
             except:
-                print("RESET_ERROR", traceback.format_exc())
+                print("RESET_ERROR", traceback.format_exc(),file=sys.stderr)
                 continue
 
             self.steps = 0
@@ -138,7 +138,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             reward = reward_object.log_reward()
             
         except Exception as e:
-            print("STEP_ERROR: ", e.__class__.__name__, end=" ")
+            print("STEP_ERROR: ", e.__class__.__name__,file=sys.stderr, end=" ")
             if applied_exception:
                 print("Already Applied exception")
                 info = {"more than one time": True}
