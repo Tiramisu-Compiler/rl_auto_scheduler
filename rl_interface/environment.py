@@ -86,6 +86,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                 init_indc = random.randint(0, len(self.progs_list) - 1)
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc])
                 self.prog = tiramisu_programs.tiramisu_program.Tiramisu_Program(self.config,file)
+                print(f"Trying with program {self.prog.name}")
                 self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds, config=self.config)
                 self.obs = self.schedule_object.get_representation()
@@ -110,6 +111,7 @@ class TiramisuScheduleEnvironment(gym.Env):
 
             self.steps = 0
             self.search_time = time.time()
+            print(f"Choosing program {self.prog.name}")
             return self.obs
 
     def step(self, raw_action):
@@ -118,14 +120,12 @@ class TiramisuScheduleEnvironment(gym.Env):
         info = {}
         applied_exception = False
         reward = 0
+        speedup = 1.0
         self.steps += 1
 
         try:
             action = rl_interface.Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
             _ , speedup, done, info = self.schedule_controller.apply_action(action) # Should return speedup instead of reward
-            reward_object = rl_interface.Reward(speedup)
-            reward = reward_object.reward
-            
         except Exception as e:
             print("STEP_ERROR: ", traceback.format_exc(),file=sys.stderr, end=" ")
             if applied_exception:
@@ -144,4 +144,12 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.obs = copy.deepcopy(
                 self.schedule_object.get_representation()
             )
+        if (self.schedule_controller.depth
+                == self.schedule_object.MAX_DEPTH) or (self.steps >= 20):
+            done = True
+        if done:
+            print("\n ************** End of an episode ************")
+            self.obs, speedup, done, info = self.schedule_controller.test_additional_actions()
+        reward_object = rl_interface.Reward(speedup)
+        reward = reward_object.reward
         return self.obs, reward, done, info

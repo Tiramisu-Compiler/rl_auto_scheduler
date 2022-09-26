@@ -80,10 +80,14 @@ def main(config: RLAutoSchedulerConfig, checkpoint=None):
         
         results = []
         while True:
+            depth = 0
             result = dict()
             observation, done = env.reset(), False
             result["prog"] = env.prog.name
             while not done:
+                depth = 0
+                if depth > 14:
+                    break
                 try:
                     action = agent.compute_action(observation)
                     observation, reward, done, _ = env.step(action)
@@ -104,5 +108,5 @@ if __name__ == "__main__":
     if args.num_workers  != -1:
         config.ray.num_workers = args.num_workers
     config.environment.programs_file = "./val.json"
-    config.environment.dataset_path = "../../Dataset_val"
+    config.environment.dataset_path = "../benchmark"
     main(config, args.checkpoint)
