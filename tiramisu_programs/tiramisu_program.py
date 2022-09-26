@@ -3,8 +3,7 @@ import os
 import json
 from pathlib import Path
 import random, time
-from tiramisu_programs.cpp_file import CPP_File
-from tiramisu_programs.schedule import TimeOutException 
+import tiramisu_programs
 
 class InternalExecException(Exception):
     pass
@@ -48,7 +47,7 @@ class Tiramisu_Program():
         # print(get_json_prog)
         with open(output_file, 'w') as f:
             f.write(get_json_prog)
-        CPP_File.compile_and_run_tiramisu_code(self.config,output_file, 'Generating program annotations')
+        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(self.config,output_file, 'Generating program annotations')
         with open(self.func_folder+self.name+'_program_annotations.json','r') as f:
             self.program_annotations = json.loads(f.read())
         return self.program_annotations
@@ -104,7 +103,7 @@ class Tiramisu_Program():
             f.write(LC_code)
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
-        CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)
+        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)
         lc_result = self.read_legality_check_result_file()
         
         return lc_result
@@ -164,7 +163,7 @@ class Tiramisu_Program():
         self.reset_solver_result_file()
         
         log_message = 'Solver results for: computation {}'.format(comp) + ' '.join([p for p in params])
-        if CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message):
+        if tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message):
             solver_result = self.read_solver_result_file()
             if len(solver_result) == 0:
                 return None
@@ -199,7 +198,7 @@ class Tiramisu_Program():
             f.write(codegen_code)
         log_message = 'Applying schedule: ' + ' '.join([o.tiramisu_optim_str for o in optims_list])
         start_time=time.time()
-        if(CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)): 
+        if(tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(self.config,output_file, log_message)): 
             #print("COMPILE/RUN SCHEDULE CODEGEN :\n",time.time()- start_time) 
             try:
                 execution_times = self.get_measurements(cmd_type, nb_executions, initial_exec_time)
@@ -207,7 +206,7 @@ class Tiramisu_Program():
                     return min(execution_times)
                 else:
                     return 0
-            except TimeOutException: 
+            except tiramisu_programs.schedule.TimeOutException: 
                 print("time out exception")
                 return 10*nb_executions*(initial_exec_time if initial_exec_time else 1.0)
         else:
@@ -232,8 +231,8 @@ class Tiramisu_Program():
         if not self.wrapper_is_compiled:
             self.write_wrapper_code()
             log_message_cmd = 'printf "Compiling wrapper\n">> ${FUNC_DIR}log.txt'
-            CPP_File.launch_cmd(log_message_cmd,'')
-            failed = CPP_File.launch_cmd(self.config.tiramisu.compile_wrapper_cmd, self.file_path)
+            tiramisu_programs.CPP_File.launch_cmd(log_message_cmd,'')
+            failed = tiramisu_programs.CPP_File.launch_cmd(self.config.tiramisu.compile_wrapper_cmd, self.file_path)
             if failed:
                 print('Failed compiling wrapper')
                 return
@@ -243,9 +242,9 @@ class Tiramisu_Program():
         run_wrapper_cmd = 'cd ${FUNC_DIR};\
         ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
         ./${FUNC_NAME}_wrapper '+str(nb_executions)
-        CPP_File.launch_cmd(log_message_cmd, '')
+        tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
         s_time=time.time()
-        failed = CPP_File.launch_cmd(run_wrapper_cmd, self.file_path, cmd_type,nb_executions,initial_exec_time)
+        failed = tiramisu_programs.CPP_File.launch_cmd(run_wrapper_cmd, self.file_path, cmd_type,nb_executions,initial_exec_time)
         # print("WRAPPER RUN in : ", time.time()-s_time)
         
         if failed:

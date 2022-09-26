@@ -7,11 +7,11 @@ class Reward:
     
     @property
     def reward(self):
-        return self._reward
+        return self.log_reward()
     
     @reward.setter
     def reward(self,value):
         self._reward = value
     
-    def log_reward(self):
-        return math.log(abs(self._reward),2)
+    def log_reward(self,base=4):
+        return math.log(abs(self._reward),base)
