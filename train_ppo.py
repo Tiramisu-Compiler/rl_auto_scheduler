@@ -35,10 +35,8 @@ def main(config: RLAutoSchedulerConfig):
 
         register_env(
             "Tiramisu_env_v1",
-            lambda a: TiramisuScheduleEnvironment(
-                config,
-                shared_variable_actor
-            ),
+            lambda a: TiramisuScheduleEnvironment(config, shared_variable_actor
+                                                  ),
         )
         ModelCatalog.register_custom_model("tiramisu_model_v1",
                                            TiramisuModelMult)
@@ -76,6 +74,6 @@ if __name__ == "__main__":
     parsed_yaml_dict = parse_yaml_file(read_yaml_file("config.yaml"))
     config = dict_to_config(parsed_yaml_dict)
     args = get_arguments()
-    if args.num_workers  != -1:
+    if args.num_workers != -1:
         config.ray.num_workers = args.num_workers
     main(config)

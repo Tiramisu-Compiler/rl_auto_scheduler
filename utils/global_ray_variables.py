@@ -5,6 +5,7 @@ import os
 
 @ray.remote
 class GlobalVarActor:
+
     def __init__(self, programs_file, dataset_path, num_workers=7):
         self.index = -1
         self.num_workers = num_workers
@@ -32,8 +33,7 @@ class GlobalVarActor:
         # with open(f'file_{id}.txt',"w+") as file:
         #     file.write(f"Using files which index % self.num_workers = {id % self.num_workers}, such as id = {id} and num_workers = {self.num_workers}")
         return [
-            item
-            for (index, item) in enumerate(self.progs_list)
+            item for (index, item) in enumerate(self.progs_list)
             if (index % self.num_workers) == (id % self.num_workers)
         ]
 
@@ -57,6 +57,7 @@ class GlobalVarActor:
 
 @ray.remote
 class Actor:
+
     def __init__(self, data_registry):
         self.data_registry = data_registry
 
