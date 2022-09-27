@@ -10,13 +10,14 @@ class GlobalVarActor:
         self.num_workers = num_workers
         self.progs_list = self.get_dataset(dataset_path)
         self.programs_file = programs_file
-        if os.path.isfile(programs_file):
-            with open(programs_file) as f:
-                self.progs_dict = json.load(f)
-        else:
-            self.progs_dict = dict()
-            with open(programs_file,"w+") as f:
-                f.write(json.dumps(self.progs_dict))
+        self.progs_dict = dict()
+        # if os.path.isfile(programs_file):
+        #     with open(programs_file) as f:
+        #         self.progs_dict = json.load(f)
+        # else:
+        #     self.progs_dict = dict()
+        #     with open(programs_file,"w+") as f:
+        #         f.write(json.dumps(self.progs_dict))
 
     def get_dataset(self, path):
         os.getcwd()
@@ -41,7 +42,7 @@ class GlobalVarActor:
         return True
 
     def write_progs_dict(self):
-        print("\nSauvegarde de données")
+        print("Saving progs_dict to disk")
         with open(self.programs_file, "w") as f:
             json.dump(self.progs_dict, f)
         return True
