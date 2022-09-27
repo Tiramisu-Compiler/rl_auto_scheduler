@@ -9,24 +9,29 @@ import torch
 
 from tiramisu_programs.schedule_utils import TimeOutException
 
+
 class CPP_File(object):
 
     @classmethod
-    def compile_and_run_tiramisu_code(cls, config,file_path, log_message="No message"):
+    def compile_and_run_tiramisu_code(cls,
+                                      config,
+                                      file_path,
+                                      log_message="No message"):
         # print("inside compile and run")
-        os.environ["FUNC_DIR"] = (
-            "/".join(Path(file_path).parts[:-1]) if len(Path(file_path).parts) > 1 else "."
-        ) + "/"
+        os.environ["FUNC_DIR"] = ("/".join(Path(file_path).parts[:-1]) if len(
+            Path(file_path).parts) > 1 else ".") + "/"
         os.environ["FILE_PATH"] = file_path
 
-        failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd, file_path)
+        failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd,
+                                file_path)
         if failed:
             print(f"Error occured while compiling {file_path}")
             with open(file_path) as file:
                 print(file.read(), file=sys.stderr, flush=True)
             return False
         else:
-            failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd, file_path)
+            failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd,
+                                    file_path)
             if failed:
                 print(f"Error occured while running {file_path}")
                 # with open(file_path) as file: print(file.read(), file=sys.stderr,flush=True)
@@ -34,7 +39,12 @@ class CPP_File(object):
         return True
 
     @classmethod
-    def launch_cmd(cls,step_cmd, file_path, cmd_type=None, nb_executions=None, initial_exec_time=None):
+    def launch_cmd(cls,
+                   step_cmd,
+                   file_path,
+                   cmd_type=None,
+                   nb_executions=None,
+                   initial_exec_time=None):
         failed = False
         try:
             if cmd_type == "initial_exec":
@@ -72,8 +82,8 @@ class CPP_File(object):
 
         except Exception as e:
             print(
-                f"\n# {str(datetime.now())} ---> Error running {step_cmd} \n"
-                + e.stderr.decode("UTF-8"),
+                f"\n# {str(datetime.now())} ---> Error running {step_cmd} \n" +
+                e.stderr.decode("UTF-8"),
                 file=sys.stderr,
                 flush=True,
             )
@@ -89,23 +99,16 @@ class CPP_File(object):
                 )
                 failed = True
         if failed:
-            func_folder = (
-                "/".join(Path(file_path).parts[:-1])
-                if len(Path(file_path).parts) > 1
-                else "."
-            ) + "/"
+            func_folder = ("/".join(Path(file_path).parts[:-1])
+                           if len(Path(file_path).parts) > 1 else ".") + "/"
             with open(func_folder + "error.txt", "a") as f:
-                f.write(
-                    "\nError running "
-                    + step_cmd
-                    + "\n---------------------------\n"
-                    + out.stderr.decode("UTF-8")
-                    + "\n"
-                )
+                f.write("\nError running " + step_cmd +
+                        "\n---------------------------\n" +
+                        out.stderr.decode("UTF-8") + "\n")
         return failed
 
     @classmethod
-    def get_comp_name(cls,file):
+    def get_comp_name(cls, file):
         f = open(file, "r+")
         comp_name = ""
         for l in f.readlines():
@@ -119,7 +122,7 @@ class CPP_File(object):
         return comp_name
 
     @classmethod
-    def get_cpp_file(cls,Dataset_path, func_name):
+    def get_cpp_file(cls, Dataset_path, func_name):
 
         file_name = func_name + "_generator.cpp"
         original_path = Dataset_path + "/" + func_name + "/" + file_name
@@ -128,7 +131,7 @@ class CPP_File(object):
 
         if not os.path.isdir("./Dataset_copies/"):
             os.mkdir("./Dataset_copies/")
-            
+
         if os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
             # print("directory removed")
@@ -136,4 +139,3 @@ class CPP_File(object):
         os.mkdir(target_path)
         os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
-

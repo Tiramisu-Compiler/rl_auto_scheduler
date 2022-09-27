@@ -40,8 +40,7 @@ class ScheduleController:
         self.schedule_list_model = []
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
-            torch.load(config.tiramisu.model_checkpoint, map_location="cpu")
-        )
+            torch.load(config.tiramisu.model_checkpoint, map_location="cpu"))
 
     def apply_action(self, action):
         exit = False
@@ -286,7 +285,8 @@ class ScheduleController:
 
                         if lc_check == -1:
                             print("X: This action produces an error")
-                            self.schedule_object.repr["action_mask"][action.id] = 0
+                            self.schedule_object.repr["action_mask"][
+                                action.id] = 0
                             self.schedule.pop()
                             raise LCException
                         if lc_check == 0:
@@ -480,7 +480,6 @@ class ScheduleController:
 
             self.depth += 1
 
-
         return self.schedule_object.repr, self.speedup, done, info
 
     def test_additional_actions(self):
@@ -495,18 +494,15 @@ class ScheduleController:
             for comp in self.non_skewed_comps:
                 unroll_factor = unroll_optimisation.params_list[comp][1]
                 new_unrolling_params[comp] = {
-                    "dim_index":
-                    len(self.schedule_object.it_dict[comp]) - 1,
+                    "dim_index": len(self.schedule_object.it_dict[comp]) - 1,
                     "unrolling_factor": unroll_factor
                 }
                 new_unrolling_optim_params[comp] = [
-                    len(self.schedule_object.it_dict[comp]) - 1,
-                    unroll_factor
+                    len(self.schedule_object.it_dict[comp]) - 1, unroll_factor
                 ]
 
             new_unrolling_optim = OptimizationCommand(
-                "Unrolling", new_unrolling_optim_params,
-                self.non_skewed_comps)
+                "Unrolling", new_unrolling_optim_params, self.non_skewed_comps)
             new_unrolling_str = ""
             unrolling_str = ""
 
@@ -517,9 +513,9 @@ class ScheduleController:
                     1) + "," + str(unroll_factor) + ",C" + str(
                         self.schedule_object.comp_indic_dict[comp]) + ")"
                 unrolling_str += "U(L" + str(
-                    unroll_optimisation.params_list[comp]
-                    [0]) + "," + str(unroll_factor) + ",C" + str(
-                        self.schedule_object.comp_indic_dict[comp]) + ")"
+                    unroll_optimisation.params_list[comp][0]) + "," + str(
+                        unroll_factor) + ",C" + str(
+                            self.schedule_object.comp_indic_dict[comp]) + ")"
             self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
                 unrolling_str, "") + new_unrolling_str
             self.schedule.remove(unroll_optimisation)
@@ -533,9 +529,7 @@ class ScheduleController:
             exec_time = self.get_exec_time()
 
             if not self.schedule_object.is_parallelized:
-                print(
-                    "Testing if parallelization improves the performance..."
-                )
+                print("Testing if parallelization improves the performance...")
                 action = Action(Action.PARALLELIZATION0,
                                 self.schedule_object.it_dict,
                                 self.schedule_object.common_it)
@@ -544,7 +538,7 @@ class ScheduleController:
                 params = [int(action_params["dim_index"])]
 
                 optim5 = OptimizationCommand("Parallelization", params,
-                                                self.schedule_object.comps)
+                                             self.schedule_object.comps)
                 first_comp = list(self.schedule_object.it_dict.keys())[0]
                 iterator = self.schedule_object.it_dict[first_comp][
                     action_params["dim_index"]]['iterator']
@@ -557,8 +551,7 @@ class ScheduleController:
 
                     self.schedule_object.schedule_str = ScheduleUtils.sched_str(
                         self.schedule_object.schedule_str, action.id,
-                        action_params,
-                        self.schedule_object.comp_indic_dict)
+                        action_params, self.schedule_object.comp_indic_dict)
                     parallelized_exec_time = self.get_exec_time()
                     parallelization_str = 'P(L' + str(
                         action_params["dim_index"]) + ')'
@@ -571,8 +564,7 @@ class ScheduleController:
                 if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
                     exec_time = parallelized_exec_time
 
-                    self.schedule_object.apply_parallelization(
-                        action_params)
+                    self.schedule_object.apply_parallelization(action_params)
                     print("O: Parallelization improves the performance.")
 
                 else:
@@ -589,17 +581,16 @@ class ScheduleController:
 
             print("X: Error while measuring performance")
             print(f"failed to save schedule",
-                    traceback.format_exc(),
-                    flush=True)
+                  traceback.format_exc(),
+                  flush=True)
             info = {"Internal execution error": True}
             return self.schedule_object.repr, self.speedup, True, info
 
         if exec_time != 0:
             print("\nThe final schedule is ",
-                    self.schedule_object.schedule_str)
-            self.speedup = (
-                self.schedule_object.prog.initial_execution_time /
-                exec_time) + EPSILON
+                  self.schedule_object.schedule_str)
+            self.speedup = (self.schedule_object.prog.initial_execution_time /
+                            exec_time) + EPSILON
             print("The speedup is: ", self.speedup)
             start_time = time.time()
         info["depth"] = self.depth
@@ -740,5 +731,3 @@ class ScheduleController:
 
         # print("get_exec_time returned {} for the function {}".format(execution_time,self.schedule_object.prog.name))
         return execution_time
-
-    
