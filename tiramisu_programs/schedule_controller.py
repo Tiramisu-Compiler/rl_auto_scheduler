@@ -1,15 +1,22 @@
+from ast import literal_eval
 import copy
-import traceback
-import numpy as np
-from tiramisu_programs.optimization import OptimizationCommand
-import time
-import torch
+from genericpath import isfile
 import json
+import os
 import math
+import time
+import traceback
+
+import numpy as np
+import torch
 from rl_interface.action import Action
-from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_schedule_representation
+
+from tiramisu_programs.optimization import OptimizationCommand
 from tiramisu_programs.schedule_utils import *
-from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
+from tiramisu_programs.surrogate_model_utils.json_to_tensor import \
+    get_schedule_representation
+from tiramisu_programs.surrogate_model_utils.modeling import \
+    Model_Recursive_LSTM_v2
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -42,6 +49,7 @@ class ScheduleController:
         self.model.load_state_dict(
             torch.load(config.tiramisu.model_checkpoint, map_location="cpu")
         )
+        self.legality_data = dict()
 
     def apply_action(self, action):
         exit = False
@@ -52,14 +60,31 @@ class ScheduleController:
         skew_unroll = False
         self.speedup = 1.0
         self.steps += 1
-        #reward = 0
-        first_comp = self.schedule_object.comps[0]
         if not action.id in range(44, 46):
             action_params = action.parameter()
             # print("action params first are", action_params)
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
+        attempted_transformation_str = ScheduleUtils.sched_str("",
+                                                                action.id,
+                                                                action_params,
+                                                                self.schedule_object.comp_indic_dict)
+        action_repr = (
+            self.schedule_object.prog.name,
+            self.schedule_object.schedule_str,
+            attempted_transformation_str,
+
+        )
+        
+        if action_repr in self.legality_data:
+            exists = True
+            legal = self.legality_data[action_repr]
+        else:
+            exists = False
+            legal = -1
+        #reward = 0
+        first_comp = self.schedule_object.comps[0]
         if action.id in range(28):
 
             if not self.schedule_object.is_interchaged:
@@ -76,15 +101,16 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if not exists else legal
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp)  if not exists else legal
 
                 # print("\n in interchange,  lc res: {}".format(lc_check))
 
                 if lc_check == -1:
                     print("X: The action produced an error.")
+                    self.legality_data[action_repr] = -1
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     self.schedule.pop()
                     raise LCException
@@ -93,11 +119,13 @@ class ScheduleController:
                     print("X: Illegal action")
                     self.schedule.pop()
                     info = {"illegal_action": True}
+                    self.legality_data[action_repr] = 0
                     done = False
                     return self.schedule_object.repr, self.speedup, done, info
 
                 self.schedule_object.apply_interchange(action_params)
                 print("O: Interchange applied")
+                self.legality_data[action_repr] = 1
                 self.schedule_object.is_interchaged = True
 
             else:
@@ -126,15 +154,17 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp)  if not exists else legal
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp)  if not exists else legal
 
                 # print("\n in tiling,  lc res: {}".format(lc_check))
 
                 if lc_check == -1:
                     print("X: This action produces an error")
+                    self.legality_data[action_repr] = -1
+                    self.schedule_object.repr["action_mask"][action.id] = 0
                     self.schedule.pop()
                     raise LCException
 
@@ -142,12 +172,13 @@ class ScheduleController:
                     print("X: Illegal action")
                     self.schedule.pop()
                     info = {"illegal_action": True}
+                    self.legality_data[action_repr] = 0
                     done = False
                     return self.schedule_object.repr, self.speedup, done, info
 
                 self.schedule_object.apply_tiling(action_params)
                 print("O: Tiling applied")
-
+                self.legality_data[action_repr] = 1
                 self.schedule_object.is_tiled = True
 
                 done = True
@@ -197,13 +228,14 @@ class ScheduleController:
                     start_time = time.time()
 
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp)  if not exists else legal
                     l_time = time.time() - start_time
                     # print("\n unrollling lc check {} ".format(lc_check))
                     self.lc_total_time += l_time
 
                     if lc_check == -1:
                         print("X: This action produces an error")
+                        self.legality_data[action_repr] = -1
                         self.schedule_object.repr["action_mask"][action.id] = 0
                         self.schedule.pop()
                         raise LCException
@@ -213,11 +245,13 @@ class ScheduleController:
                         self.schedule.pop()
                         ##reward = -1
                         info = {"illegal_action": True}
+                        self.legality_data[action_repr] = 0
                         done = False
                         return self.schedule_object.repr, self.speedup, done, info
 
                     self.schedule_object.apply_unrolling(action_params)
                     print("O: Unrolling applied")
+                    self.legality_data[action_repr] = 1
                     for i in range(41, 44):
                         self.schedule_object.repr["action_mask"][i] = 0
                     self.schedule_object.is_unrolled = True
@@ -276,16 +310,17 @@ class ScheduleController:
                         if self.schedule_object.is_unrolled:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
                                 self.schedule, self.non_skewed_comps,
-                                first_comp)
+                                first_comp)  if not exists else legal
                         else:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, first_comp=first_comp)
+                                self.schedule, first_comp=first_comp)  if not exists else legal
                         l_time = time.time() - start_time
                         # print("\n skewing lc check res {} ".format(lc_check))
                         self.lc_total_time += l_time
 
                         if lc_check == -1:
                             print("X: This action produces an error")
+                            self.legality_data[action_repr] = -1
                             self.schedule_object.repr["action_mask"][action.id] = 0
                             self.schedule.pop()
                             raise LCException
@@ -294,11 +329,13 @@ class ScheduleController:
                             self.schedule.pop()
                             ##reward = -1
                             info = {"illegal_action": True}
+                            self.legality_data[action_repr] = 0
                             done = False
                             return self.schedule_object.repr, self.speedup, done, info
 
                         self.schedule_object.apply_skewing(action_params)
                         print("O: Skewing is applied")
+                        self.legality_data[action_repr] = 1
                         self.schedule_object.is_skewed = True
 
                     else:
@@ -330,10 +367,10 @@ class ScheduleController:
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp)  if not exists else legal
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp)  if not exists else legal
 
                 l_time = time.time() - start_time
                 # print("\n parallelzation lc check {}".format(lc_check))
@@ -341,6 +378,7 @@ class ScheduleController:
 
                 if lc_check == -1:
                     print("X: This action produces an error")
+                    self.legality_data[action_repr] = -1
                     self.schedule.pop()
                     raise LCException
 
@@ -349,11 +387,13 @@ class ScheduleController:
                     self.schedule.pop()
                     ##reward = -1
                     info = {"illegal_action": True}
+                    self.legality_data[action_repr] = 0
                     done = False
                     return self.schedule_object.repr, self.speedup, done, info
 
                 self.schedule_object.apply_parallelization(action_params)
                 print("O: Parallelisation applied")
+                self.legality_data[action_repr] = 1
                 self.schedule_object.is_parallelized = True
             else:
                 applied_exception = True
@@ -376,16 +416,17 @@ class ScheduleController:
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp)  if not exists else legal
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp)  if not exists else legal
                 l_time = time.time() - start_time
                 # print("loop reversal lc check {}".format(lc_check))
                 self.lc_total_time += l_time
 
                 if lc_check == -1:
                     print("X: This action produces am error")
+                    self.legality_data[action_repr] = -1
                     self.schedule.pop()
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     raise LCException
@@ -396,11 +437,13 @@ class ScheduleController:
                     #self.schedule_object.repr["action_mask"][action.id]=0
                     ##reward = -1
                     info = {"illegal_action": True}
+                    self.legality_data[action_repr] = 0
                     done = False
                     return self.schedule_object.repr, self.speedup, done, info
 
                 self.schedule_object.apply_reversal(action_params)
                 print("O: Loop reversal applied")
+                self.legality_data[action_repr] = 1
                 self.schedule_object.is_reversed = True
             else:
                 applied_exception = True
@@ -430,10 +473,10 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp)  if not exists else legal
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp)  if not exists else legal
 
                 l_time = time.time() - start_time
                 # print("loop fusion lc check {}".format(lc_check))
@@ -441,6 +484,7 @@ class ScheduleController:
 
                 if lc_check == -1:
                     print("X: This action produces an error")
+                    self.legality_data[action_repr] = -1
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     self.schedule.pop()
                     raise LCException
@@ -449,11 +493,13 @@ class ScheduleController:
                     print("X: Illegal action")
                     self.schedule.pop()
                     info = {"illegal_action": True}
+                    self.legality_data[action_repr] = 0
                     done = False
                     return self.schedule_object.repr, self.speedup, done, info
 
                 self.schedule_object.apply_fusion(action_params)
                 print("O: Loop fusion applied")
+                self.legality_data[action_repr] = 1
                 self.schedule_object.is_fused = True
             else:
                 lc_check = 0
@@ -483,6 +529,13 @@ class ScheduleController:
 
         return self.schedule_object.repr, self.speedup, done, info
 
+    def get_final_speedup(self):
+        exec_time = self.get_exec_time()
+        self.speedup = (
+                self.schedule_object.prog.initial_execution_time /
+                exec_time) 
+        return self.speedup    
+           
     def test_additional_actions(self):
         info = dict()
         if self.schedule_object.is_unrolled:
@@ -642,7 +695,7 @@ class ScheduleController:
                 print(f"The predicted speedup is {predicted_speedup}")
                 stat[
                     "predicted_execution_time"] = self.schedule_object.prog.initial_execution_time / predicted_speedup
-                # print("predicted_execution_time", self.schedule_object.prog.initial_execution_time/predicted_speedup)
+                print("predicted_execution_time", self.schedule_object.prog.initial_execution_time/predicted_speedup)
         except Exception:
             print("ERROR_MODEL", traceback.format_exc())
             # or
@@ -741,4 +794,21 @@ class ScheduleController:
         # print("get_exec_time returned {} for the function {}".format(execution_time,self.schedule_object.prog.name))
         return execution_time
 
+    def load_data(self,legality_data=None):
+        file_path = os.path.join(self.config.ray.base_path,"legality.json")
+        if legality_data:
+            self.legality_data = legality_data
+            return self.legality_data
+        else: 
+            if os.path.isfile(file_path):
+                with open(file_path) as legality_json:
+                    data = json.loads(legality_json.read())
+                self.legality_data = {literal_eval(k): v for k, v in data.items()}
+                return self.legality_data
+            else: return dict()
+
+    def save_data(self):
+        file_path = os.path.join(self.config.ray.base_path,"legality.json")
+        with open(file_path,"w+") as legality_json:
+            legality_json.write(json.dumps({str(k): v for k, v in self.legality_data.items()}))
     

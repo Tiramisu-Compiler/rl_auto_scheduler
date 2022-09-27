@@ -22,7 +22,8 @@ class TiramisuScheduleEnvironment(gym.Env):
     def __init__(
         self,
         config,
-        shared_variable_actor
+        shared_variable_actor,
+        data_saving_frequency=2
     ):
 
         # f = Figlet(font='banner3-D')
@@ -37,6 +38,8 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.progs_annot = {}
         self.programs_file = config.environment.programs_file
         self.measurement_env = None
+        self.data_saving_frequency = data_saving_frequency
+        self.data = None
 
         print("Récupération des données depuis {} \n".format(config.environment.dataset_path))
         self.shared_variable_actor = shared_variable_actor
@@ -89,6 +92,10 @@ class TiramisuScheduleEnvironment(gym.Env):
                 print(f"Trying with program {self.prog.name}")
                 self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(schedule=self.schedule_object, nb_executions = self.nb_executions, scheds=self.scheds, config=self.config)
+                if self.data is not None:
+                    self.data = self.schedule_controller.load_data(None)
+                else:
+                    self.schedule_controller.load_data(self.data)
                 self.obs = self.schedule_object.get_representation()
                 if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
@@ -122,6 +129,8 @@ class TiramisuScheduleEnvironment(gym.Env):
         reward = 0
         speedup = 1.0
         self.steps += 1
+        if self.steps % self.data_saving_frequency == 0:
+            self.schedule_controller.save_data()
 
         try:
             action = rl_interface.Action(raw_action, self.schedule_object.it_dict, self.schedule_object.common_it)
@@ -149,7 +158,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             done = True
         if done:
             print("\n ************** End of an episode ************")
-            self.obs, speedup, done, info = self.schedule_controller.test_additional_actions()
+            speedup = self.schedule_controller.get_final_speedup()
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         return self.obs, reward, done, info
