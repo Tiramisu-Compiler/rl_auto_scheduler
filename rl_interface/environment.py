@@ -12,18 +12,17 @@ import ray
 import tiramisu_programs
 import torch
 
-# from pyfiglet import Figlet
 import rl_interface
 
 np.seterr(invalid="raise")
 
 
 class TiramisuScheduleEnvironment(gym.Env):
+    '''
+    The reinforcement learning environment used by the GYM. 
+    '''
 
     def __init__(self, config, shared_variable_actor):
-
-        # f = Figlet(font='banner3-D')
-        # # print(f.renderText("Tiramisu"))
         print("Initializing the environment")
 
         self.config = config
@@ -73,6 +72,12 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.steps = 0
 
     def reset(self, file=None):
+        """
+        Reset the environment to the intial state. A state is defined as a random program with the schedule applied to it.
+        The initial state is defined as a random program with no schedules applied to it.
+        the input file is just a placeholder required by the gym.
+        Returns: The current intitial state.
+        """
         print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
         while True:
@@ -80,7 +85,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                 init_indc = random.randint(0, len(self.progs_list) - 1)
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
                     self.dataset_path, self.progs_list[init_indc])
-                self.prog = tiramisu_programs.tiramisu_program.Tiramisu_Program(
+                self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
                     self.config, file)
                 print(f"Trying with program {self.prog.name}")
                 self.schedule_object = tiramisu_programs.schedule.Schedule(
@@ -122,6 +127,10 @@ class TiramisuScheduleEnvironment(gym.Env):
             return self.obs
 
     def step(self, raw_action):
+        """
+        Apply a transformation on a program. If the action raw_action is legal, it is applied. If not, it is ignored and not added to the schedule.
+        Returns: The current state after eventually applying the transformation, and the reward that the agent received for taking the action.
+        """
         action_name = rl_interface.Action.ACTIONS_ARRAY[raw_action]
         print("\n ----> {} [ {} ] \n".format(
             action_name, self.schedule_object.schedule_str))

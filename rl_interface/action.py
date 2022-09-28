@@ -105,15 +105,13 @@ class Action:
         self.common_it = common_it
 
     def parameter(self, comp=None, prog=None):
-        # #print("in action params function")
-
-        first_comp = list(self.it_dict.keys())[0]
         """"
         Property method to return the parameter related to the action selected.
         Returns:
             The parameter related to this action_id
         """
 
+        first_comp = list(self.it_dict.keys())[0]
         if self.id == 0:  # INTERCHANGE01
             return {"first_dim_index": 0, "second_dim_index": 1}
 

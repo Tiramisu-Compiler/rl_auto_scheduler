@@ -17,6 +17,16 @@ class CPP_File(object):
                                       config,
                                       file_path,
                                       log_message="No message"):
+        """Compiles and runs a C++ file.
+
+        Args:
+            config (RLAutoSchedulerConfig): The experiment config.
+            file_path (str): The path to the C++ file to compile.
+            log_message (str, optional): _description_. Defaults to "No message".
+
+        Returns:
+            bool: Whether or not the compilation and running was successful.
+        """
         # print("inside compile and run")
         os.environ["FUNC_DIR"] = ("/".join(Path(file_path).parts[:-1]) if len(
             Path(file_path).parts) > 1 else ".") + "/"
@@ -34,7 +44,6 @@ class CPP_File(object):
                                     file_path)
             if failed:
                 print(f"Error occured while running {file_path}")
-                # with open(file_path) as file: print(file.read(), file=sys.stderr,flush=True)
                 return False
         return True
 
@@ -45,6 +54,21 @@ class CPP_File(object):
                    cmd_type=None,
                    nb_executions=None,
                    initial_exec_time=None):
+        """Execute a command on the shell.
+
+        Args:
+            step_cmd (str): The command to execute.
+            file_path (str): The file besides which the error message is output in case of error.
+            cmd_type (str, optional): Can take three values: "initial_exec" for commands used to get intital execution time,"sched_eval" for commands used to evauate a schedule, and None for everything else.  Defaults to None.
+            nb_executions (int, optional): The number of times to execyte the shell command. Defaults to None.
+            initial_exec_time (float, optional): The program intial execution time. It is used with the "sched_eval" option . Defaults to None.
+
+        Raises:
+            TimeOutException: The shell command exceeded the timeout.
+
+        Returns:
+            bool: Whether or not the command failed.
+        """
         failed = False
         try:
             if cmd_type == "initial_exec":
@@ -108,22 +132,16 @@ class CPP_File(object):
         return failed
 
     @classmethod
-    def get_comp_name(cls, file):
-        f = open(file, "r+")
-        comp_name = ""
-        for l in f.readlines():
-            if not "//" in l:
-                l = l.split()
-                if "computation" in l or "tiramisu::computation" in l:
-                    l = l[1].split("(")
-                    comp_name = l[0]
-                    break
-        f.close()
-        return comp_name
-
-    @classmethod
     def get_cpp_file(cls, Dataset_path, func_name):
+        """Backup the dataset generator files into the folder Dataset_copies, stored locally.
 
+        Args:
+            Dataset_path (str): The path to the dataset.
+            func_name (str): The function to copy
+
+        Returns:
+            str: The new copied function path.
+        """
         file_name = func_name + "_generator.cpp"
         original_path = Dataset_path + "/" + func_name + "/" + file_name
         dc_path = Path(Dataset_path).parts[:-1]
