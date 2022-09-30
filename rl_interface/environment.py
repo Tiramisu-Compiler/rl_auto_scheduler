@@ -5,6 +5,7 @@ import random
 import sys
 import time
 import traceback
+import subprocess
 
 import gym
 import numpy as np
@@ -13,6 +14,7 @@ import tiramisu_programs
 import torch
 
 import rl_interface
+from utils.environment_variables import configure_env_variables
 
 np.seterr(invalid="raise")
 
@@ -23,8 +25,10 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
 
     def __init__(self, config, shared_variable_actor):
-        print("Initializing the environment")
+        print("Configuring the environment")
+        configure_env_variables(config)
 
+        print("Initializing the environment")
         self.config = config
         self.placeholders = []
         self.speedup = 0
@@ -38,6 +42,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             config.environment.dataset_path))
         self.shared_variable_actor = shared_variable_actor
         self.id = ray.get(self.shared_variable_actor.increment.remote())
+        out = subprocess.run(f"echo \"Worker {self.id} running on hostname $(hostname)\" >> hostnames.txt", check=True ,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.progs_list = ray.get(
             self.shared_variable_actor.get_progs_list.remote(self.id))
         self.progs_dict = ray.get(

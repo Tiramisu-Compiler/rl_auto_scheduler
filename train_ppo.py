@@ -9,7 +9,6 @@ from ray.tune.registry import register_env
 
 from rl_interface.environment import TiramisuScheduleEnvironment
 from rl_interface.model import TiramisuModelMult
-from utils.environment_variables import configure_env_variables
 from utils.global_ray_variables import Actor, GlobalVarActor
 from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
                                            dict_to_config, parse_yaml_file,
@@ -24,9 +23,8 @@ def get_arguments():
 
 # @hydra.main(config_path="config", config_name="config")
 def main(config: RLAutoSchedulerConfig):
-    configure_env_variables(config)
     local_dir = os.path.join(config.ray.base_path, config.ray.log_directory)
-    with ray.init(num_cpus=config.ray.ray_num_cpus):
+    with ray.init(address="auto"):
         progs_list_registery = GlobalVarActor.remote(
             config.environment.programs_file,
             config.environment.dataset_path,
@@ -52,6 +50,7 @@ def main(config: RLAutoSchedulerConfig):
             config={
                 "env": "Tiramisu_env_v1",
                 "num_workers": config.ray.num_workers,
+                "placement_strategy":"SPREAD",
                 "batch_mode": "complete_episodes",
                 "train_batch_size": config.training.train_batch_size,
                 "sgd_minibatch_size": config.training.sgd_minibatch_size,
