@@ -136,8 +136,8 @@ class TiramisuScheduleEnvironment(gym.Env):
             action_name, self.schedule_object.schedule_str))
         info = {}
         applied_exception = False
-        reward = 0
-        speedup = 1.0
+        reward = 0.0
+        speedup = 1e-6
         self.steps += 1
 
         try:
@@ -146,7 +146,9 @@ class TiramisuScheduleEnvironment(gym.Env):
                                          self.schedule_object.common_it)
             _, speedup, done, info = self.schedule_controller.apply_action(
                 action)  # Should return speedup instead of reward
+            print("Obtained speedup: ",speedup)
         except Exception as e:
+            self.schedule_object.repr["action_mask"][action.id] = 0
             print("STEP_ERROR: ",
                   traceback.format_exc(),
                   file=sys.stderr,

@@ -212,8 +212,8 @@ class Action:
                     first_it = 6
                     second_it = 7
 
-                first_fact = random.choice([32, 64, 128])
-                second_fact = random.choice([32, 64, 128])
+                first_fact = 32 #random.choice([32, 64, 128])
+                second_fact = 32 #random.choice([32, 64, 128])
                 # #print("after choosing first and second params and factors")
 
                 # calculate the loop extent to see if we should create new iterators or not
@@ -283,9 +283,9 @@ class Action:
                     second_it = 6
                     third_it = 7
 
-                first_fact = random.choice([32, 64, 128])
-                second_fact = random.choice([32, 64, 128])
-                third_fact = random.choice([32, 64, 128])
+                first_fact = 32 #random.choice([32, 64, 128])
+                second_fact = 32 #random.choice([32, 64, 128])
+                third_fact = 32 #random.choice([32, 64, 128])
                 # calculate the loop extent to see if we should create new iterators or not
                 loop_extent_1 = abs(
                     self.it_dict[first_comp][first_it]["upper_bound"] -
