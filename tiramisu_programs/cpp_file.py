@@ -132,7 +132,7 @@ class CPP_File(object):
         return failed
 
     @classmethod
-    def get_cpp_file(cls, Dataset_path, func_name):
+    def get_cpp_file(cls, Dataset_path, func_name, working_dir="."):
         """Backup the dataset generator files into the folder Dataset_copies, stored locally.
 
         Args:
@@ -145,10 +145,11 @@ class CPP_File(object):
         file_name = func_name + "_generator.cpp"
         original_path = Dataset_path + "/" + func_name + "/" + file_name
         dc_path = Path(Dataset_path).parts[:-1]
-        target_path = "{}/Dataset_copies/{}".format(".", func_name)
+        dataset_copies_folder = os.path.join(working_dir,"Dataset_copies")
+        target_path = os.path.join(dataset_copies_folder,func_name)
 
-        if not os.path.isdir("./Dataset_copies/"):
-            os.mkdir("./Dataset_copies/")
+        if not os.path.isdir(dataset_copies_folder):
+            os.mkdir(dataset_copies_folder)
 
         if os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))

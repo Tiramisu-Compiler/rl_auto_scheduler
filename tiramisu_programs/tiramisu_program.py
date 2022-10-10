@@ -99,7 +99,7 @@ $buffers_init$
         self.file_path = file_path
         with open(file_path, 'r') as f:
             self.original_str = f.read()
-        self.func_folder = ('/'.join(Path(file_path).parts[:-1])
+        self.func_folder = ('/'.join([part.replace("/","") for part in Path(file_path).parts[:-1]])
                             if len(Path(file_path).parts) > 1 else '.') + '/'
         self.body = re.findall(r'(tiramisu::init(?s:.)+)tiramisu::codegen',
                                self.original_str)[0]

@@ -277,15 +277,12 @@ class ScheduleUtils:
 
                 l_code = 'L' + iterator_name
                 iterators_repr.extend([
-                    l_code + 'Interchanged', l_code + 'Skewed',
-                    l_code + 'SkewFactor', l_code + 'Parallelized',
+                    l_code + 'Interchanged',
+                    l_code + 'Skewed', l_code + 'SkewFactor',
+                    l_code + 'Parallelized',
                     l_code + 'Tiled', l_code + 'TileFactor',
-                    l_code + 'Reversed', l_code + 'Fused', 0, 0,
-                    l_code + "_1" + 'Interchanged', l_code + "_1" + 'Skewed',
-                    l_code + "_1" + 'SkewFactor',
-                    l_code + "_1" + 'Parallelized', l_code + "_1" + 'Tiled',
-                    l_code + "_1" + 'TileFactor', l_code + "_1" + 'Reversed',
-                    l_code + "_1" + 'Fused'
+                    l_code + 'Reversed',
+                    l_code + 'Fused'
                 ])
 
             iterator_repr_size = int(

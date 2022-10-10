@@ -122,6 +122,7 @@ class ScheduleController:
                 if lc_check == -1:
                     print("X: This action produces an error")
                     self.schedule.pop()
+                    self.schedule_object.repr["action_mask"][action.id] = 0
                     raise LCException
                 if lc_check == 0:
                     print("X: Illegal action")
@@ -297,6 +298,7 @@ class ScheduleController:
                 if lc_check == -1:
                     print("X: This action produces an error")
                     self.schedule.pop()
+                    self.schedule_object.repr["action_mask"][action.id] = 0
                     raise LCException
 
                 if lc_check == 0:
@@ -417,98 +419,98 @@ class ScheduleController:
 
     def test_additional_actions(self):
         info = dict()
-        if self.schedule_object.is_unrolled:
-            for optim in self.schedule:
-                if optim.type == "Unrolling":
-                    unroll_optimisation = optim
+        # if self.schedule_object.is_unrolled:
+        #     for optim in self.schedule:
+        #         if optim.type == "Unrolling":
+        #             unroll_optimisation = optim
 
-            new_unrolling_params = {}
-            new_unrolling_optim_params = {}
-            for comp in self.non_skewed_comps:
-                unroll_factor = unroll_optimisation.params_list[comp][1]
-                new_unrolling_params[comp] = {
-                    "dim_index": len(self.schedule_object.it_dict[comp]) - 1,
-                    "unrolling_factor": unroll_factor
-                }
-                new_unrolling_optim_params[comp] = [
-                    len(self.schedule_object.it_dict[comp]) - 1, unroll_factor
-                ]
+        #     new_unrolling_params = {}
+        #     new_unrolling_optim_params = {}
+        #     for comp in self.non_skewed_comps:
+        #         unroll_factor = unroll_optimisation.params_list[comp][1]
+        #         new_unrolling_params[comp] = {
+        #             "dim_index": len(self.schedule_object.it_dict[comp]) - 1,
+        #             "unrolling_factor": unroll_factor
+        #         }
+        #         new_unrolling_optim_params[comp] = [
+        #             len(self.schedule_object.it_dict[comp]) - 1, unroll_factor
+        #         ]
 
-            new_unrolling_optim = OptimizationCommand(
-                "Unrolling", new_unrolling_optim_params, self.non_skewed_comps)
-            new_unrolling_str = ""
-            unrolling_str = ""
+        #     new_unrolling_optim = OptimizationCommand(
+        #         "Unrolling", new_unrolling_optim_params, self.non_skewed_comps)
+        #     new_unrolling_str = ""
+        #     unrolling_str = ""
 
-            for comp in self.non_skewed_comps:
-                unroll_factor = unroll_optimisation.params_list[comp][1]
-                new_unrolling_str += "U(L" + str(
-                    len(self.schedule_object.it_dict[comp]) -
-                    1) + "," + str(unroll_factor) + ",C" + str(
-                        self.schedule_object.comp_indic_dict[comp]) + ")"
-                unrolling_str += "U(L" + str(
-                    unroll_optimisation.params_list[comp][0]) + "," + str(
-                        unroll_factor) + ",C" + str(
-                            self.schedule_object.comp_indic_dict[comp]) + ")"
-            self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
-                unrolling_str, "") + new_unrolling_str
-            self.schedule.remove(unroll_optimisation)
-            self.schedule.append(new_unrolling_optim)
-            self.schedule_object.apply_unrolling(new_unrolling_params)
+        #     for comp in self.non_skewed_comps:
+        #         unroll_factor = unroll_optimisation.params_list[comp][1]
+        #         new_unrolling_str += "U(L" + str(
+        #             len(self.schedule_object.it_dict[comp]) -
+        #             1) + "," + str(unroll_factor) + ",C" + str(
+        #                 self.schedule_object.comp_indic_dict[comp]) + ")"
+        #         unrolling_str += "U(L" + str(
+        #             unroll_optimisation.params_list[comp][0]) + "," + str(
+        #                 unroll_factor) + ",C" + str(
+        #                     self.schedule_object.comp_indic_dict[comp]) + ")"
+        #     self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+        #         unrolling_str, "") + new_unrolling_str
+        #     self.schedule.remove(unroll_optimisation)
+        #     self.schedule.append(new_unrolling_optim)
+        #     self.schedule_object.apply_unrolling(new_unrolling_params)
 
-        self.search_time = time.time() - self.search_time
+        # self.search_time = time.time() - self.search_time
 
         try:
             exec_time = 0
             exec_time = self.get_exec_time()
 
-            if not self.schedule_object.is_parallelized:
-                print("Testing if parallelization improves the performance...")
-                action = Action(Action.PARALLELIZATION0,
-                                self.schedule_object.it_dict,
-                                self.schedule_object.common_it)
-                action_params = action.parameter()
+            # if not self.schedule_object.is_parallelized:
+            #     print("Testing if parallelization improves the performance...")
+            #     action = Action(Action.PARALLELIZATION0,
+            #                     self.schedule_object.it_dict,
+            #                     self.schedule_object.common_it)
+            #     action_params = action.parameter()
 
-                params = [int(action_params["dim_index"])]
+            #     params = [int(action_params["dim_index"])]
 
-                optim5 = OptimizationCommand("Parallelization", params,
-                                             self.schedule_object.comps)
-                first_comp = list(self.schedule_object.it_dict.keys())[0]
-                iterator = self.schedule_object.it_dict[first_comp][
-                    action_params["dim_index"]]['iterator']
-                self.schedule_object.schedule_dict[first_comp][
-                    "parallelized_dim"] = iterator
+            #     optim5 = OptimizationCommand("Parallelization", params,
+            #                                  self.schedule_object.comps)
+            #     first_comp = list(self.schedule_object.it_dict.keys())[0]
+            #     iterator = self.schedule_object.it_dict[first_comp][
+            #         action_params["dim_index"]]['iterator']
+            #     self.schedule_object.schedule_dict[first_comp][
+            #         "parallelized_dim"] = iterator
 
-                self.schedule.append(optim5)
+            #     self.schedule.append(optim5)
 
-                try:
+            #     try:
 
-                    self.schedule_object.schedule_str = ScheduleUtils.sched_str(
-                        self.schedule_object.schedule_str, action.id,
-                        action_params, self.schedule_object.comp_indic_dict)
-                    parallelized_exec_time = self.get_exec_time()
-                    parallelization_str = 'P(L' + str(
-                        action_params["dim_index"]) + ')'
-                except:
-                    print("X: Illegal action")
-                    self.schedule.remove(optim5)
-                    self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
-                        parallelization_str, "")
+            #         self.schedule_object.schedule_str = ScheduleUtils.sched_str(
+            #             self.schedule_object.schedule_str, action.id,
+            #             action_params, self.schedule_object.comp_indic_dict)
+            #         parallelized_exec_time = self.get_exec_time()
+            #         parallelization_str = 'P(L' + str(
+            #             action_params["dim_index"]) + ')'
+            #     except:
+            #         print("X: Illegal action")
+            #         self.schedule.remove(optim5)
+            #         self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+            #             parallelization_str, "")
 
-                if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
-                    exec_time = parallelized_exec_time
+            #     if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
+            #         exec_time = parallelized_exec_time
 
-                    self.schedule_object.apply_parallelization(action_params)
-                    print("O: Parallelization improves the performance.")
+            #         self.schedule_object.apply_parallelization(action_params)
+            #         print("O: Parallelization improves the performance.")
 
-                else:
-                    self.schedule.remove(optim5)
-                    self.new_scheds[self.schedule_object.prog.name].pop(
-                        self.schedule_object.schedule_str)
-                    self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
-                        parallelization_str, "")
-                    self.schedule_object.schedule_dict[first_comp][
-                        "parallelized_dim"] = None
-                    print("X: Parallelization improves the performance")
+            #     else:
+            #         self.schedule.remove(optim5)
+            #         self.new_scheds[self.schedule_object.prog.name].pop(
+            #             self.schedule_object.schedule_str)
+            #         self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+            #             parallelization_str, "")
+            #         self.schedule_object.schedule_dict[first_comp][
+            #             "parallelized_dim"] = None
+            #         print("X: Parallelization improves the performance")
 
         except:
 
@@ -529,6 +531,21 @@ class ScheduleController:
         info["depth"] = self.depth
         return self.schedule_object.repr, self.speedup, True, info
 
+    def generate_representations(self):
+        computations_tensor, loops_tensor = get_schedule_representation(
+                self.schedule_object.annotations,
+                self.schedule_object.schedule_dict,
+                self.schedule_object.templates["comps_repr_templates_list"],
+                self.schedule_object.templates["loops_repr_templates_list"],
+                self.schedule_object.
+                templates["comps_placeholders_indices_dict"],
+                self.schedule_object.
+                templates["loops_placeholders_indices_dict"],
+                max_depth=self.schedule_object.MAX_DEPTH - 1)
+        tree_tensors = (self.schedule_object.templates["prog_tree"],
+                            computations_tensor, loops_tensor)
+        return tree_tensors
+
     def get_exec_time_by_model(self, optims_list, cmd_type, nb_executions,
                                initial_exec_time):
         self.schedule_list_model.append({
@@ -539,18 +556,7 @@ class ScheduleController:
         })
         stat = dict()
         try:
-            computations_tensor, loops_tensor = get_schedule_representation(
-                self.schedule_object.annotations,
-                self.schedule_object.schedule_dict,
-                self.schedule_object.templates["comps_repr_templates_list"],
-                self.schedule_object.templates["loops_repr_templates_list"],
-                self.schedule_object.
-                templates["comps_placeholders_indices_dict"],
-                self.schedule_object.
-                templates["loops_placeholders_indices_dict"],
-                max_depth=self.schedule_object.MAX_DEPTH - 1)
-            tree_tensors = (self.schedule_object.templates["prog_tree"],
-                            computations_tensor, loops_tensor)
+            tree_tensors = self.generate_representations()
             with torch.no_grad():
                 predicted_speedup = self.model(
                     tree_tensors,

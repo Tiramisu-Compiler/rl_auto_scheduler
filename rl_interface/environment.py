@@ -13,6 +13,7 @@ import tiramisu_programs
 import torch
 
 import rl_interface
+from utils.environment_variables import configure_env_variables
 
 np.seterr(invalid="raise")
 
@@ -24,7 +25,7 @@ class TiramisuScheduleEnvironment(gym.Env):
 
     def __init__(self, config, shared_variable_actor):
         print("Initializing the environment")
-
+        configure_env_variables(config)
         self.config = config
         self.placeholders = []
         self.speedup = 0
@@ -83,8 +84,9 @@ class TiramisuScheduleEnvironment(gym.Env):
         while True:
             try:
                 init_indc = random.randint(0, len(self.progs_list) - 1)
-                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, self.progs_list[init_indc])
+                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(self.dataset_path,
+                                                                        self.progs_list[init_indc],
+                                                                        working_dir=self.config.training.dataset_copies_path)
                 self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
                     self.config, file)
                 print(f"Trying with program {self.prog.name}")
@@ -164,6 +166,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
+                self.schedule_object.repr["action_mask"][action.id] = 0
         self.obs = copy.deepcopy(self.schedule_object.get_representation())
         if (self.schedule_controller.depth
                 == self.schedule_object.MAX_DEPTH) or (self.steps >= 20):
