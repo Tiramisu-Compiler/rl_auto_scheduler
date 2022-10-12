@@ -148,6 +148,7 @@ $buffers_init$
         comps=None,
         first_comp=None
     ): 
+        return 1
         legality_check_lines = '''
     prepare_schedules_for_legality_checks();
     perform_full_dependency_analysis();

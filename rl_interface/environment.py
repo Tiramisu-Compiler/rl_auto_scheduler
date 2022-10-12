@@ -13,6 +13,7 @@ import tiramisu_programs
 import torch
 
 import rl_interface
+from utils.environment_variables import configure_env_variables
 
 np.seterr(invalid="raise")
 
@@ -21,10 +22,10 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     The reinforcement learning environment used by the GYM. 
     '''
-
+    MAX_STEPS = 20
     def __init__(self, config, shared_variable_actor):
         print("Initializing the environment")
-
+        configure_env_variables(config)
         self.config = config
         self.placeholders = []
         self.speedup = 0
@@ -135,45 +136,24 @@ class TiramisuScheduleEnvironment(gym.Env):
         print("\n ----> {} [ {} ] \n".format(
             action_name, self.schedule_object.schedule_str))
         info = {}
-        applied_exception = False
         reward = 0.0
-        speedup = 1e-6
+        speedup = 1.0
         self.steps += 1
 
-        try:
-            action = rl_interface.Action(raw_action,
-                                         self.schedule_object.it_dict,
-                                         self.schedule_object.common_it)
-            _, speedup, done, info = self.schedule_controller.apply_action(
-                action)  # Should return speedup instead of reward
-            print("Obtained speedup: ",speedup)
-        except Exception as e:
-            self.schedule_object.repr["action_mask"][action.id] = 0
-            print("STEP_ERROR: ",
-                  traceback.format_exc(),
-                  file=sys.stderr,
-                  end=" ")
-            if applied_exception:
-                print("Already Applied exception")
-                info = {"more than one time": True}
-                done = False
-                return self.obs, reward, done, info
-
-            else:
-                print("This action yields an error. It won't be applied.")
-                done = False
-                info = {
-                    "depth": self.depth,
-                    "error": "ended with error in the step function",
-                }
-        self.obs = copy.deepcopy(self.schedule_object.get_representation())
+        action = rl_interface.Action(raw_action,
+                                        self.schedule_object.it_dict,
+                                        self.schedule_object.common_it)
+        (self.obs,
+         speedup,
+         done,
+         info) = self.schedule_controller.attempt_action(action)
+        reward_object = rl_interface.Reward(speedup)
+        reward = reward_object.reward
+        print("speedup={};reward={} ".format(speedup,reward))
+                
         if (self.schedule_controller.depth
-                == self.schedule_object.MAX_DEPTH) or (self.steps >= 20):
+                == self.schedule_object.MAX_DEPTH) or (self.steps >= self.MAX_STEPS):
             done = True
         if done:
             print("\n ************** End of an episode ************")
-            self.obs, speedup, done, info = self.schedule_controller.test_additional_actions(
-            )
-        reward_object = rl_interface.Reward(speedup)
-        reward = reward_object.reward
         return self.obs, reward, done, info

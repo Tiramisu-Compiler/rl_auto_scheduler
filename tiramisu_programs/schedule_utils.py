@@ -39,6 +39,8 @@ class NumpyEncoder(json.JSONEncoder):
 class LCException(Exception):
     pass
 
+class IllegalScheduleException(Exception):
+    pass
 
 class SkewParamsException(Exception):
     pass
