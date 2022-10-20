@@ -142,7 +142,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         info = {}
         applied_exception = False
         reward = 0.0
-        speedup = 1e-6
+        speedup = 1.0
         self.steps += 1
 
         try:

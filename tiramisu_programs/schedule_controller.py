@@ -14,7 +14,6 @@ from tiramisu_programs.surrogate_model_utils.modeling import \
     Model_Recursive_LSTM_v2
 
 global_dioph_sols_dict = dict()
-EPSILON = 1e-6
 
 
 class ScheduleController:
@@ -88,7 +87,7 @@ class ScheduleController:
                     info = {"illegal_action": True}
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
-                    return self.schedule_object.repr, EPSILON, done, info
+                    return self.schedule_object.repr, 1.0, done, info
                 self.schedule_object.apply_interchange(action_params)
                 print("O: Interchange applied")
                 self.schedule_object.is_interchaged = True
@@ -132,7 +131,7 @@ class ScheduleController:
                     info = {"illegal_action": True}
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
-                    return self.schedule_object.repr, EPSILON, done, info
+                    return self.schedule_object.repr, 1.0, done, info
 
                 self.schedule_object.apply_tiling(action_params)
                 print("O: Tiling applied")
@@ -189,7 +188,7 @@ class ScheduleController:
                         info = {"illegal_action": True}
                         self.schedule_object.repr["action_mask"][action.id] = 0
                         done = False
-                        return self.schedule_object.repr, EPSILON, done, info
+                        return self.schedule_object.repr, 1.0, done, info
 
                     self.schedule_object.apply_unrolling(action_params)
                     print("O: Unrolling applied")
@@ -263,7 +262,7 @@ class ScheduleController:
                             info = {"illegal_action": True}
                             self.schedule_object.repr["action_mask"][action.id] = 0
                             done = False
-                            return self.schedule_object.repr, EPSILON, done, info
+                            return self.schedule_object.repr, 1.0, done, info
 
                         self.schedule_object.apply_skewing(action_params)
                         print("O: Skewing is applied")
@@ -311,7 +310,7 @@ class ScheduleController:
                     info = {"illegal_action": True}
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
-                    return self.schedule_object.repr, EPSILON, done, info
+                    return self.schedule_object.repr, 1.0, done, info
 
                 self.schedule_object.apply_parallelization(action_params)
                 print("O: Parallelisation applied")
@@ -348,7 +347,7 @@ class ScheduleController:
                     info = {"illegal_action": True}
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
-                    return self.schedule_object.repr, EPSILON, done, info
+                    return self.schedule_object.repr, 1.0, done, info
 
                 self.schedule_object.apply_reversal(action_params)
                 
@@ -397,7 +396,7 @@ class ScheduleController:
                     self.schedule_object.repr["action_mask"][action.id] = 0
                     info = {"illegal_action": True}
                     done = False
-                    return self.schedule_object.repr, EPSILON, done, info
+                    return self.schedule_object.repr, 1.0, done, info
 
                 self.schedule_object.apply_fusion(action_params)
                 print("O: Loop fusion applied")
@@ -423,14 +422,27 @@ class ScheduleController:
 
             self.depth += 1
             # print("The schedule is ",self.schedule_object.schedule_str)
-            speedup_improvement = self.get_speedup_improvement()
-            return self.schedule_object.repr, speedup_improvement, done, info
+            # speedup = self.get_final_speedup()
+            return self.schedule_object.repr, 1.0, done, info
         elif exit:
             return self.schedule_object.repr, 1.0, done, info
         elif lc_check == 0:
-            return self.schedule_object.repr, EPSILON, done, info
+            return self.schedule_object.repr, 1.0, done, info
         else:
             return self.schedule_object.repr, 1.0, done, info
+
+
+    def get_final_speedup(self):
+        exec_time = 0
+        exec_time = self.get_exec_time()
+        speedup=1.0
+        if exec_time != 0:
+            speedup = (self.schedule_object.prog.initial_execution_time /
+                            exec_time) 
+            self.speedup = speedup
+            # print("The speedup to the last timestamp: ", speedup_improvement)
+            # print("The total speedup: ", speedup)
+        return speedup
 
     def get_speedup_improvement(self):
         exec_time = 0
@@ -560,7 +572,7 @@ class ScheduleController:
             print("\nThe final schedule is ",
                   self.schedule_object.schedule_str)
             self.speedup = (self.schedule_object.prog.initial_execution_time /
-                            exec_time) + EPSILON
+                            exec_time) + 1.0
             print("The speedup is: ", self.speedup)
             start_time = time.time()
         info["depth"] = self.depth

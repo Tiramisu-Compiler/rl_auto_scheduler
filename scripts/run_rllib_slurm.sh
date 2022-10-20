@@ -1,10 +1,9 @@
 #!/bin/bash
-#SBATCH --reservation c2
-#SBATCH -p compute
+#SBATCH -p research
 #SBATCH --nodes=4
 #SBATCH --exclusive
 #SBATCH --tasks-per-node 1
-#SBATCH --cpus-per-task=28
+#SBATCH --cpus-per-task=48
 #SBATCH -t 7-0:00:00
 #SBATCH -o outputs/train.out
 #SBATCH -e outputs/train.err
