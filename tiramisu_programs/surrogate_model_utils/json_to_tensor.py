@@ -183,16 +183,12 @@ def get_sched_rep(program_json, sched_json, max_depth):
                 loops_placeholders_indices_dict[element] = (loop_index, j)
 
     def update_tree_atributes(node):
-        node["loop_index"] = torch.tensor(
-            loops_indices_dict[node["loop_name"]]
-        )  # .to(train_device)
+        node["loop_index"] = loops_indices_dict[node["loop_name"]]
         if node["computations_list"] != []:
-            node["computations_indices"] = torch.tensor(
-                [
+            node["computations_indices"] = [
                     comps_indices_dict[comp_name]
                     for comp_name in node["computations_list"]
                 ]
-            )  # .to(train_device)
             node["has_comps"] = True
         else:
             node["has_comps"] = False

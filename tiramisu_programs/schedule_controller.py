@@ -571,8 +571,7 @@ class ScheduleController:
         if exec_time != 0:
             print("\nThe final schedule is ",
                   self.schedule_object.schedule_str)
-            self.speedup = (self.schedule_object.prog.initial_execution_time /
-                            exec_time) + 1.0
+            self.speedup = (self.schedule_object.prog.initial_execution_time / exec_time)
             print("The speedup is: ", self.speedup)
             start_time = time.time()
         info["depth"] = self.depth

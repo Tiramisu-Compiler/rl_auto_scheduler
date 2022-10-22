@@ -1,4 +1,5 @@
 import traceback
+import json
 
 import numpy as np
 import rl_interface
@@ -93,6 +94,7 @@ class Schedule:
         self.repr["loops_representation"] = np.empty((0, 26), np.float32)
         self.repr['child_list'] = np.empty((0, 11), np.float32)
         self.repr['has_comps'] = np.empty((0, 12), np.float32)
+        self.repr["prog_tree"] = np.empty((0,5000),np.float32) 
         self.repr['computations_indices'] = np.empty((0, 5), np.float32)
 
         for i in range(5):
@@ -231,6 +233,10 @@ class Schedule:
         if len(self.comps) == 1:
             np.put(self.repr["action_mask"], [56, 57, 58, 59, 60],
                    [0, 0, 0, 0, 0])
+        max_size = 5000
+        string = json.dumps(self.templates["prog_tree"])
+        padded_string = string + (max_size - len(string))*"_"
+        self.repr["prog_tree"] = np.array(list(padded_string),"U1").view(np.float32)
         return self.repr
 
     def apply_interchange(self, params):

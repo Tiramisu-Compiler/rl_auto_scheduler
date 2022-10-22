@@ -67,6 +67,8 @@ class TiramisuScheduleEnvironment(gym.Env):
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, )),
             "computations_indices":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 5)),
+            "prog_tree":
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,))
         })
 
         self.dataset_path = config.environment.dataset_path
@@ -149,8 +151,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             action = rl_interface.Action(raw_action,
                                          self.schedule_object.it_dict,
                                          self.schedule_object.common_it)
-            _, speedup, done, info = self.schedule_controller.apply_action(
-                action)  # Should return speedup instead of reward
+            _, speedup, done, info = self.schedule_controller.apply_action(action)
             print("Obtained speedup: ",speedup)
         except Exception as e:
             self.schedule_object.repr["action_mask"][action.id] = 0
