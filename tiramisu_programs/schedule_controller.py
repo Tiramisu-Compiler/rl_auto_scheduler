@@ -2,6 +2,7 @@ import copy
 import sys
 import time
 import traceback
+from typing import List
 
 import torch
 from rl_interface.action import Action
@@ -39,6 +40,7 @@ class ScheduleController:
         else:
             self.measurement_env = self.get_exec_time_by_model
         self.lc_total_time = 0
+        self.lc_data = []
         self.schedule_list_model = []
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
@@ -50,6 +52,7 @@ class ScheduleController:
         info = {}
         self.steps += 1
         first_comp = self.schedule_object.comps[0]
+        saved_legality = self.get_legality(action=action)
 
         if not action.id in range(44, 46): # If the action is skewing
             action_params = action.parameter()   # Skewing has no parameters
@@ -70,10 +73,11 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+
                 if lc_check == -1:
                     print("X: The action produced an error.")
                     self.pop_schedule(action=action)
@@ -112,10 +116,10 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
                 if lc_check == -1:
                     print("X: This action produces an error")
                     self.pop_schedule(action=action)
@@ -165,7 +169,7 @@ class ScheduleController:
                     self.schedule.append(optim3)
                     start_time = time.time()
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                     l_time = time.time() - start_time
                     self.lc_total_time += l_time
 
@@ -233,10 +237,10 @@ class ScheduleController:
                         if self.schedule_object.is_unrolled:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
                                 self.schedule, self.non_skewed_comps,
-                                first_comp)
+                                first_comp) if saved_legality is None else saved_legality
                         else:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, first_comp=first_comp)
+                                self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
                         l_time = time.time() - start_time
                         self.lc_total_time += l_time
 
@@ -276,10 +280,10 @@ class ScheduleController:
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -312,10 +316,10 @@ class ScheduleController:
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp=first_comp) if saved_legality is None else saved_legality
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
                 if lc_check == -1:
@@ -353,10 +357,10 @@ class ScheduleController:
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp)
+                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp)
+                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -628,3 +632,23 @@ class ScheduleController:
         else:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time
+
+    def save_legality_data(self,action,lc_check):
+        key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
+        self.lc_data.append(
+            [
+                key,
+                lc_check
+            ]
+        )
+    
+    def get_legality(self,action):
+        key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
+        values = [v for (k,v) in self.lc_data if k == key]
+        return values[0] if len(values) else None
+
+    def get_legality_data(self):
+        return self.lc_data
+
+    def load_legality_data(self, lc_data: List) -> None:
+        self.lc_data = lc_data

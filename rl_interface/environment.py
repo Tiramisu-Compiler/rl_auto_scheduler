@@ -23,13 +23,14 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     The reinforcement learning environment used by the GYM. 
     '''
-
+    SAVING_FREQUENCY = 500
     def __init__(self, config, shared_variable_actor):
         print("Configuring the environment")
         configure_env_variables(config)
 
         print("Initializing the environment")
         self.config = config
+        self.total_steps = 0
         self.placeholders = []
         self.speedup = 0
         self.schedule = []
@@ -101,6 +102,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                     nb_executions=self.nb_executions,
                     scheds=self.scheds,
                     config=self.config)
+                lc_data = ray.get(self.shared_variable_actor.get_lc_data.remote())
+                self.schedule_controller.load_legality_data(lc_data)
                 self.obs = self.schedule_object.get_representation()
                 if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys(
@@ -145,6 +148,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         reward = 0.0
         speedup = 1.0
         self.steps += 1
+        self.total_steps += 1
 
         try:
             action = rl_interface.Action(raw_action,
@@ -179,6 +183,10 @@ class TiramisuScheduleEnvironment(gym.Env):
         if done:
             print("\n ************** End of an episode ************")
             speedup = self.schedule_controller.get_final_score()
+            ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
+
+        if self.total_steps % self.SAVING_FREQUENCY:
+            ray.get(self.shared_variable_actor.write_lc_data.remote())
         return self.obs, reward, done, info
