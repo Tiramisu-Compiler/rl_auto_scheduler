@@ -14,6 +14,7 @@ EPSILON = 1e-6
 
 class Schedule:
     MAX_DEPTH = 6
+    MAX_COMPS = 5
 
     def __init__(self, program):
         self.depth = 0
@@ -30,35 +31,36 @@ class Schedule:
         self.repr = None
 
     def get_representation(self):
+        """
+        Get the schedule representation as an observation to feed into the RL model.
+        """
         if self.repr is not None: return self.repr
-        self.prog_rep, self.comps_placeholders, self.comp_indic_dict = ScheduleUtils.get_representation(
-            self.annotations)
+
+        (self.prog_rep,
+        self.comps_placeholders,
+        self.comp_indic_dict) = ScheduleUtils.get_representation(self.annotations)
 
         for comp_rep in self.prog_rep:
             if len(comp_rep) != 1052:
                 raise RepresentationLengthException
 
-        if len(self.comps) != 1:
-
+        if len(self.comps) != 1:   # Multi-computation program
             self.comps_it = []
             for comp in self.comps:
                 self.comps_it.append(
                     self.annotations["computations"][comp]["iterators"])
-
             self.common_it = self.comps_it[0]
-
             for comp_it in self.comps_it[1:]:
-
                 self.common_it = [it for it in comp_it if it in self.common_it]
 
-        elif len(self.comps) > 5:
+        elif len(self.comps) > self.MAX_COMPS:  # If the program contains more than the maximum number of computations
             raise IndexError
 
-        else:
-
+        else:  # A single comp program
             self.common_it = self.annotations["computations"][
                 self.comps[0]]["iterators"]
 
+        
         self.schedule_dict = dict()
         self.schedule_dict["fusions"] = None
         for comp in self.comps:
@@ -73,8 +75,7 @@ class Schedule:
             self.schedule_dict[comp]['parallelized_dim'] = None
             self.schedule_dict[comp]['unrolling_factor'] = None
             self.schedule_dict[comp]['tiling'] = None
-        self.schedule_dict['tree_structure'] = get_tree_structure(
-            self.annotations)
+        self.schedule_dict['tree_structure'] = get_tree_structure(self.annotations)
 
         self.templates = dict()
         (self.templates["prog_tree"],

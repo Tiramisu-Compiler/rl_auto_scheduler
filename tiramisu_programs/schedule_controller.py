@@ -1,4 +1,5 @@
 import copy
+import sys
 import time
 import traceback
 
@@ -47,20 +48,17 @@ class ScheduleController:
         exit = False
         done = False
         info = {}
-        applied_exception = False
-        skew_params_exception = False
-        skew_unroll = False
-        # self.speedup = 1.0
         self.steps += 1
-        #reward = 0
         first_comp = self.schedule_object.comps[0]
-        if not action.id in range(44, 46):
-            action_params = action.parameter()
+
+        if not action.id in range(44, 46): # If the action is skewing
+            action_params = action.parameter()   # Skewing has no parameters
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
-        if action.id in range(28):
-            if not self.schedule_object.is_interchaged:
+
+        if action.id in range(28):  # Interchange
+            if not self.schedule_object.is_interchaged: 
                 params = [
                     int(action_params["first_dim_index"]),
                     int(action_params["second_dim_index"])
@@ -78,14 +76,12 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp)
                 if lc_check == -1:
                     print("X: The action produced an error.")
-                    self.schedule_object.repr["action_mask"][action.id] = 0
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     raise LCException
                 if lc_check == 0:
                     print("X: Illegal action")
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     info = {"illegal_action": True}
-                    self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
                 self.schedule_object.apply_interchange(action_params)
@@ -94,9 +90,9 @@ class ScheduleController:
 
             else:
                 print("X: Interchange already applied execption")
-                applied_exception = True
                 raise IsInterchangedException
-        if action.id in range(28, 41):
+
+        if action.id in range(28, 41): # Tiling
             if not self.schedule_object.is_tiled:
                 params = [
                     int(action_params["first_dim_index"]),
@@ -122,14 +118,12 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp)
                 if lc_check == -1:
                     print("X: This action produces an error")
-                    self.schedule.pop()
-                    self.schedule_object.repr["action_mask"][action.id] = 0
+                    self.pop_schedule(action=action)
                     raise LCException
                 if lc_check == 0:
                     print("X: Illegal action")
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     info = {"illegal_action": True}
-                    self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
 
@@ -145,10 +139,9 @@ class ScheduleController:
                     action_params, self.schedule_object.comp_indic_dict)
             else:
                 print("X: Tiling already applied exception")
-                applied_exception = True
                 raise IsTiledException
 
-        if action.id in range(41, 44):
+        if action.id in range(41, 44): # Unrolling
             params = {}
             if not self.schedule_object.is_unrolled:
                 self.non_skewed_comps = []
@@ -178,15 +171,13 @@ class ScheduleController:
 
                     if lc_check == -1:
                         print("X: This action produces an error")
-                        self.schedule_object.repr["action_mask"][action.id] = 0
-                        self.schedule.pop()
+                        self.pop_schedule(action=action)
                         raise LCException
 
                     if lc_check == 0:
                         print("X: Illegal action")
-                        self.schedule.pop()
+                        self.pop_schedule(action=action)
                         info = {"illegal_action": True}
-                        self.schedule_object.repr["action_mask"][action.id] = 0
                         done = False
                         return self.schedule_object.repr, 1.0, done, info
 
@@ -201,11 +192,10 @@ class ScheduleController:
                         'error'] = "trying to apply unrolling after skewing in one of the computations"
 
             else:
-                applied_exception = True
                 print("X: Unrolling is already applied")
                 raise IsUnrolledException
 
-        if action.id in range(44, 46):
+        if action.id in range(44, 46): # Skewing
 
             if not self.schedule_object.is_skewed:
 
@@ -252,15 +242,12 @@ class ScheduleController:
 
                         if lc_check == -1:
                             print("X: This action produces an error")
-                            self.schedule_object.repr["action_mask"][
-                                action.id] = 0
-                            self.schedule.pop()
+                            self.pop_schedule(action=action)
                             raise LCException
                         if lc_check == 0:
                             print("X: Illegal action")
-                            self.schedule.pop()
+                            self.pop_schedule(action=action)
                             info = {"illegal_action": True}
-                            self.schedule_object.repr["action_mask"][action.id] = 0
                             done = False
                             return self.schedule_object.repr, 1.0, done, info
 
@@ -269,20 +256,17 @@ class ScheduleController:
                         self.schedule_object.is_skewed = True
 
                     else:
-                        skew_unroll = True
                         raise SkewUnrollException
 
                 else:
                     print("X: Skewing prams are null")
-                    skew_params_exception = True
                     raise SkewParamsException
 
             else:
                 print("X: Skewing is already applied")
-                applied_exception = True
                 raise IsSkewedException
 
-        if action.id in range(46, 48):
+        if action.id in range(46, 48): # Parallelization
             if not self.schedule_object.is_parallelized:
                 params = [int(action_params["dim_index"])]
 
@@ -301,14 +285,13 @@ class ScheduleController:
                 self.lc_total_time += l_time
                 if lc_check == -1:
                     print("X: This action produces an error")
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     raise LCException
 
                 if lc_check == 0:
                     print("X: Illegal action")
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     info = {"illegal_action": True}
-                    self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
 
@@ -316,11 +299,10 @@ class ScheduleController:
                 print("O: Parallelisation applied")
                 self.schedule_object.is_parallelized = True
             else:
-                applied_exception = True
                 print("X: Parallelisation is already applied")
                 raise IsParallelizedException
 
-        if action.id in range(48, 56):
+        if action.id in range(48, 56):  # Reversal
 
             if not self.schedule_object.is_reversed:
                 params = [int(action_params["dim_index"])]
@@ -338,14 +320,12 @@ class ScheduleController:
                 self.lc_total_time += l_time
                 if lc_check == -1:
                     print("X: This action produces am error")
-                    self.schedule.pop()
-                    self.schedule_object.repr["action_mask"][action.id] = 0
+                    self.pop_schedule(action=action)
                     raise LCException
                 if lc_check == 0:
                     print("X: Illegal action")
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     info = {"illegal_action": True}
-                    self.schedule_object.repr["action_mask"][action.id] = 0
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
 
@@ -354,13 +334,10 @@ class ScheduleController:
                 print("O: Loop reversal applied")
                 self.schedule_object.is_reversed = True
             else:
-                applied_exception = True
-
                 print("X: Loop reversal already applied")
-
                 raise IsReversedException
 
-        if action.id in range(56, 61):
+        if action.id in range(56, 61):  # Fusion
             params = [
                 int(action_params["dim_index"]), action_params["fuse_comps"]
             ]
@@ -386,14 +363,12 @@ class ScheduleController:
 
                 if lc_check == -1:
                     print("X: This action produces an error")
-                    self.schedule_object.repr["action_mask"][action.id] = 0
-                    self.schedule.pop()
+                    self.pop_schedule(action=action)
                     raise LCException
 
                 if lc_check == 0:
                     print("X: Illegal action")
-                    self.schedule.pop()
-                    self.schedule_object.repr["action_mask"][action.id] = 0
+                    self.pop_schedule(action=action)
                     info = {"illegal_action": True}
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
@@ -421,8 +396,6 @@ class ScheduleController:
                     self.schedule_object.comp_indic_dict)
 
             self.depth += 1
-            # print("The schedule is ",self.schedule_object.schedule_str)
-            # speedup = self.get_final_speedup()
             return self.schedule_object.repr, 1.0, done, info
         elif exit:
             return self.schedule_object.repr, 1.0, done, info
@@ -431,35 +404,23 @@ class ScheduleController:
         else:
             return self.schedule_object.repr, 1.0, done, info
 
+    def pop_schedule(self,action):
+        self.schedule_object.repr["action_mask"][action.id] = 0
+        self.schedule.pop()
 
-    def get_final_speedup(self):
+    def get_final_score(self):
         exec_time = 0
         exec_time = self.get_exec_time()
         speedup=1.0
         if exec_time != 0:
             speedup = (self.schedule_object.prog.initial_execution_time /
                             exec_time) 
-            self.speedup = speedup
-            # print("The speedup to the last timestamp: ", speedup_improvement)
-            # print("The total speedup: ", speedup)
         return speedup
-
-    def get_speedup_improvement(self):
-        exec_time = 0
-        exec_time = self.get_exec_time()
-        speedup_improvement=1.0
-        if exec_time != 0:
-            speedup = (self.schedule_object.prog.initial_execution_time /
-                            exec_time) 
-            speedup_improvement = speedup / self.speedup
-            self.speedup = speedup
-            print("The speedup to the last timestamp: ", speedup_improvement)
-            print("The total speedup: ", speedup)
-        return speedup_improvement
 
     def test_additional_actions(self, training = True):
         info = dict()
         if training:
+            print("This operation alters the training and, therefore, it won't be executed")
             try:
                 exec_time = 0
                 exec_time = self.get_exec_time()

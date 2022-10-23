@@ -676,3 +676,15 @@ def get_tree_structure(prog_dict):
     root_iterator = prog_dict["iterators"][root_loop_name]
     root_iterator["loop_name"] = root_loop_name
     return nest_iterators(root_iterator, iterators)
+
+def get_tree_footprint(tree):
+    footprint = "<L" + str(int(tree["loop_index"])) + ">"
+    if tree["has_comps"]:
+        footprint += "["
+        for idx in tree["computations_indices"]:
+            footprint += "C" + str(int(idx))
+        footprint += "]"
+    for child in tree["child_list"]:
+        footprint += get_tree_footprint(child)
+    footprint += "</L" + str(int(tree["loop_index"])) + ">"
+    return footprint

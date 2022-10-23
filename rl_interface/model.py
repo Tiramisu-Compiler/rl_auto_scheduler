@@ -1,5 +1,7 @@
 import math
 import torch
+import json
+import traceback
 import numpy as np
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.framework import try_import_torch
@@ -10,6 +12,7 @@ from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models.torch.misc import SlimFC, normc_initializer
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.framework import try_import_torch
+from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_tree_footprint
 
 train_device_name = 'cpu'  # choose training/storing device, either 'cuda:X' or 'cpu'
 store_device_name = 'cpu'
@@ -134,12 +137,18 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         loops_tensor=input_dict["obs_flat"]["loops_representation"]
         child_list=input_dict["obs_flat"]["child_list"][:][:][0][0]
         has_comps=input_dict["obs_flat"]["has_comps"][0].tolist()
-        prog_tree_string = "".join(list(np.array(input_dict["obs_flat"]["prog_tree"])[0].view('U1'))).strip("_") # FIX THIS  --> Compare tree footprint
+        try:
+            prog_tree_tensor = np.array(input_dict["obs_flat"]["prog_tree"])
+            prog_tree_string = "".join(list(prog_tree_tensor[0].view('U1'))).strip("_")
+            prog_tree = json.loads(prog_tree_string)
+            # tree_footprint = get_tree_footprint(prog_tree)
+        except:
+            pass
+        # prog_tree_string =  # FIX THIS  --> Compare tree footprint
         computations_indices=input_dict["obs_flat"]["computations_indices"][:][:][0][0]
 
 
         try:
-            prog_tree = json.loads(prog_tree_string)
             loop_index=0
             prog_embedding=self.get_hidden_state(prog_tree,comps_embeddings,loops_tensor)
         except:

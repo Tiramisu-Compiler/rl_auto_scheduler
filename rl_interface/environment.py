@@ -38,11 +38,10 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.programs_file = config.environment.programs_file
         self.measurement_env = None
 
-        print("Récupération des données depuis {} \n".format(
-            config.environment.dataset_path))
+        print("Loading data from {} \n".format(config.environment.dataset_path))    # FIX that here
         self.shared_variable_actor = shared_variable_actor
         self.id = ray.get(self.shared_variable_actor.increment.remote())
-        out = subprocess.run(f"echo \"Worker {self.id} running on hostname $(hostname)\" >> hostnames.txt", check=True ,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # out = subprocess.run(f"echo \"Worker {self.id} running on hostname $(hostname)\" >> hostnames.txt", check=True ,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.progs_list = ray.get(
             self.shared_variable_actor.get_progs_list.remote(self.id))
         self.progs_dict = ray.get(
@@ -89,9 +88,9 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.episode_total_time = time.time()
         while True:
             try:
-                init_indc = random.randint(0, len(self.progs_list) - 1)
+                random_prog_index = random.randint(0, len(self.progs_list) - 1)
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, self.progs_list[init_indc])
+                    self.dataset_path, self.progs_list[random_prog_index])
                 self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
                     self.config, file)
                 print(f"Trying with program {self.prog.name}")
@@ -153,6 +152,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                                          self.schedule_object.common_it)
             _, speedup, done, info = self.schedule_controller.apply_action(action)
             print("Obtained speedup: ",speedup)
+            
         except Exception as e:
             self.schedule_object.repr["action_mask"][action.id] = 0
             print("STEP_ERROR: ",
@@ -178,8 +178,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             done = True
         if done:
             print("\n ************** End of an episode ************")
-            self.obs, speedup, done, info = self.schedule_controller.test_additional_actions(
-            )
+            speedup = self.schedule_controller.get_final_score()
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         return self.obs, reward, done, info
