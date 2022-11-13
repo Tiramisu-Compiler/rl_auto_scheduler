@@ -12,4 +12,6 @@ __pycache__/
 .svn/
 *.yaml
 *.yml
+*.swp
+*.out
 scripts/env.sh

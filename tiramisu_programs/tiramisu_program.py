@@ -99,7 +99,7 @@ $buffers_init$
         self.file_path = file_path
         with open(file_path, 'r') as f:
             self.original_str = f.read()
-        self.func_folder = ('/'.join(Path(file_path).parts[:-1])
+        self.func_folder = (os.path.join(*Path(file_path).parts[:-1])
                             if len(Path(file_path).parts) > 1 else '.') + '/'
         self.body = re.findall(r'(tiramisu::init(?s:.)+)tiramisu::codegen',
                                self.original_str)[0]
@@ -331,7 +331,7 @@ $buffers_init$
             nb_executions) + '\n">> ${FUNC_DIR}log.txt'
         run_wrapper_cmd = 'cd ${FUNC_DIR};\
         ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
-        ./${FUNC_NAME}_wrapper ' + str(nb_executions)
+        ${FUNC_NAME}_wrapper ' + str(nb_executions)
         tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
         s_time = time.time()
         failed = tiramisu_programs.CPP_File.launch_cmd(run_wrapper_cmd,

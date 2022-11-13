@@ -74,9 +74,14 @@ class ScheduleController:
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
+
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
 
                 if lc_check == -1:
                     print("X: The action produced an error.")
@@ -117,9 +122,13 @@ class ScheduleController:
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 if lc_check == -1:
                     print("X: This action produces an error")
                     self.pop_schedule(action=action)
@@ -170,6 +179,8 @@ class ScheduleController:
                     start_time = time.time()
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                     l_time = time.time() - start_time
                     self.lc_total_time += l_time
 
@@ -238,9 +249,13 @@ class ScheduleController:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
                                 self.schedule, self.non_skewed_comps,
                                 first_comp) if saved_legality is None else saved_legality
+                            if saved_legality is None:
+                                self.save_legality_data(action.id,lc_check)
                         else:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
                                 self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                            if saved_legality is None:
+                                self.save_legality_data(action.id,lc_check)
                         l_time = time.time() - start_time
                         self.lc_total_time += l_time
 
@@ -281,9 +296,13 @@ class ScheduleController:
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -317,9 +336,13 @@ class ScheduleController:
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
                 if lc_check == -1:
@@ -358,9 +381,13 @@ class ScheduleController:
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    if saved_legality is None:
+                        self.save_legality_data(action.id,lc_check)
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -645,6 +672,8 @@ class ScheduleController:
     def get_legality(self,action):
         key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
         values = [v for (k,v) in self.lc_data if k == key]
+        if values:
+            print(f"Key found : {key}")
         return values[0] if len(values) else None
 
     def get_legality_data(self):

@@ -74,7 +74,7 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
             nn.init.xavier_uniform_(torch.zeros(1, embedding_size))
         )
 
-        prev_layer_size=embedding_size*2+26
+        prev_layer_size=embedding_size*2+20
         hidden_layer_sizes = shared_layer_sizes[-2:]
         rec_loop_embd_layers=[]
 
@@ -135,8 +135,8 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         
         #recursive loop embedding layer
         loops_tensor=input_dict["obs_flat"]["loops_representation"]
-        child_list=input_dict["obs_flat"]["child_list"][:][:][0][0]
-        has_comps=input_dict["obs_flat"]["has_comps"][0].tolist()
+        # child_list=input_dict["obs_flat"]["child_list"][:][:][0][0]
+        # has_comps=input_dict["obs_flat"]["has_comps"][0].tolist()
         try:
             prog_tree_tensor = np.array(input_dict["obs_flat"]["prog_tree"])
             prog_tree_string = "".join(list(prog_tree_tensor[0].view('U1'))).strip("_")
@@ -145,11 +145,11 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         except:
             pass
         # prog_tree_string =  # FIX THIS  --> Compare tree footprint
-        computations_indices=input_dict["obs_flat"]["computations_indices"][:][:][0][0]
+        # computations_indices=input_dict["obs_flat"]["computations_indices"][:][:][0][0]
 
 
         try:
-            loop_index=0
+            # loop_index=0
             prog_embedding=self.get_hidden_state(prog_tree,comps_embeddings,loops_tensor)
         except:
             print("Actor Critic",traceback.format_exc())

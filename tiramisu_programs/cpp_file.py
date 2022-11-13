@@ -27,7 +27,6 @@ class CPP_File(object):
         Returns:
             bool: Whether or not the compilation and running was successful.
         """
-        # print("inside compile and run")
         os.environ["FUNC_DIR"] = ("/".join(Path(file_path).parts[:-1]) if len(
             Path(file_path).parts) > 1 else ".") + "/"
         os.environ["FILE_PATH"] = file_path
@@ -80,7 +79,6 @@ class CPP_File(object):
                     stderr=subprocess.PIPE,
                     timeout=15 * nb_executions,
                 )
-                # print("after running initial exec")
             elif cmd_type == "sched_eval":
                 out = subprocess.run(
                     step_cmd,
@@ -90,7 +88,6 @@ class CPP_File(object):
                     stderr=subprocess.PIPE,
                     timeout=15 + 10 * nb_executions * initial_exec_time / 1000,
                 )
-                # print("after running sched eval")
 
             else:
                 out = subprocess.run(
@@ -132,7 +129,7 @@ class CPP_File(object):
         return failed
 
     @classmethod
-    def get_cpp_file(cls, Dataset_path, func_name):
+    def get_cpp_file(cls, Dataset_path, func_name,work_dir ):
         """Backup the dataset generator files into the folder Dataset_copies, stored locally.
 
         Args:
@@ -143,17 +140,17 @@ class CPP_File(object):
             str: The new copied function path.
         """
         file_name = func_name + "_generator.cpp"
-        original_path = Dataset_path + "/" + func_name + "/" + file_name
+        original_path = os.path.join(Dataset_path, func_name,  file_name)
         dc_path = Path(Dataset_path).parts[:-1]
-        target_path = "{}/Dataset_copies/{}".format(".", func_name)
+        target_path = os.path.join(work_dir, "Dataset_copies")
+        target_path_func = os.path.join(target_path, func_name)
 
-        if not os.path.isdir("./Dataset_copies/"):
-            os.mkdir("./Dataset_copies/")
+        if not os.path.isdir(target_path):
+            os.mkdir(target_path)
 
-        if os.path.isdir(target_path):
-            os.system("rm -r {}".format(target_path))
-            # print("directory removed")
+        if os.path.isdir(target_path_func):
+            os.system("rm -r {}".format(target_path_func))
 
-        os.mkdir(target_path)
-        os.system("cp -r {} {}".format(original_path, target_path))
-        return target_path + "/" + file_name
+        os.mkdir(target_path_func)
+        os.system("cp -r {} {}".format(original_path, target_path_func))
+        return os.path.join(target_path_func,  file_name)

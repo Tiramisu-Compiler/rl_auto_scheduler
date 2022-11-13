@@ -56,11 +56,11 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.action_space = gym.spaces.Discrete(62)
         self.observation_space = gym.spaces.Dict({
             "representation":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 1052)),
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 1162)),
             "action_mask":
             gym.spaces.Box(low=0, high=1, shape=(62, )),
             "loops_representation":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15, 26)),
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15, 20)),
             "child_list":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 11)),
             "has_comps":
@@ -77,6 +77,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.episode_total_time = 0
         self.prog_ind = 0
         self.steps = 0
+        self.lc_data = []
 
     def reset(self, file=None):
         """
@@ -89,9 +90,8 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.episode_total_time = time.time()
         while True:
             try:
-                random_prog_index = random.randint(0, len(self.progs_list) - 1)
-                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, self.progs_list[random_prog_index])
+                init_indc = random.randint(0, len(self.progs_list) - 1)
+                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(self.dataset_path, self.progs_list[init_indc], work_dir=".")
                 self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
                     self.config, file)
                 print(f"Trying with program {self.prog.name}")
@@ -102,8 +102,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                     nb_executions=self.nb_executions,
                     scheds=self.scheds,
                     config=self.config)
-                lc_data = ray.get(self.shared_variable_actor.get_lc_data.remote())
-                self.schedule_controller.load_legality_data(lc_data)
+                # lc_data = ray.get(self.shared_variable_actor.get_lc_data.remote())
+                self.schedule_controller.load_legality_data([])
                 self.obs = self.schedule_object.get_representation()
                 if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys(
@@ -183,10 +183,12 @@ class TiramisuScheduleEnvironment(gym.Env):
         if done:
             print("\n ************** End of an episode ************")
             speedup = self.schedule_controller.get_final_score()
-            ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
+            # ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
+            self.lc_data.extend(self.schedule_controller.get_legality_data())
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
-
-        if self.total_steps % self.SAVING_FREQUENCY:
-            ray.get(self.shared_variable_actor.write_lc_data.remote())
+        print("Obtained reward: ",reward)
+        print("new_representatin",list(self.obs["representation"][0]) )
+        # if self.total_steps % self.SAVING_FREQUENCY == 0:
+        #     ray.get(self.shared_variable_actor.write_lc_data.remote())
         return self.obs, reward, done, info

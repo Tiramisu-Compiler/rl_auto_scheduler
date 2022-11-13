@@ -6,11 +6,11 @@ import os
 
 @ray.remote
 class GlobalVarActor:
-
+    DATASET_MAX_ITEMS=15_000
     def __init__(self, programs_file, dataset_path, num_workers=7):
         self.index = -1
         self.num_workers = num_workers
-        self.progs_list = self.get_dataset(dataset_path)
+        self.progs_list = self.get_dataset(dataset_path)[:self.DATASET_MAX_ITEMS]
         self.programs_file = programs_file
         self.progs_dict = dict()
         self.lc_data = []

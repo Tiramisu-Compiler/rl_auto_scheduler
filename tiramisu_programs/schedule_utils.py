@@ -73,7 +73,7 @@ class SkewUnrollException(Exception):
 
 
 class ScheduleUtils:
-
+    MAX_MATRICES = 5
     @classmethod
     def linear_diophantine_default(cls, f_i, f_j):
         found = False
@@ -252,6 +252,7 @@ class ScheduleUtils:
 
     @classmethod
     def get_representation(cls, program_annot):
+        print(json.dumps(program_annot))
         max_dims = 7
         max_depth = 5
         max_accesses = 21
@@ -277,26 +278,24 @@ class ScheduleUtils:
 
                 l_code = 'L' + iterator_name
                 iterators_repr.extend([
-                    l_code + 'Interchanged', l_code + 'Skewed',
-                    l_code + 'SkewFactor', l_code + 'Parallelized',
-                    l_code + 'Tiled', l_code + 'TileFactor',
-                    l_code + 'Reversed', l_code + 'Fused', 0, 0,
-                    l_code + "_1" + 'Interchanged', l_code + "_1" + 'Skewed',
-                    l_code + "_1" + 'SkewFactor',
-                    l_code + "_1" + 'Parallelized', l_code + "_1" + 'Tiled',
-                    l_code + "_1" + 'TileFactor', l_code + "_1" + 'Reversed',
-                    l_code + "_1" + 'Fused'
+                    l_code + 'Parallelized',
+                    l_code + 'Tiled',
+                    l_code + 'TileFactor',
+                    l_code + 'Fused'
                 ])
 
             iterator_repr_size = int(
-                len(iterators_repr) / (2 * len(comp_dict['iterators'])))
-            iterators_repr.extend([0] * iterator_repr_size * 2 *
+                len(iterators_repr) / (len(comp_dict['iterators'])))
+            iterators_repr.extend([0] * iterator_repr_size *
                                   (max_depth - len(comp_dict['iterators'])))
 
             iterators_repr.extend(['Unrolled', 'UnrollFactor'])
-
+            
+            matrix_size = (max_depth + 1) ** 2
+            iterators_repr.extend([f"M_{i // matrix_size + 1 }_{i % matrix_size + 1}" for i in  range( matrix_size * cls.MAX_MATRICES )])
             comp_representation.extend(iterators_repr)
 
+            print("len(iterators_repr)=",len(iterators_repr))
             padded_write_matrix = cls.pad_access_matrix(
                 cls.isl_to_write_matrix(comp_dict['write_access_relation']),
                 max_depth)
@@ -366,16 +365,12 @@ class ScheduleUtils:
             iterators_repr.extend([
                 l_code + 'Interchanged', l_code + 'Skewed',
                 l_code + 'SkewFactor', l_code + 'Parallelized',
-                l_code + 'Tiled', l_code + 'TileFactor', l_code + 'Reversed',
-                0, 0, l_code + "_1" + 'Interchanged', l_code + "_1" + 'Skewed',
-                l_code + "_1" + 'SkewFactor', l_code + "_1" + 'Parallelized',
-                l_code + "_1" + 'Tiled', l_code + 'TileFactor',
-                l_code + "_1" + 'Reversed'
+                l_code + 'Tiled', l_code + 'TileFactor', l_code + 'Reversed'
             ])
 
         iterator_repr_size = int(
-            len(iterators_repr) / (2 * len(comp_dict['iterators'])))
-        iterators_repr.extend([0] * iterator_repr_size * 2 *
+            len(iterators_repr) / (len(comp_dict['iterators'])))
+        iterators_repr.extend([0] * iterator_repr_size *
                               (max_depth - len(comp_dict['iterators'])))
 
         iterators_repr.extend(['Unrolled', 'UnrollFactor'])

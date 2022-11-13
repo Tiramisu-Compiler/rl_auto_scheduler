@@ -49,9 +49,11 @@ def main(config: RLAutoSchedulerConfig):
         config={
             "env": "Tiramisu_env_v1",
             "num_workers": config.ray.num_workers,
-            "placement_strategy":"SPREAD",
             "batch_mode": "complete_episodes",
-            "train_batch_size": max(config.ray.num_workers*200, config.training.train_batch_size),
+            "placement_strategy": "SPREAD",
+            # "num_envs_per_worker": 5,
+            "rollout_fragment_length": 200,
+            "train_batch_size":  max(config.ray.num_workers*200, config.training.train_batch_size),
             "sgd_minibatch_size": config.training.sgd_minibatch_size,
             "lr": config.training.lr,
             "num_sgd_iter": config.training.num_sgd_iter,
