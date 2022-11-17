@@ -15,6 +15,7 @@ EPSILON = 1e-6
 class Schedule:
     MAX_DEPTH = 6
     MAX_COMPS = 5
+    MAX_MATRICES = 5
 
     def __init__(self, program):
         self.depth = 0
@@ -23,6 +24,7 @@ class Schedule:
         self.is_tiled = False
         self.is_unrolled = False
         self.is_skewed = False
+        self.skewed_loops = set()
         self.is_parallelized = False
         self.is_reversed = False
         self.prog = program
@@ -43,8 +45,8 @@ class Schedule:
          self.comp_indic_dict) = ScheduleUtils.get_representation(self.annotations)
 
         for comp_rep in self.prog_rep:
-            print(comp_rep, len(comp_rep))
-            if len(comp_rep) != 1162:
+            # print(comp_rep, len(comp_rep))
+            if len(comp_rep) != 920:
                 raise RepresentationLengthException
 
         if len(self.comps) != 1:   # Multi-computation program
@@ -95,7 +97,7 @@ class Schedule:
         self.added_iterators = []
 
         self.repr = {}
-        self.repr["representation"] = np.empty((0, 1162), np.float32)
+        self.repr["representation"] = np.empty((0, 920), np.float32)
         self.repr["loops_representation"] = np.empty((0, 20), np.float32)
         self.repr['child_list'] = np.empty((0, 11), np.float32)
         self.repr['has_comps'] = np.empty((0, 12), np.float32)
@@ -106,7 +108,7 @@ class Schedule:
             if i >= len(self.prog_rep):
                 self.repr["representation"] = np.vstack(
                     [self.repr["representation"],
-                     np.zeros(1162)])
+                     np.zeros(920)])
             else:
                 self.repr["representation"] = np.vstack([
                     self.repr["representation"],
@@ -257,8 +259,8 @@ class Schedule:
         #         self.placeholders[comp][l_code + "Interchanged"]] = 1
 
 
-        for i in range(28):
-            self.repr["action_mask"][i] = 0
+        # for i in range(28):
+        #     self.repr["action_mask"][i] = 0
         for i in range(56, 61):
             self.repr["action_mask"][i] = 0
 
@@ -273,9 +275,39 @@ class Schedule:
             interchange_matrix[second_iter_index, first_iter_index] = 1
             self.schedule_dict[comp]["transformation_matrices"].append(
                 interchange_matrix)
-            self.schedule_dict[comp]["transformation_matrix"] = interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
-            self.repr["representation"][self.comp_indic_dict[comp]][[self.placeholders[comp]
-                                                                     [f"M_{self.polyhedral_transformations}_{index+1}"] for index in range(dim**2)]] = interchange_matrix.reshape(-1)
+            final_matrix = interchange_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+            self.schedule_dict[comp]["transformation_matrix"] = final_matrix
+            padded_final_matrix = final_matrix.copy()
+            padded_final_matrix = np.c_[np.ones(padded_final_matrix.shape[0]), padded_final_matrix]
+            padded_final_matrix = np.r_[[np.ones(padded_final_matrix.shape[1])], padded_final_matrix]
+            padded_final_matrix = np.pad(
+                padded_final_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
+
+            padded_interchange_matrix = interchange_matrix.copy()
+            padded_interchange_matrix = np.c_[np.ones(padded_interchange_matrix.shape[0]), padded_interchange_matrix]
+            padded_interchange_matrix = np.r_[[np.ones(padded_interchange_matrix.shape[1])], padded_interchange_matrix]
+            padded_interchange_matrix = np.pad(
+                padded_interchange_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_interchange_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_interchange_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
+            # print(padded_interchange_matrix,padded_interchange_matrix.shape)
+            golbal_matrix_indexes = [self.placeholders[comp][f"M_1_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][golbal_matrix_indexes] = padded_final_matrix.reshape(-1)
+
+            matrix_indexes = [self.placeholders[comp][f"M_{self.polyhedral_transformations+1}_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][matrix_indexes] = padded_interchange_matrix.reshape(-1)
             # self.repr["loops_representation"][loop_2][2] = 1
             
 
@@ -289,8 +321,8 @@ class Schedule:
             loop_1 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[comp][params["first_dim_index"]]['iterator'])
-        self.repr["loops_representation"][loop_1][8:14] = interchange_matrix[loop_1,:]
-        self.repr["loops_representation"][loop_1][14:20] = interchange_matrix[:,loop_1]
+        self.repr["loops_representation"][loop_1][8:14] = padded_interchange_matrix[loop_1,:]
+        self.repr["loops_representation"][loop_1][14:20] = padded_interchange_matrix[:,loop_1]
 
         if self.it_dict[comp][
                 params["second_dim_index"]]['iterator'] in iterators:
@@ -301,9 +333,11 @@ class Schedule:
             loop_2 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[comp][params["second_dim_index"]]['iterator'])
-        self.repr["loops_representation"][loop_2][8:14] = interchange_matrix[loop_2,:]
-        self.repr["loops_representation"][loop_2][14:20] = interchange_matrix[:,loop_2]
+        self.repr["loops_representation"][loop_2][8:14] = padded_interchange_matrix[loop_2,:]
+        self.repr["loops_representation"][loop_2][14:20] = padded_interchange_matrix[:,loop_2]
         self.polyhedral_transformations += 1
+        if self.polyhedral_transformations >= self.MAX_MATRICES:
+            self.deactivate_polyhedral()
 
     def apply_tiling(self, params):
         for comp in self.comps:
@@ -818,7 +852,7 @@ class Schedule:
         self.repr["loops_representation"][loop_2][4] = params['second_factor']
 
         if params["tiling_depth"] == 3:
-
+            third_dim_index = params["third_dim_index"]
             if self.it_dict[comp][third_dim_index]['iterator'] in iterators:
                 loop_3 = iterators.index(
                     self.it_dict[comp][third_dim_index]['iterator'])
@@ -938,8 +972,8 @@ class Schedule:
         #         index2_upper_bound] = (l2_extent) + 1
 
 
-        self.repr["action_mask"][44] = 0
-        self.repr["action_mask"][45] = 0
+        # self.repr["action_mask"][44] = 0
+        # self.repr["action_mask"][45] = 0
         for i in range(56, 61):
             self.repr["action_mask"][i] = 0
 
@@ -962,12 +996,39 @@ class Schedule:
             skewing_matrix[second_iter_index, second_iter_index] = b
             self.schedule_dict[comp]["transformation_matrices"].append(
                 skewing_matrix)
-            self.schedule_dict[comp][
-                "transformation_matrix"] = skewing_matrix @ self.schedule_dict[
-                    comp]["transformation_matrix"]
-            self.repr["representation"][self.comp_indic_dict[comp]][[self.placeholders[comp]
-                                                                     [f"M_{self.polyhedral_transformations}_{index+1}"] for index in range(dim**2)]] = skewing_matrix.reshape(-1)
+            final_matrix = skewing_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+            self.schedule_dict[comp]["transformation_matrix"] = final_matrix
+            padded_final_matrix = final_matrix.copy()
+            padded_final_matrix = np.c_[np.ones(padded_final_matrix.shape[0]), padded_final_matrix]
+            padded_final_matrix = np.r_[[np.ones(padded_final_matrix.shape[1])], padded_final_matrix]
+            padded_final_matrix = np.pad(
+                padded_final_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
 
+            padded_skewing_matrix = skewing_matrix.copy()
+            padded_skewing_matrix = np.c_[np.ones(padded_skewing_matrix.shape[0]), padded_skewing_matrix]
+            padded_skewing_matrix = np.r_[[np.ones(padded_skewing_matrix.shape[1])], padded_skewing_matrix]
+            padded_skewing_matrix = np.pad(
+                padded_skewing_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_skewing_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_skewing_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
+            # print(padded_skewing_matrix,padded_skewing_matrix.shape)
+            golbal_matrix_indexes = [self.placeholders[comp][f"M_1_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][golbal_matrix_indexes] = padded_final_matrix.reshape(-1)
+
+            matrix_indexes = [self.placeholders[comp][f"M_{self.polyhedral_transformations+1}_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][matrix_indexes] = padded_skewing_matrix.reshape(-1)
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][dim_1]['iterator'] in iterators:
             loop_1 = iterators.index(self.it_dict[comp][dim_1]['iterator'])
@@ -975,8 +1036,8 @@ class Schedule:
             loop_1 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[comp][dim_1]['iterator'])
-        self.repr["loops_representation"][loop_1][8:14] = skewing_matrix[loop_1,:]
-        self.repr["loops_representation"][loop_1][14:20] = skewing_matrix[:,loop_1]
+        self.repr["loops_representation"][loop_1][8:14] = padded_skewing_matrix[loop_1,:]
+        self.repr["loops_representation"][loop_1][14:20] = padded_skewing_matrix[:,loop_1]
 
         if self.it_dict[comp][dim_2]['iterator'] in iterators:
             loop_2 = iterators.index(self.it_dict[comp][dim_2]['iterator'])
@@ -985,9 +1046,16 @@ class Schedule:
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[comp][dim_2]['iterator'])
         
-        self.repr["loops_representation"][loop_2][8:14] = skewing_matrix[loop_2,:]
-        self.repr["loops_representation"][loop_2][14:20] = skewing_matrix[:,loop_2]
+        self.repr["loops_representation"][loop_2][8:14] = padded_skewing_matrix[loop_2,:]
+        self.repr["loops_representation"][loop_2][14:20] = padded_skewing_matrix[:,loop_2]
+        
+        self.skewed_loops.add(loop_1)
+        self.skewed_loops.add(loop_2)
+
+        print("self.skewed_loops=",self.skewed_loops)
         self.polyhedral_transformations += 1
+        if self.polyhedral_transformations >= self.MAX_MATRICES:
+            self.deactivate_polyhedral()
 
     def apply_parallelization(self, params):
         first_comp = list(self.it_dict.keys())[0]
@@ -1036,8 +1104,8 @@ class Schedule:
         #         self.comp_indic_dict[comp]][index_upper_bound] = tmp
 
 
-        for i in range(48, 56):
-            self.repr["action_mask"][i] = 0
+        # for i in range(48, 56):
+        #     self.repr["action_mask"][i] = 0
         for i in range(56, 61):
             self.repr["action_mask"][i] = 0
 
@@ -1048,11 +1116,40 @@ class Schedule:
             reversal_matrix[dim_index, dim_index] = -1
             self.schedule_dict[comp]["transformation_matrices"].append(
                 reversal_matrix)
-            self.schedule_dict[comp][
-                "transformation_matrix"] = reversal_matrix @ self.schedule_dict[
-                    comp]["transformation_matrix"]
-            self.repr["representation"][self.comp_indic_dict[comp]][[self.placeholders[comp]
-                                                                     [f"M_{self.polyhedral_transformations}_{index+1}"] for index in range(dim**2)]] = reversal_matrix.reshape(-1)
+            final_matrix = reversal_matrix @ self.schedule_dict[comp]["transformation_matrix"]
+            self.schedule_dict[comp]["transformation_matrix"] = final_matrix
+            padded_final_matrix = final_matrix.copy()
+            padded_final_matrix = np.c_[np.ones(padded_final_matrix.shape[0]), padded_final_matrix]
+            padded_final_matrix = np.r_[[np.ones(padded_final_matrix.shape[1])], padded_final_matrix]
+            padded_final_matrix = np.pad(
+                padded_final_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_final_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
+
+            padded_reversal_matrix = reversal_matrix.copy()
+            padded_reversal_matrix = np.c_[np.ones(padded_reversal_matrix.shape[0]), padded_reversal_matrix]
+            padded_reversal_matrix = np.r_[[np.ones(padded_reversal_matrix.shape[1])], padded_reversal_matrix]
+            padded_reversal_matrix = np.pad(
+                padded_reversal_matrix,
+                [
+                    (0, self.MAX_DEPTH  - padded_reversal_matrix.shape[0]),
+                    (0, self.MAX_DEPTH  - padded_reversal_matrix.shape[1]),
+                ],
+                mode="constant",
+                constant_values=0,
+            )
+            # print(padded_reversal_matrix,padded_reversal_matrix.shape)
+            golbal_matrix_indexes = [self.placeholders[comp][f"M_1_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][golbal_matrix_indexes] = padded_final_matrix.reshape(-1)
+
+            matrix_indexes = [self.placeholders[comp][f"M_{self.polyhedral_transformations+1}_{index+1}"] for index in range(self.MAX_DEPTH**2)]
+            self.repr["representation"][self.comp_indic_dict[comp]][matrix_indexes] = padded_reversal_matrix.reshape(-1)
+            # self.repr["loops_representation"][loop_2][2] = 1
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][params["dim_index"]]['iterator'] in iterators:
             loop_index = iterators.index(
@@ -1062,9 +1159,11 @@ class Schedule:
             loop_index = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[comp][params["dim_index"]]['iterator'])
-        self.repr["loops_representation"][loop_index][8:14] = reversal_matrix[loop_index,:]
-        self.repr["loops_representation"][loop_index][14:20] = reversal_matrix[:,loop_index]
+        self.repr["loops_representation"][loop_index][8:14] = padded_reversal_matrix[loop_index,:]
+        self.repr["loops_representation"][loop_index][14:20] = padded_reversal_matrix[:,loop_index]
         self.polyhedral_transformations += 1
+        if self.polyhedral_transformations >= self.MAX_MATRICES:
+            self.deactivate_polyhedral()
 
     def apply_fusion(self, params):
         fusion = []
@@ -1088,4 +1187,18 @@ class Schedule:
         self.repr["loops_representation"][loop_index][5] = 1
 
         for i in range(56, 61):
+            self.repr["action_mask"][i] = 0
+
+    def deactivate_polyhedral(self):
+        
+        # SKEWING
+        self.repr["action_mask"][44] = 0
+        self.repr["action_mask"][45] = 0
+
+        # REVERSAL
+        for i in range(48, 56):
+            self.repr["action_mask"][i] = 0
+
+        # INTERCHANGE
+        for i in range(28):
             self.repr["action_mask"][i] = 0

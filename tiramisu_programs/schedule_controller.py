@@ -59,47 +59,47 @@ class ScheduleController:
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
-
+        self.schedule_object.repr["action_mask"][action.id] = 0
         if action.id in range(28):  # Interchange
-            if not self.schedule_object.is_interchaged: 
-                params = [
-                    int(action_params["first_dim_index"]),
-                    int(action_params["second_dim_index"])
-                ]
+            # if not self.schedule_object.is_interchaged: 
+            params = [
+                int(action_params["first_dim_index"]),
+                int(action_params["second_dim_index"])
+            ]
 
-                optim1 = OptimizationCommand("Interchange", params,
-                                             self.schedule_object.comps)
-                self.schedule.append(optim1)
+            optim1 = OptimizationCommand("Interchange", params,
+                                            self.schedule_object.comps)
+            self.schedule.append(optim1)
 
-                if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
-                    if saved_legality is None:
-                        self.save_legality_data(action.id,lc_check)
-
-                else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
-                    if saved_legality is None:
-                        self.save_legality_data(action.id,lc_check)
-
-                if lc_check == -1:
-                    print("X: The action produced an error.")
-                    self.pop_schedule(action=action)
-                    raise LCException
-                if lc_check == 0:
-                    print("X: Illegal action")
-                    self.pop_schedule(action=action)
-                    info = {"illegal_action": True}
-                    done = False
-                    return self.schedule_object.repr, 1.0, done, info
-                self.schedule_object.apply_interchange(action_params)
-                print("O: Interchange applied")
-                self.schedule_object.is_interchaged = True
+            if self.schedule_object.is_unrolled:
+                lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                    self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                if saved_legality is None:
+                    self.save_legality_data(action.id,lc_check)
 
             else:
-                print("X: Interchange already applied execption")
-                raise IsInterchangedException
+                lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                    self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                if saved_legality is None:
+                    self.save_legality_data(action.id,lc_check)
+
+            if lc_check == -1:
+                print("X: The action produced an error.")
+                self.pop_schedule(action=action)
+                raise LCException
+            if lc_check == 0:
+                print("X: Illegal action")
+                self.pop_schedule(action=action)
+                info = {"illegal_action": True}
+                done = False
+                return self.schedule_object.repr, 1.0, done, info
+            self.schedule_object.apply_interchange(action_params)
+            print("O: Interchange applied")
+            self.schedule_object.is_interchaged = True
+
+            # else:
+            #     print("X: Interchange already applied execption")
+            #     raise IsInterchangedException
 
         if action.id in range(28, 41): # Tiling
             if not self.schedule_object.is_tiled:
@@ -159,13 +159,10 @@ class ScheduleController:
             if not self.schedule_object.is_unrolled:
                 self.non_skewed_comps = []
                 for comp in self.schedule_object.comps:
-                    it_skewed = "L" + self.schedule_object.it_dict[comp][
-                        action_params[comp]
-                        ["dim_index"]]["iterator"] + "Skewed"
-                    if self.schedule_object.repr["representation"][
-                            self.schedule_object.comp_indic_dict[comp]][
-                                self.schedule_object.placeholders[comp]
-                                [it_skewed]] != 1:
+                    loop_index = action_params[comp]["dim_index"]
+                    it_skewed = "L" + self.schedule_object.it_dict[comp][loop_index]["iterator"] + "Skewed"
+                    print("loop_index=",loop_index,"self.schedule_object.skewed_loops=",self.schedule_object.skewed_loops)
+                    if loop_index in self.schedule_object.skewed_loops != 1:
                         self.non_skewed_comps.append(comp)
                 for comp in self.non_skewed_comps:
                     params[comp] = [
@@ -212,74 +209,74 @@ class ScheduleController:
 
         if action.id in range(44, 46): # Skewing
 
-            if not self.schedule_object.is_skewed:
+            # if not self.schedule_object.is_skewed:
 
-                if (action_params["first_factor"] != None
-                        and action_params["second_factor"] != None):
-                    non_inner_comps = []
-                    for comp in self.schedule_object.comps:
-                        if (action_params["first_dim_index"] !=
-                                len(self.schedule_object.it_dict[comp]) - 1
-                                and action_params["second_dim_index"] !=
-                                len(self.schedule_object.it_dict[comp]) - 1
-                            ) or (
-                                (action_params["first_dim_index"]
-                                 == len(self.schedule_object.it_dict[comp]) - 1
-                                 or action_params["second_dim_index"]
-                                 == len(self.schedule_object.it_dict[comp]) - 1
-                                 and not self.schedule_object.is_unrolled)):
-                            non_inner_comps.append(comp)
+            if (action_params["first_factor"] != None
+                    and action_params["second_factor"] != None):
+                non_inner_comps = []
+                for comp in self.schedule_object.comps:
+                    if (action_params["first_dim_index"] !=
+                            len(self.schedule_object.it_dict[comp]) - 1
+                            and action_params["second_dim_index"] !=
+                            len(self.schedule_object.it_dict[comp]) - 1
+                        ) or (
+                            (action_params["first_dim_index"]
+                                == len(self.schedule_object.it_dict[comp]) - 1
+                                or action_params["second_dim_index"]
+                                == len(self.schedule_object.it_dict[comp]) - 1
+                                and not self.schedule_object.is_unrolled)):
+                        non_inner_comps.append(comp)
 
-                    if non_inner_comps != []:
+                if non_inner_comps != []:
 
-                        params = [
-                            int(action_params["first_dim_index"]),
-                            int(action_params["second_dim_index"])
-                        ]
-                        params.append(action_params["first_factor"])
-                        params.append(action_params["second_factor"])
+                    params = [
+                        int(action_params["first_dim_index"]),
+                        int(action_params["second_dim_index"])
+                    ]
+                    params.append(action_params["first_factor"])
+                    params.append(action_params["second_factor"])
 
-                        optim4 = OptimizationCommand("Skewing", params,
-                                                     non_inner_comps)
+                    optim4 = OptimizationCommand("Skewing", params,
+                                                    non_inner_comps)
 
-                        self.schedule.append(optim4)
+                    self.schedule.append(optim4)
 
-                        start_time = time.time()
-                        if self.schedule_object.is_unrolled:
-                            lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, self.non_skewed_comps,
-                                first_comp) if saved_legality is None else saved_legality
-                            if saved_legality is None:
-                                self.save_legality_data(action.id,lc_check)
-                        else:
-                            lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
-                            if saved_legality is None:
-                                self.save_legality_data(action.id,lc_check)
-                        l_time = time.time() - start_time
-                        self.lc_total_time += l_time
-
-                        if lc_check == -1:
-                            print("X: This action produces an error")
-                            self.pop_schedule(action=action)
-                            raise LCException
-                        if lc_check == 0:
-                            print("X: Illegal action")
-                            self.pop_schedule(action=action)
-                            info = {"illegal_action": True}
-                            done = False
-                            return self.schedule_object.repr, 1.0, done, info
-
-                        self.schedule_object.apply_skewing(action_params)
-                        print("O: Skewing is applied")
-                        self.schedule_object.is_skewed = True
-
+                    start_time = time.time()
+                    if self.schedule_object.is_unrolled:
+                        lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps,
+                            first_comp) if saved_legality is None else saved_legality
+                        if saved_legality is None:
+                            self.save_legality_data(action.id,lc_check)
                     else:
-                        raise SkewUnrollException
+                        lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                        if saved_legality is None:
+                            self.save_legality_data(action.id,lc_check)
+                    l_time = time.time() - start_time
+                    self.lc_total_time += l_time
+
+                    if lc_check == -1:
+                        print("X: This action produces an error")
+                        self.pop_schedule(action=action)
+                        raise LCException
+                    if lc_check == 0:
+                        print("X: Illegal action")
+                        self.pop_schedule(action=action)
+                        info = {"illegal_action": True}
+                        done = False
+                        return self.schedule_object.repr, 1.0, done, info
+
+                    self.schedule_object.apply_skewing(action_params)
+                    print("O: Skewing is applied")
+                    self.schedule_object.is_skewed = True
 
                 else:
-                    print("X: Skewing prams are null")
-                    raise SkewParamsException
+                    raise SkewUnrollException
+
+                # else:
+                #     print("X: Skewing prams are null")
+                #     raise SkewParamsException
 
             else:
                 print("X: Skewing is already applied")
@@ -327,42 +324,42 @@ class ScheduleController:
 
         if action.id in range(48, 56):  # Reversal
 
-            if not self.schedule_object.is_reversed:
-                params = [int(action_params["dim_index"])]
-                optim6 = OptimizationCommand("Reversal", params,
-                                             self.schedule_object.comps)
-                self.schedule.append(optim6)
-                start_time = time.time()
-                if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp=first_comp) if saved_legality is None else saved_legality
-                    if saved_legality is None:
-                        self.save_legality_data(action.id,lc_check)
-                else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
-                    if saved_legality is None:
-                        self.save_legality_data(action.id,lc_check)
-                l_time = time.time() - start_time
-                self.lc_total_time += l_time
-                if lc_check == -1:
-                    print("X: This action produces am error")
-                    self.pop_schedule(action=action)
-                    raise LCException
-                if lc_check == 0:
-                    print("X: Illegal action")
-                    self.pop_schedule(action=action)
-                    info = {"illegal_action": True}
-                    done = False
-                    return self.schedule_object.repr, 1.0, done, info
-
-                self.schedule_object.apply_reversal(action_params)
-                
-                print("O: Loop reversal applied")
-                self.schedule_object.is_reversed = True
+            # if not self.schedule_object.is_reversed:
+            params = [int(action_params["dim_index"])]
+            optim6 = OptimizationCommand("Reversal", params,
+                                            self.schedule_object.comps)
+            self.schedule.append(optim6)
+            start_time = time.time()
+            if self.schedule_object.is_unrolled:
+                lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                    self.schedule, self.non_skewed_comps, first_comp=first_comp) if saved_legality is None else saved_legality
+                if saved_legality is None:
+                    self.save_legality_data(action.id,lc_check)
             else:
-                print("X: Loop reversal already applied")
-                raise IsReversedException
+                lc_check = self.schedule_object.prog.check_legality_of_schedule(
+                    self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                if saved_legality is None:
+                    self.save_legality_data(action.id,lc_check)
+            l_time = time.time() - start_time
+            self.lc_total_time += l_time
+            if lc_check == -1:
+                print("X: This action produces am error")
+                self.pop_schedule(action=action)
+                raise LCException
+            if lc_check == 0:
+                print("X: Illegal action")
+                self.pop_schedule(action=action)
+                info = {"illegal_action": True}
+                done = False
+                return self.schedule_object.repr, 1.0, done, info
+
+            self.schedule_object.apply_reversal(action_params)
+            
+            print("O: Loop reversal applied")
+            self.schedule_object.is_reversed = True
+            # else:
+            #     print("X: Loop reversal already applied")
+            #     raise IsReversedException
 
         if action.id in range(56, 61):  # Fusion
             params = [

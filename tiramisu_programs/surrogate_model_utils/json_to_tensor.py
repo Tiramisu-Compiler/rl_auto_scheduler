@@ -87,7 +87,6 @@ def get_sched_rep(program_json, sched_json, max_depth):
         iterators_repr.append(c_code + "-TransformationMatrixStart")
         iterators_repr.extend(["M"] * (((max_depth + 1) ** 2) * MAX_MATRICES - 2))
         iterators_repr.append(c_code + "-TransformationMatrixEnd")
-
         # Adding the iterators representation to computation vector
         comp_repr_template.extend(iterators_repr)
         #  Write access representation to computation vector
@@ -126,7 +125,6 @@ def get_sched_rep(program_json, sched_json, max_depth):
         comp_repr_template.append(comp_dict["number_of_subtraction"])
         comp_repr_template.append(comp_dict["number_of_multiplication"])
         comp_repr_template.append(comp_dict["number_of_division"])
-
         # adding log(x+1) of the representation
         #         log_rep = list(np.log1p(comp_representation))
         #         comp_representation.extend(log_rep)

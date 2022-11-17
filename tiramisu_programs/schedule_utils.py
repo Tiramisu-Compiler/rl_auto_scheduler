@@ -252,10 +252,10 @@ class ScheduleUtils:
 
     @classmethod
     def get_representation(cls, program_annot):
-        print(json.dumps(program_annot))
+        # print(json.dumps(program_annot))
         max_dims = 7
         max_depth = 5
-        max_accesses = 21
+        max_accesses = 15
         program_representation = []
         indices_dict = dict()
         computations_dict = program_annot['computations']
@@ -268,7 +268,7 @@ class ScheduleUtils:
         for index, comp_name in enumerate(ordered_comp_list):
             comp_dict = computations_dict[comp_name]
             comp_representation = []
-
+            comp_representation.append(+comp_dict["comp_is_reduction"])
             iterators_repr = []
             for iter_i, iterator_name in enumerate(comp_dict['iterators']):
                 iterator_dict = program_annot['iterators'][iterator_name]
@@ -283,7 +283,6 @@ class ScheduleUtils:
                     l_code + 'TileFactor',
                     l_code + 'Fused'
                 ])
-
             iterator_repr_size = int(
                 len(iterators_repr) / (len(comp_dict['iterators'])))
             iterators_repr.extend([0] * iterator_repr_size *
@@ -295,7 +294,6 @@ class ScheduleUtils:
             iterators_repr.extend([f"M_{i // matrix_size + 1 }_{i % matrix_size + 1}" for i in  range( matrix_size * cls.MAX_MATRICES )])
             comp_representation.extend(iterators_repr)
 
-            print("len(iterators_repr)=",len(iterators_repr))
             padded_write_matrix = cls.pad_access_matrix(
                 cls.isl_to_write_matrix(comp_dict['write_access_relation']),
                 max_depth)
@@ -308,11 +306,11 @@ class ScheduleUtils:
             for read_access_dict in comp_dict['accesses']:
                 read_access_matrix = cls.pad_access_matrix(
                     read_access_dict['access_matrix'], max_depth)
-                read_access_repr = [read_access_dict['buffer_id'] + 1
+                read_access_repr = [+read_access_dict["access_is_reduction"]]+[read_access_dict['buffer_id'] + 1
                                     ] + read_access_matrix.flatten().tolist()
                 read_accesses_repr.extend(read_access_repr)
 
-            access_repr_len = (max_depth + 1) * (max_depth + 2) + 1
+            access_repr_len = (max_depth + 1) * (max_depth + 2) + 1 + 1
             read_accesses_repr.extend(
                 [0] * access_repr_len *
                 (max_accesses - len(comp_dict['accesses'])))

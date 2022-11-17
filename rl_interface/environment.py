@@ -56,7 +56,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.action_space = gym.spaces.Discrete(62)
         self.observation_space = gym.spaces.Dict({
             "representation":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 1162)),
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 920)),
             "action_mask":
             gym.spaces.Box(low=0, high=1, shape=(62, )),
             "loops_representation":
@@ -188,7 +188,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         print("Obtained reward: ",reward)
-        print("new_representatin",list(self.obs["representation"][0]) )
+        # print("new_representatin",list(self.obs["representation"][0]) )
         # if self.total_steps % self.SAVING_FREQUENCY == 0:
         #     ray.get(self.shared_variable_actor.write_lc_data.remote())
         return self.obs, reward, done, info
