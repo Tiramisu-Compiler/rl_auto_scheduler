@@ -225,9 +225,9 @@ class Action:
                 #print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
-                    print("tiling flag 1 false, loopextent == factor")
+                    print("Tiling flag 1 false, loopextent == factor")
                 elif loop_extent_1 < first_fact:
-                    print("exceeeption, loop extent 1 smaller than factor")
+                    print("Exception, loop extent 1 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 

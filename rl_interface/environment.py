@@ -24,11 +24,12 @@ class TiramisuScheduleEnvironment(gym.Env):
     The reinforcement learning environment used by the GYM. 
     '''
     SAVING_FREQUENCY = 500
+
     def __init__(self, config, shared_variable_actor):
-        print("Configuring the environment")
+        print("Configuring the environment variables")
         configure_env_variables(config)
 
-        print("Initializing the environment")
+        print("Initializing the local variables")
         self.config = config
         self.total_steps = 0
         self.placeholders = []
@@ -77,6 +78,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.episode_total_time = 0
         self.prog_ind = 0
         self.steps = 0
+        self.previous_cpp_file = None
 
     def reset(self, file=None):
         """
@@ -85,18 +87,25 @@ class TiramisuScheduleEnvironment(gym.Env):
         the input file is just a placeholder required by the gym.
         Returns: The current intitial state.
         """
+
         print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
         while True:
             try:
+
+                # Choosing a random program
+                if self.previous_cpp_file:
+                    tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
+                    self.dataset_path, self.previous_cpp_file)
                 random_prog_index = random.randint(0, len(self.progs_list) - 1)
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
                     self.dataset_path, self.progs_list[random_prog_index])
-                self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
-                    self.config, file)
+                self.previous_cpp_file = self.progs_list[random_prog_index]
+                self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(self.config, file)
+
+                
                 print(f"Trying with program {self.prog.name}")
-                self.schedule_object = tiramisu_programs.schedule.Schedule(
-                    self.prog)
+                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
                     schedule=self.schedule_object,
                     nb_executions=self.nb_executions,
@@ -127,7 +136,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                         "initial_execution_time"] = self.prog.initial_execution_time
 
             except:
-                print("RESET_ERROR", traceback.format_exc(), file=sys.stderr)
+                print("RESET_ERROR_STDERR", traceback.format_exc(), file=sys.stderr)
+                print("RESET_ERROR_STDOUT", traceback.format_exc(), file=sys.stdout)
                 continue
 
             self.steps = 0
@@ -159,9 +169,13 @@ class TiramisuScheduleEnvironment(gym.Env):
             
         except Exception as e:
             self.schedule_object.repr["action_mask"][action.id] = 0
-            print("STEP_ERROR: ",
+            print("STEP_ERROR_STDERR: ",
                   traceback.format_exc(),
                   file=sys.stderr,
+                  end=" ")
+            print("STEP_ERROR_STDOUT: ",
+                  traceback.format_exc(),
+                  file=sys.stdout,
                   end=" ")
             if applied_exception:
                 print("Already Applied exception")

@@ -157,3 +157,22 @@ class CPP_File(object):
         os.mkdir(target_path)
         os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
+    
+    @classmethod
+    def clean_cpp_file(cls, Dataset_path, func_name):
+        """Backup the dataset generator files into the folder Dataset_copies, stored locally.
+
+        Args:
+            Dataset_path (str): The path to the dataset.
+            func_name (str): The function to copy
+
+        Returns:
+            str: The new copied function path.
+        """
+        target_path = "{}/Dataset_copies/{}".format(".", func_name)
+
+        if os.path.isdir("./Dataset_copies/") and os.path.isdir(target_path):
+            os.system("rm -r {}".format(target_path))
+            return True
+        else:
+            return False

@@ -47,6 +47,8 @@ class ScheduleController:
             torch.load(config.tiramisu.model_checkpoint, map_location="cpu"))
 
     def apply_action(self, action):
+
+        # Initialize variables
         exit = False
         done = False
         info = {}
@@ -54,14 +56,14 @@ class ScheduleController:
         first_comp = self.schedule_object.comps[0]
         saved_legality = self.get_legality(action=action)
 
-        if not action.id in range(44, 46): # If the action is skewing
-            action_params = action.parameter()   # Skewing has no parameters
+        if not action.id in range(44, 46):  # If the action is skewing
+            action_params = action.parameter()
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
 
         if action.id in range(28):  # Interchange
-            if not self.schedule_object.is_interchaged: 
+            if not self.schedule_object.is_interchaged:
                 params = [
                     int(action_params["first_dim_index"]),
                     int(action_params["second_dim_index"])
@@ -96,7 +98,7 @@ class ScheduleController:
                 print("X: Interchange already applied execption")
                 raise IsInterchangedException
 
-        if action.id in range(28, 41): # Tiling
+        if action.id in range(28, 41):  # Tiling
             if not self.schedule_object.is_tiled:
                 params = [
                     int(action_params["first_dim_index"]),
@@ -145,7 +147,7 @@ class ScheduleController:
                 print("X: Tiling already applied exception")
                 raise IsTiledException
 
-        if action.id in range(41, 44): # Unrolling
+        if action.id in range(41, 44):  # Unrolling
             params = {}
             if not self.schedule_object.is_unrolled:
                 self.non_skewed_comps = []
@@ -199,7 +201,7 @@ class ScheduleController:
                 print("X: Unrolling is already applied")
                 raise IsUnrolledException
 
-        if action.id in range(44, 46): # Skewing
+        if action.id in range(44, 46):  # Skewing
 
             if not self.schedule_object.is_skewed:
 
@@ -270,7 +272,7 @@ class ScheduleController:
                 print("X: Skewing is already applied")
                 raise IsSkewedException
 
-        if action.id in range(46, 48): # Parallelization
+        if action.id in range(46, 48):  # Parallelization
             if not self.schedule_object.is_parallelized:
                 params = [int(action_params["dim_index"])]
 
@@ -334,7 +336,7 @@ class ScheduleController:
                     return self.schedule_object.repr, 1.0, done, info
 
                 self.schedule_object.apply_reversal(action_params)
-                
+
                 print("O: Loop reversal applied")
                 self.schedule_object.is_reversed = True
             else:
@@ -408,23 +410,24 @@ class ScheduleController:
         else:
             return self.schedule_object.repr, 1.0, done, info
 
-    def pop_schedule(self,action):
+    def pop_schedule(self, action):
         self.schedule_object.repr["action_mask"][action.id] = 0
         self.schedule.pop()
 
     def get_final_score(self):
         exec_time = 0
         exec_time = self.get_exec_time()
-        speedup=1.0
+        speedup = 1.0
         if exec_time != 0:
             speedup = (self.schedule_object.prog.initial_execution_time /
-                            exec_time) 
+                       exec_time)
         return speedup
 
-    def test_additional_actions(self, training = True):
+    def test_additional_actions(self, training=True):
         info = dict()
         if training:
-            print("This operation alters the training and, therefore, it won't be executed")
+            print(
+                "This operation alters the training and, therefore, it won't be executed")
             try:
                 exec_time = 0
                 exec_time = self.get_exec_time()
@@ -445,7 +448,8 @@ class ScheduleController:
                         "unrolling_factor": unroll_factor
                     }
                     new_unrolling_optim_params[comp] = [
-                        len(self.schedule_object.it_dict[comp]) - 1, unroll_factor
+                        len(self.schedule_object.it_dict[comp]
+                            ) - 1, unroll_factor
                     ]
 
                 new_unrolling_optim = OptimizationCommand(
@@ -485,7 +489,7 @@ class ScheduleController:
                     params = [int(action_params["dim_index"])]
 
                     optim5 = OptimizationCommand("Parallelization", params,
-                                                self.schedule_object.comps)
+                                                 self.schedule_object.comps)
                     first_comp = list(self.schedule_object.it_dict.keys())[0]
                     iterator = self.schedule_object.it_dict[first_comp][
                         action_params["dim_index"]]['iterator']
@@ -511,7 +515,8 @@ class ScheduleController:
                     if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
                         exec_time = parallelized_exec_time
 
-                        self.schedule_object.apply_parallelization(action_params)
+                        self.schedule_object.apply_parallelization(
+                            action_params)
                         print("O: Parallelization improves the performance.")
 
                     else:
@@ -528,15 +533,16 @@ class ScheduleController:
 
                 print("X: Error while measuring performance")
                 print(f"failed to save schedule",
-                    traceback.format_exc(),
-                    flush=True)
+                      traceback.format_exc(),
+                      flush=True)
                 info = {"Internal execution error": True}
                 return self.schedule_object.repr, self.speedup, True, info
 
         if exec_time != 0:
             print("\nThe final schedule is ",
                   self.schedule_object.schedule_str)
-            self.speedup = (self.schedule_object.prog.initial_execution_time / exec_time)
+            self.speedup = (
+                self.schedule_object.prog.initial_execution_time / exec_time)
             print("The speedup is: ", self.speedup)
             start_time = time.time()
         info["depth"] = self.depth
@@ -633,7 +639,7 @@ class ScheduleController:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time
 
-    def save_legality_data(self,action,lc_check):
+    def save_legality_data(self, action, lc_check):
         key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
         self.lc_data.append(
             [
@@ -641,10 +647,10 @@ class ScheduleController:
                 lc_check
             ]
         )
-    
-    def get_legality(self,action):
+
+    def get_legality(self, action):
         key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
-        values = [v for (k,v) in self.lc_data if k == key]
+        values = [v for (k, v) in self.lc_data if k == key]
         return values[0] if len(values) else None
 
     def get_legality_data(self):

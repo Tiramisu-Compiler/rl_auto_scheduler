@@ -6,8 +6,8 @@
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-task=28
 #SBATCH -t 7-0:00:00
-#SBATCH -o outputs/train.out
-#SBATCH -e outputs/train.err
+#SBATCH -o outputs/job.train.out
+#SBATCH -e outputs/job.train.err
 
 . scripts/env.sh
 . $CONDA_DIR/bin/activate
