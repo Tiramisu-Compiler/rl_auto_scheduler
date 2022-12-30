@@ -94,7 +94,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             try:
 
                 # Choosing a random program
-                if self.previous_cpp_file:
+                if self.config.environment.clean_files and  self.previous_cpp_file:
                     tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
                     self.dataset_path, self.previous_cpp_file)
                 random_prog_index = random.randint(0, len(self.progs_list) - 1)
@@ -134,6 +134,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                     self.progs_dict[self.prog.name] = {}
                     self.progs_dict[self.prog.name][
                         "initial_execution_time"] = self.prog.initial_execution_time
+                self.progs_dict[self.prog.name]["program_annotation"]= self.schedule_object.annotations
 
             except:
                 print("RESET_ERROR_STDERR", traceback.format_exc(), file=sys.stderr)
@@ -196,11 +197,25 @@ class TiramisuScheduleEnvironment(gym.Env):
             done = True
         if done:
             print("\n ************** End of an episode ************")
-            speedup = self.schedule_controller.get_final_score()
+            try:
+                speedup = self.schedule_controller.get_final_score()
+            except:
+                speedup = 1.0
             ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
+            if "schedule"in self.progs_dict[self.prog.name]:
+                self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.progs_dict[self.prog.name]["schedules_list"].append(self.schedule_object.schedule_dict)
+            else:
+                self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.progs_dict[self.prog.name]["schedules_list"]= [self.schedule_object.schedule_dict]
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
+        print(f"Received a reward: {reward}")
 
+        # Saving data
         if self.total_steps % self.SAVING_FREQUENCY:
             ray.get(self.shared_variable_actor.write_lc_data.remote())
+            rl_interface.utils.EnvironmentUtils.write_json_dataset(f"worker_{self.id}.json",self.progs_dict)
         return self.obs, reward, done, info

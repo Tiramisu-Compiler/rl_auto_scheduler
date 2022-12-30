@@ -9,6 +9,7 @@ ray:
 environment:
     dataset_path: "./Dataset_multi/"
     programs_file: "./multicomp.json"
+    clean_files: True
 
 
 tiramisu:

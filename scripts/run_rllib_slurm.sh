@@ -1,13 +1,12 @@
 #!/bin/bash
-#SBATCH -p compute
-#SBATCH --reservation c2
-#SBATCH --nodes=4
+#SBATCH -p research
+#SBATCH --nodes=2
 #SBATCH --exclusive
 #SBATCH --tasks-per-node 1
-#SBATCH --cpus-per-task=28
+#SBATCH --cpus-per-task=48
 #SBATCH -t 7-0:00:00
-#SBATCH -o outputs/job.train.out
-#SBATCH -e outputs/job.train.err
+#SBATCH -o outputs/job.%J.out
+#SBATCH -e outputs/job.%J.err
 
 . scripts/env.sh
 . $CONDA_DIR/bin/activate

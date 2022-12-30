@@ -14,16 +14,16 @@ class GlobalVarActor:
         self.programs_file = programs_file
         self.progs_dict = dict()
         self.lc_data = []
-        if os.path.isfile(programs_file):
-            try:
-                with open(programs_file) as f:
-                    self.progs_dict = json.load(f)
-            except:
-                self.progs_dict = dict()
-        else:
-            self.progs_dict = dict()
-            with open(programs_file,"w+") as f:
-                f.write(json.dumps(self.progs_dict))
+        # if os.path.isfile(programs_file):
+        #     try:
+        #         with open(programs_file) as f:
+        #             self.progs_dict = json.load(f)
+        #     except:
+        #         self.progs_dict = dict()
+        # else:
+        #     self.progs_dict = dict()
+        #     with open(programs_file,"w+") as f:
+        #         f.write(json.dumps(self.progs_dict))
 
         if os.path.isfile("lc_data.json"):
             try:
