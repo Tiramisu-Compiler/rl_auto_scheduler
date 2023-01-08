@@ -1,13 +1,12 @@
 #!/bin/bash
-#SBATCH --reservation c2
-#SBATCH -p compute
-#SBATCH --nodes=4
+#SBATCH -p research
+#SBATCH --nodes=2
 #SBATCH --exclusive
 #SBATCH --tasks-per-node 1
-#SBATCH --cpus-per-task=28
+#SBATCH --cpus-per-task=48
 #SBATCH -t 7-0:00:00
-#SBATCH -o outputs/train.out
-#SBATCH -e outputs/train.err
+#SBATCH -o outputs/job.%J.out
+#SBATCH -e outputs/job.%J.err
 
 . scripts/env.sh
 . $CONDA_DIR/bin/activate
@@ -42,12 +41,9 @@ sleep 10
 echo "starting workers"
 for ((  i=1; i<=$WORKER_NUM; i++ ))
 do
-  for ((  w=1; w<=$WORKER_PER_NODE; w++ ))
-  do
     node2=${nodes_array[$i]}
     echo "i=${i}, w = ${w}, node2=$node2"
     srun --nodes=1 --ntasks=1 -w $node2 ray start --num-cpus "${SLURM_CPUS_PER_TASK}" --address "$ip_head" --redis-password=$REDIS_PWD --block &
     sleep 5
-  done
 done
-python train_ppo.py --num-workers $(expr $WORKER_PER_NODE \* $WORKER_NUM)
+python train_ppo.py --num-workers $(( $WORKER_PER_NODE * ( $WORKER_NUM + 1 )))

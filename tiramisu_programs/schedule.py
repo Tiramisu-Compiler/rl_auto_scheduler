@@ -1,8 +1,12 @@
 import traceback
+import json
+
 import numpy as np
 import rl_interface
-from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_tree_structure, get_sched_rep
+
 from tiramisu_programs.schedule_utils import *
+from tiramisu_programs.surrogate_model_utils.json_to_tensor import (
+    get_sched_rep, get_tree_structure)
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -10,6 +14,7 @@ EPSILON = 1e-6
 
 class Schedule:
     MAX_DEPTH = 6
+    MAX_COMPS = 5
 
     def __init__(self, program):
         self.depth = 0
@@ -26,43 +31,36 @@ class Schedule:
         self.repr = None
 
     def get_representation(self):
+        """
+        Get the schedule representation as an observation to feed into the RL model.
+        """
         if self.repr is not None: return self.repr
-        self.prog_rep, self.comps_placeholders, self.comp_indic_dict = ScheduleUtils.get_representation(
-            self.annotations)
 
-        # print("the length is", len(prog_rep[0]))
+        (self.prog_rep,
+        self.comps_placeholders,
+        self.comp_indic_dict) = ScheduleUtils.get_representation(self.annotations)
 
         for comp_rep in self.prog_rep:
             if len(comp_rep) != 1052:
                 raise RepresentationLengthException
 
-        if len(self.comps) != 1:
-            # print("more than one comp")
+        if len(self.comps) != 1:   # Multi-computation program
             self.comps_it = []
             for comp in self.comps:
                 self.comps_it.append(
                     self.annotations["computations"][comp]["iterators"])
-
-            ## print("got the comp it", self.comps_it)
-
             self.common_it = self.comps_it[0]
-
             for comp_it in self.comps_it[1:]:
-                ## print("common it is ", self.common_it)
                 self.common_it = [it for it in comp_it if it in self.common_it]
 
-            # print("the common iterators are", self.common_it)
-
-        elif len(self.comps
-                 ) > 5:  # To avoid IndexError in self.repr["representation"]
+        elif len(self.comps) > self.MAX_COMPS:  # If the program contains more than the maximum number of computations
             raise IndexError
 
-        else:
-            # print("one comp, no need for common iterators")
+        else:  # A single comp program
             self.common_it = self.annotations["computations"][
                 self.comps[0]]["iterators"]
 
-        # print("The initial execution time is", self.prog.initial_execution_time)
+        
         self.schedule_dict = dict()
         self.schedule_dict["fusions"] = None
         for comp in self.comps:
@@ -77,8 +75,7 @@ class Schedule:
             self.schedule_dict[comp]['parallelized_dim'] = None
             self.schedule_dict[comp]['unrolling_factor'] = None
             self.schedule_dict[comp]['tiling'] = None
-        self.schedule_dict['tree_structure'] = get_tree_structure(
-            self.annotations)
+        self.schedule_dict['tree_structure'] = get_tree_structure(self.annotations)
 
         self.templates = dict()
         (self.templates["prog_tree"],
@@ -98,6 +95,7 @@ class Schedule:
         self.repr["loops_representation"] = np.empty((0, 26), np.float32)
         self.repr['child_list'] = np.empty((0, 11), np.float32)
         self.repr['has_comps'] = np.empty((0, 12), np.float32)
+        self.repr["prog_tree"] = np.empty((0,5000),np.float32) 
         self.repr['computations_indices'] = np.empty((0, 5), np.float32)
 
         for i in range(5):
@@ -111,9 +109,6 @@ class Schedule:
                     np.array([self.prog_rep[i]], dtype=np.float32)
                 ])
 
-        #print("\nLa représentation vectorielle initiale de ce programme est:", self.repr["representation"] )
-
-        # print("\nLes niveaux de boucles de ce programme sont:")
         self.it_dict = {}
         for comp in self.comps:
             comp_it_dict = {}
@@ -129,7 +124,6 @@ class Schedule:
                     iterators[i]]['upper_bound']
 
             self.it_dict[comp] = comp_it_dict
-        # print(self.it_dict)
 
         iterators = list(self.annotations["iterators"].keys())
 
@@ -177,7 +171,6 @@ class Schedule:
                 [self.repr["computations_indices"],
                  np.array([loop_comps])])
 
-        #Add null vectors if needed to avoid mismatching error of env.observation's type and reset_obs's type
         for i in range(15 - len(self.annotations["iterators"])):
             loop_repr = np.full(26, -1)
             self.repr["loops_representation"] = np.vstack(
@@ -241,6 +234,10 @@ class Schedule:
         if len(self.comps) == 1:
             np.put(self.repr["action_mask"], [56, 57, 58, 59, 60],
                    [0, 0, 0, 0, 0])
+        max_size = 5000
+        string = json.dumps(self.templates["prog_tree"])
+        padded_string = string + (max_size - len(string))*"_"
+        self.repr["prog_tree"] = np.array(list(padded_string),"U1").view(np.float32)
         return self.repr
 
     def apply_interchange(self, params):
@@ -320,9 +317,8 @@ class Schedule:
                 self.placeholders[comp][l_code +
                                         "TileFactor"]] = params["first_factor"]
 
-            #update the loop bounds if tiling is applied on loop 1
             if params["tiling_loop_1"]:
-                # print("inside loop tiling 1")
+
                 new_upper_bound_1 = self.repr["representation"][
                     self.comp_indic_dict[comp]][first_dim_index * 20 +
                                                 1] / params["first_factor"]
@@ -331,14 +327,13 @@ class Schedule:
                 new_inner_upper_bound_1 = params["first_factor"]
                 self.repr["representation"][self.comp_indic_dict[comp]][
                     first_dim_index * 20 + 10] = new_inner_upper_bound_1
-                # print("after loop tiling 1")
-                #Add the loop representation of the newly added iterator
+
                 loop_added = "{}_1".format(
                     self.it_dict[comp][first_dim_index]['iterator'])
                 self.added_iterators.append(loop_added)
                 loop_index = len(self.annotations['iterators']
                                  ) + self.added_iterators.index(loop_added)
-                #Initialize lower and upper bounds
+
                 loop_repr = []
                 if self.repr["representation"][comp_index][
                         self.placeholders[comp][l_code + "Reversed"]] == 1:
@@ -348,7 +343,7 @@ class Schedule:
                     lower_bound = self.repr["representation"][comp_index][
                         second_dim_index * 20]
                 loop_repr.extend([lower_bound, params["first_factor"]])
-                #Initialize the different tags
+
                 loop_repr.extend([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 loop_log_rep = list(np.log1p(loop_repr))
                 loop_repr.extend(loop_log_rep)
@@ -360,9 +355,9 @@ class Schedule:
             self.repr["representation"][self.comp_indic_dict[comp]][
                 self.placeholders[comp][
                     l_code + "TileFactor"]] = params["second_factor"]
-            #update the loop bounds if tiling is applied on loop 2
+
             if params["tiling_loop_2"]:
-                # print("inside loop tiling 2")
+
                 new_upper_bound_2 = self.repr["representation"][
                     self.comp_indic_dict[comp]][second_dim_index * 20 +
                                                 1] / params["second_factor"]
@@ -371,15 +366,13 @@ class Schedule:
                 new_inner_upper_bound_2 = params["second_factor"]
                 self.repr["representation"][self.comp_indic_dict[comp]][
                     second_dim_index * 20 + 10] = new_inner_upper_bound_2
-                # print("after loop tiling 2")
 
-                #Add the loop representation of the newly added iterator
                 loop_added = "{}_1".format(
                     self.it_dict[comp][second_dim_index]['iterator'])
                 self.added_iterators.append(loop_added)
                 loop_index = len(self.annotations['iterators']
                                  ) + self.added_iterators.index(loop_added)
-                #Initialize lower and upper bounds
+
                 loop_repr = []
 
                 if self.repr["representation"][comp_index][
@@ -391,7 +384,6 @@ class Schedule:
                         second_dim_index * 20]
                 loop_repr.extend([lower_bound, params["second_factor"]])
 
-                #Initialize the different tags
                 loop_repr.extend([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 loop_log_rep = list(np.log1p(loop_repr))
                 loop_repr.extend(loop_log_rep)
@@ -418,9 +410,9 @@ class Schedule:
                 self.repr["representation"][self.comp_indic_dict[comp]][
                     self.placeholders[comp][
                         l_code + "TileFactor"]] = params["third_factor"]
-                #update the loop bounds if tiling is applied on loop 3
+
                 if params["tiling_loop_3"]:
-                    # print("inside loop tiling 3")
+
                     new_upper_bound_3 = self.repr["representation"][
                         self.comp_indic_dict[comp]][third_dim_index * 20 +
                                                     1] / params["third_factor"]
@@ -429,15 +421,13 @@ class Schedule:
                     new_inner_upper_bound_3 = params["third_factor"]
                     self.repr["representation"][self.comp_indic_dict[comp]][
                         third_dim_index * 20 + 10] = new_inner_upper_bound_3
-                    # print("after loop tiling 3")
 
-                    #Add the loop representation of the newly added iterator
                     loop_added = "{}_1".format(
                         self.it_dict[comp][third_dim_index]['iterator'])
                     self.added_iterators.append(loop_added)
                     loop_index = len(self.annotations['iterators']
                                      ) + self.added_iterators.index(loop_added)
-                    #Initialize lower and upper bounds
+
                     loop_repr = []
                     if self.repr["representation"][comp_index][
                             self.placeholders[comp][l_code + "Reversed"]] == 1:
@@ -448,13 +438,12 @@ class Schedule:
                             third_dim_index * 20]
 
                     loop_repr.extend([lower_bound, params["third_factor"]])
-                    #Initialize the different tags
+
                     loop_repr.extend([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                     loop_log_rep = list(np.log1p(loop_repr))
                     loop_repr.extend(loop_log_rep)
                     self.repr["loops_representation"][loop_index] = loop_repr
 
-        #Update the loops representation
         iterators = list(self.annotations["iterators"].keys())
 
         if self.it_dict[comp][first_dim_index]['iterator'] in iterators:
@@ -481,7 +470,6 @@ class Schedule:
         self.repr["loops_representation"][loop_2][3] = 1
         self.repr["loops_representation"][loop_2][4] = params['second_factor']
 
-        #Update the loop representation
         if params["tiling_depth"] == 3:
 
             if self.it_dict[comp][third_dim_index]['iterator'] in iterators:
@@ -826,7 +814,7 @@ class Schedule:
     def apply_unrolling(self, params):
 
         for comp in self.comps:
-            # print(comp)
+
             self.repr["representation"][self.comp_indic_dict[comp]][
                 self.placeholders[comp]["Unrolled"]] = 1
             self.repr["representation"][self.comp_indic_dict[comp]][
@@ -842,7 +830,6 @@ class Schedule:
                     self.comp_indic_dict[comp]][index_upper_bound] / params[
                         comp]["unrolling_factor"]
 
-            #Update the loop representation
             iterators = list(self.annotations["iterators"].keys())
             if self.it_dict[comp][params[comp]
                                   ["dim_index"]]['iterator'] in iterators:
@@ -863,15 +850,12 @@ class Schedule:
         for i in range(56, 61):
             self.repr["action_mask"][i] = 0
 
-        # print("1.6")
         try:
             for comp in self.comps:
                 self.schedule_dict[comp]["unrolling_factor"] = params[comp][
                     "unrolling_factor"]
         except Exception:
             print("ERROR_MODEL", traceback.format_exc())
-
-        # print("1.7")
 
     def apply_skewing(self, params):
         dim_1 = params["first_dim_index"]
@@ -881,7 +865,6 @@ class Schedule:
             l1_code = "L" + self.it_dict[comp][dim_1]['iterator']
             l2_code = "L" + self.it_dict[comp][dim_2]['iterator']
 
-            #to get the start of the iterator in the representation template (just after the bounds)
             index1_upper_bound = self.placeholders[comp][l1_code +
                                                          'Interchanged'] - 1
             index1_lower_bound = self.placeholders[comp][l1_code +
@@ -926,7 +909,6 @@ class Schedule:
             self.repr["representation"][self.comp_indic_dict[comp]][
                 index2_upper_bound] = (l2_extent) + 1
 
-        #Update the loop representation
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][dim_1]['iterator'] in iterators:
             loop_1 = iterators.index(self.it_dict[comp][dim_1]['iterator'])
@@ -936,7 +918,7 @@ class Schedule:
                     self.it_dict[comp][dim_1]['iterator'])
         self.repr["loops_representation"][loop_1][7] = 1
         self.repr["loops_representation"][loop_1][8] = params['first_factor']
-        #Skewing is applied on common loop levels so loop bounds are equal for all computations
+
         self.repr["loops_representation"][loop_1][9] = self.repr[
             "representation"][0][index1_upper_bound] - self.repr[
                 "representation"][0][index1_lower_bound]
@@ -990,7 +972,6 @@ class Schedule:
         self.repr["representation"][0][self.placeholders[first_comp][
             l_code + "Parallelized"]] = 1
 
-        #Update the loop representation
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[first_comp][
                 params["dim_index"]]['iterator'] in iterators:
@@ -1002,13 +983,11 @@ class Schedule:
                 self.annotations['iterators']) + self.added_iterators.index(
                     self.it_dict[first_comp][params["dim_index"]]['iterator'])
         self.repr["loops_representation"][loop_index][10] = 1
-        #Update the action mask
+
         self.repr["action_mask"][46] = 0
         self.repr["action_mask"][47] = 0
         for i in range(56, 61):
             self.repr["action_mask"][i] = 0
-        # print("The first comp is ", first_comp)
-        # print("The result is ", self.schedule_dict[first_comp]["parallelized_dim"])
 
     def apply_reversal(self, params):
         for comp in self.comps:
@@ -1030,7 +1009,6 @@ class Schedule:
             self.repr["representation"][
                 self.comp_indic_dict[comp]][index_upper_bound] = tmp
 
-        #Update the loop representation
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][params["dim_index"]]['iterator'] in iterators:
             loop_index = iterators.index(
@@ -1067,7 +1045,7 @@ class Schedule:
                 self.placeholders[comp][l_code + "Fused"]] = 1
         fusion.append(params["dim_index"])
         self.schedule_dict["fusions"].append(fusion)
-        #Update the loop representation
+
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][params["dim_index"]]['iterator'] in iterators:
             loop_index = iterators.index(

@@ -5,6 +5,7 @@ import random
 import sys
 import time
 import traceback
+import subprocess
 
 import gym
 import numpy as np
@@ -12,21 +13,25 @@ import ray
 import tiramisu_programs
 import torch
 
-# from pyfiglet import Figlet
 import rl_interface
+from utils.environment_variables import configure_env_variables
 
 np.seterr(invalid="raise")
 
 
 class TiramisuScheduleEnvironment(gym.Env):
+    '''
+    The reinforcement learning environment used by the GYM. 
+    '''
+    SAVING_FREQUENCY = 500
 
     def __init__(self, config, shared_variable_actor):
+        print("Configuring the environment variables")
+        configure_env_variables(config)
 
-        # f = Figlet(font='banner3-D')
-        # # print(f.renderText("Tiramisu"))
-        print("Initializing the environment")
-
+        print("Initializing the local variables")
         self.config = config
+        self.total_steps = 0
         self.placeholders = []
         self.speedup = 0
         self.schedule = []
@@ -35,10 +40,10 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.programs_file = config.environment.programs_file
         self.measurement_env = None
 
-        print("Récupération des données depuis {} \n".format(
-            config.environment.dataset_path))
+        print("Loading data from {} \n".format(config.environment.dataset_path))    # FIX that here
         self.shared_variable_actor = shared_variable_actor
         self.id = ray.get(self.shared_variable_actor.increment.remote())
+        # out = subprocess.run(f"echo \"Worker {self.id} running on hostname $(hostname)\" >> hostnames.txt", check=True ,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.progs_list = ray.get(
             self.shared_variable_actor.get_progs_list.remote(self.id))
         self.progs_dict = ray.get(
@@ -63,6 +68,8 @@ class TiramisuScheduleEnvironment(gym.Env):
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, )),
             "computations_indices":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 5)),
+            "prog_tree":
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,))
         })
 
         self.dataset_path = config.environment.dataset_path
@@ -71,25 +78,41 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.episode_total_time = 0
         self.prog_ind = 0
         self.steps = 0
+        self.previous_cpp_file = None
 
     def reset(self, file=None):
+        """
+        Reset the environment to the intial state. A state is defined as a random program with the schedule applied to it.
+        The initial state is defined as a random program with no schedules applied to it.
+        the input file is just a placeholder required by the gym.
+        Returns: The current intitial state.
+        """
+
         print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
         while True:
             try:
-                init_indc = random.randint(0, len(self.progs_list) - 1)
+
+                # Choosing a random program
+                if self.config.environment.clean_files and  self.previous_cpp_file:
+                    tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
+                    self.dataset_path, self.previous_cpp_file)
+                random_prog_index = random.randint(0, len(self.progs_list) - 1)
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, self.progs_list[init_indc])
-                self.prog = tiramisu_programs.tiramisu_program.Tiramisu_Program(
-                    self.config, file)
+                    self.dataset_path, self.progs_list[random_prog_index])
+                self.previous_cpp_file = self.progs_list[random_prog_index]
+                self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(self.config, file)
+
+                
                 print(f"Trying with program {self.prog.name}")
-                self.schedule_object = tiramisu_programs.schedule.Schedule(
-                    self.prog)
+                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
                     schedule=self.schedule_object,
                     nb_executions=self.nb_executions,
                     scheds=self.scheds,
                     config=self.config)
+                lc_data = ray.get(self.shared_variable_actor.get_lc_data.remote())
+                self.schedule_controller.load_legality_data(lc_data)
                 self.obs = self.schedule_object.get_representation()
                 if self.config.tiramisu.env_type == "cpu":
                     if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys(
@@ -111,9 +134,11 @@ class TiramisuScheduleEnvironment(gym.Env):
                     self.progs_dict[self.prog.name] = {}
                     self.progs_dict[self.prog.name][
                         "initial_execution_time"] = self.prog.initial_execution_time
+                self.progs_dict[self.prog.name]["program_annotation"]= self.schedule_object.annotations
 
             except:
-                print("RESET_ERROR", traceback.format_exc(), file=sys.stderr)
+                print("RESET_ERROR_STDERR", traceback.format_exc(), file=sys.stderr)
+                print("RESET_ERROR_STDOUT", traceback.format_exc(), file=sys.stdout)
                 continue
 
             self.steps = 0
@@ -122,25 +147,36 @@ class TiramisuScheduleEnvironment(gym.Env):
             return self.obs
 
     def step(self, raw_action):
+        """
+        Apply a transformation on a program. If the action raw_action is legal, it is applied. If not, it is ignored and not added to the schedule.
+        Returns: The current state after eventually applying the transformation, and the reward that the agent received for taking the action.
+        """
         action_name = rl_interface.Action.ACTIONS_ARRAY[raw_action]
         print("\n ----> {} [ {} ] \n".format(
             action_name, self.schedule_object.schedule_str))
         info = {}
         applied_exception = False
-        reward = 0
+        reward = 0.0
         speedup = 1.0
         self.steps += 1
+        self.total_steps += 1
 
         try:
             action = rl_interface.Action(raw_action,
                                          self.schedule_object.it_dict,
                                          self.schedule_object.common_it)
-            _, speedup, done, info = self.schedule_controller.apply_action(
-                action)  # Should return speedup instead of reward
+            _, speedup, done, info = self.schedule_controller.apply_action(action)
+            print("Obtained speedup: ",speedup)
+            
         except Exception as e:
-            print("STEP_ERROR: ",
+            self.schedule_object.repr["action_mask"][action.id] = 0
+            print("STEP_ERROR_STDERR: ",
                   traceback.format_exc(),
                   file=sys.stderr,
+                  end=" ")
+            print("STEP_ERROR_STDOUT: ",
+                  traceback.format_exc(),
+                  file=sys.stdout,
                   end=" ")
             if applied_exception:
                 print("Already Applied exception")
@@ -161,8 +197,25 @@ class TiramisuScheduleEnvironment(gym.Env):
             done = True
         if done:
             print("\n ************** End of an episode ************")
-            self.obs, speedup, done, info = self.schedule_controller.test_additional_actions(
-            )
+            try:
+                speedup = self.schedule_controller.get_final_score()
+            except:
+                speedup = 1.0
+            ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
+            if "schedule"in self.progs_dict[self.prog.name]:
+                self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.progs_dict[self.prog.name]["schedules_list"].append(self.schedule_object.schedule_dict)
+            else:
+                self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.progs_dict[self.prog.name]["schedules_list"]= [self.schedule_object.schedule_dict]
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
+        print(f"Received a reward: {reward}")
+
+        # Saving data
+        if self.total_steps % self.SAVING_FREQUENCY:
+            ray.get(self.shared_variable_actor.write_lc_data.remote())
+            rl_interface.utils.EnvironmentUtils.write_json_dataset(f"worker_{self.id}.json",self.progs_dict)
         return self.obs, reward, done, info

@@ -129,7 +129,7 @@ class Model_Recursive_LSTM_v2(nn.Module):
             )
         if node["has_comps"]:
             selected_comps_tensor = torch.index_select(
-                comps_embeddings, 1, node["computations_indices"].to(self.train_device)
+                comps_embeddings, 1, torch.tensor(node["computations_indices"]).to(self.train_device)
             )
             lstm_out, (comps_h_n, comps_c_n) = self.comps_lstm(selected_comps_tensor)
             comps_h_n = comps_h_n.permute(1, 0, 2)
@@ -138,7 +138,7 @@ class Model_Recursive_LSTM_v2(nn.Module):
                 comps_embeddings.shape[0], -1, -1
             )
         selected_loop_tensor = torch.index_select(
-            loops_tensor, 1, node["loop_index"].to(self.train_device)
+            loops_tensor, 1, torch.tensor(node["loop_index"]).to(self.train_device)
         )
         x = torch.cat((nodes_h_n, comps_h_n, selected_loop_tensor), 2)
         for i in range(len(self.concat_layers)):

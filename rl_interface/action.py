@@ -105,15 +105,13 @@ class Action:
         self.common_it = common_it
 
     def parameter(self, comp=None, prog=None):
-        # #print("in action params function")
-
-        first_comp = list(self.it_dict.keys())[0]
         """"
         Property method to return the parameter related to the action selected.
         Returns:
             The parameter related to this action_id
         """
 
+        first_comp = list(self.it_dict.keys())[0]
         if self.id == 0:  # INTERCHANGE01
             return {"first_dim_index": 0, "second_dim_index": 1}
 
@@ -214,8 +212,8 @@ class Action:
                     first_it = 6
                     second_it = 7
 
-                first_fact = random.choice([32, 64, 128])
-                second_fact = random.choice([32, 64, 128])
+                first_fact = 32 #random.choice([32, 64, 128])
+                second_fact = 32 #random.choice([32, 64, 128])
                 # #print("after choosing first and second params and factors")
 
                 # calculate the loop extent to see if we should create new iterators or not
@@ -227,9 +225,9 @@ class Action:
                 #print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
-                    print("tiling flag 1 false, loopextent == factor")
+                    print("Tiling flag 1 false, loopextent == factor")
                 elif loop_extent_1 < first_fact:
-                    print("exceeeption, loop extent 1 smaller than factor")
+                    print("Exception, loop extent 1 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
                     raise LoopExtentException
 
@@ -285,9 +283,9 @@ class Action:
                     second_it = 6
                     third_it = 7
 
-                first_fact = random.choice([32, 64, 128])
-                second_fact = random.choice([32, 64, 128])
-                third_fact = random.choice([32, 64, 128])
+                first_fact = 32 #random.choice([32, 64, 128])
+                second_fact = 32 #random.choice([32, 64, 128])
+                third_fact = 32 #random.choice([32, 64, 128])
                 # calculate the loop extent to see if we should create new iterators or not
                 loop_extent_1 = abs(
                     self.it_dict[first_comp][first_it]["upper_bound"] -

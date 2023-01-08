@@ -4,7 +4,7 @@ import random
 import re
 from sympy import simplify
 from sympy.core.symbol import Symbol
-from TiramisuMaker import Buffer, ReadAccess
+from tiramisu_maker import Buffer, ReadAccess
 import copy
 # from tqdm import tqdm
 # import seaborn as sns

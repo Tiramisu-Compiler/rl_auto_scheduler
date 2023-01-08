@@ -1,6 +1,7 @@
-import numpy as np
-import re
 import json
+import re
+
+import numpy as np
 
 
 class LargeAccessMatices(Exception):
@@ -103,24 +104,18 @@ class ScheduleUtils:
     @classmethod
     def pad_access_matrix(cls, access_matrix, max_depth):
         access_matrix = np.array(access_matrix)
-        access_matrix = np.c_[
-            np.ones(access_matrix.shape[0]),
-            access_matrix]  # adding tags for marking the used rows
-        access_matrix = np.r_[[
-            np.ones(access_matrix.shape[1])
-        ], access_matrix]  # adding tags for marking the used columns
+        access_matrix = np.c_[np.ones(access_matrix.shape[0]), access_matrix]
+        access_matrix = np.r_[[np.ones(access_matrix.shape[1])], access_matrix]
         padded_access_matrix = np.zeros((max_depth + 1, max_depth + 2))
-        padded_access_matrix[:access_matrix.shape[0], :access_matrix.shape[
-            1] - 1] = access_matrix[:, :
-                                    -1]  #adding padding to the access matrix before the last column
-        padded_access_matrix[:access_matrix.shape[
-            0], -1] = access_matrix[:, -1]  #appending the last columns
+        padded_access_matrix[:access_matrix.shape[0], :access_matrix.shape[1] -
+                             1] = access_matrix[:, :-1]
+        padded_access_matrix[:access_matrix.shape[0], -1] = access_matrix[:,
+                                                                          -1]
 
         return padded_access_matrix
 
     @classmethod
-    def isl_to_write_matrix(
-            cls, isl_map):  # for now this function only support reductions
+    def isl_to_write_matrix(cls, isl_map):
         comp_iterators_str = re.findall(r'\[(.*)\]\s*->', isl_map)[0]
         buffer_iterators_str = re.findall(r'->\s*\w*\[(.*)\]', isl_map)[0]
         buffer_iterators_str = re.sub(r"\w+'\s=", "", buffer_iterators_str)
@@ -135,8 +130,7 @@ class ScheduleUtils:
         return matrix
 
     @classmethod
-    def sched_json_to_sched_str(cls, sched_json,
-                                prog_it):  # Works only for 1 comp programs
+    def sched_json_to_sched_str(cls, sched_json, prog_it):
         orig_loop_nest = []
         orig_loop_nest.append(list(prog_it.keys())[0])
         child_list = prog_it[list(prog_it.keys())[0]]['child_iterators']
@@ -194,7 +188,7 @@ class ScheduleUtils:
                 i = transf_loop_nest.index(second_dim)
                 transf_loop_nest[
                     i:i + 1] = first_dim + '_inner', second_dim + '_inner'
-            else:  #tiling depth == 3
+            else:
                 first_dim = schedule['tiling']['tiling_dims'][0]
                 second_dim = schedule['tiling']['tiling_dims'][1]
                 third_dim = schedule['tiling']['tiling_dims'][2]
@@ -234,26 +228,23 @@ class ScheduleUtils:
     def get_schedules_str(cls, programs_list, programs_dict):
         if programs_dict != {}:
 
-            functions_set = {
-            }  #a dict containing all existed programs in the dataset with their evaluated schedules
+            functions_set = {}
 
             for fun in programs_list:
-                #print(programs_dict[fun]['schedules_list'])
+
                 if 'schedules_list' in programs_dict[fun].keys():
-                    schedules = programs_dict[fun]['schedules_list']  #[:2]
-                    #print(schedules)
-                    schedules_set = {}  #schedules_program_x
+                    schedules = programs_dict[fun]['schedules_list']
+
+                    schedules_set = {}
 
                     for schedule in schedules:
-                        #schedule_str = sched_json_to_sched_str(schedule, prog_it)
-                        comp = list(
-                            schedule.keys())[0]  #we have only one computation
+
+                        comp = list(schedule.keys())[0]
                         schedule_str = schedule[comp]["schedule_str"]
                         schedules_set[schedule_str] = schedule[comp][
                             "execution_times"]
 
                     functions_set[fun] = schedules_set
-                #schedules_set.append(schedules_subset)#appending schedules_program_x to schedules_set
 
             return functions_set
         else:
@@ -263,7 +254,7 @@ class ScheduleUtils:
     def get_representation(cls, program_annot):
         max_dims = 7
         max_depth = 5
-        max_accesses = 21  # TODO: check if 10 is enough
+        max_accesses = 21
         program_representation = []
         indices_dict = dict()
         computations_dict = program_annot['computations']
@@ -284,7 +275,6 @@ class ScheduleUtils:
                     iterator_dict['lower_bound'], iterator_dict['upper_bound']
                 ])
 
-                # transformations placeholders
                 l_code = 'L' + iterator_name
                 iterators_repr.extend([
                     l_code + 'Interchanged', l_code + 'Skewed',
@@ -296,63 +286,44 @@ class ScheduleUtils:
                     l_code + "_1" + 'Parallelized', l_code + "_1" + 'Tiled',
                     l_code + "_1" + 'TileFactor', l_code + "_1" + 'Reversed',
                     l_code + "_1" + 'Fused'
-                ])  #unrolling is skipped since it is added only once
+                ])
 
-            # Adding padding
             iterator_repr_size = int(
                 len(iterators_repr) / (2 * len(comp_dict['iterators'])))
-            iterators_repr.extend(
-                [0] * iterator_repr_size * 2 *
-                (max_depth -
-                 len(comp_dict['iterators'])))  # adding iterators padding
+            iterators_repr.extend([0] * iterator_repr_size * 2 *
+                                  (max_depth - len(comp_dict['iterators'])))
 
-            # Adding unrolling placeholder since unrolling can only be applied to the innermost loop
             iterators_repr.extend(['Unrolled', 'UnrollFactor'])
 
-            # Adding the iterators representation to computation vector
             comp_representation.extend(iterators_repr)
 
-            #  Write access representation to computation vector
             padded_write_matrix = cls.pad_access_matrix(
                 cls.isl_to_write_matrix(comp_dict['write_access_relation']),
                 max_depth)
             write_access_repr = [comp_dict['write_buffer_id'] + 1
-                                 ] + padded_write_matrix.flatten().tolist(
-                                 )  # buffer_id + flattened access matrix
+                                 ] + padded_write_matrix.flatten().tolist()
 
-            #     print('write ', comp_dict['write_buffer_id']+1,'\n',padded_write_matrix)
-
-            # Adding write access representation to computation vector
             comp_representation.extend(write_access_repr)
 
-            # Read Access representation
             read_accesses_repr = []
             for read_access_dict in comp_dict['accesses']:
                 read_access_matrix = cls.pad_access_matrix(
                     read_access_dict['access_matrix'], max_depth)
                 read_access_repr = [read_access_dict['buffer_id'] + 1
-                                    ] + read_access_matrix.flatten().tolist(
-                                    )  # buffer_id + flattened access matrix
+                                    ] + read_access_matrix.flatten().tolist()
                 read_accesses_repr.extend(read_access_repr)
-        #         print('read ', read_access_dict['buffer_id']+1,'\n',read_access_matrix)
 
-            access_repr_len = (max_depth + 1) * (
-                max_depth + 2) + 1  # access matrix size +1 for buffer id
+            access_repr_len = (max_depth + 1) * (max_depth + 2) + 1
             read_accesses_repr.extend(
                 [0] * access_repr_len *
-                (max_accesses -
-                 len(comp_dict['accesses'])))  #adding accesses padding
+                (max_accesses - len(comp_dict['accesses'])))
 
-            # Adding read Accesses to the representation to computation vector
             comp_representation.extend(read_accesses_repr)
 
-            # Adding Operations count to computation vector
             comp_representation.append(comp_dict['number_of_additions'])
             comp_representation.append(comp_dict['number_of_subtraction'])
             comp_representation.append(comp_dict['number_of_multiplication'])
             comp_representation.append(comp_dict['number_of_division'])
-
-            #print("comp rep before placeholders", comp_representation)
 
             placeholders_indices_dict = {}
             for i, element in enumerate(comp_representation):
@@ -361,10 +332,6 @@ class ScheduleUtils:
                     comp_representation[i] = 0
             placeholders_comp[comp_name] = placeholders_indices_dict
 
-            # adding log(x+1) of the representation
-            # log_rep = list(np.log1p(comp_representation))
-            # comp_representation.extend(log_rep)
-
             program_representation.append(comp_representation)
             indices_dict[comp_name] = index
 
@@ -372,13 +339,12 @@ class ScheduleUtils:
 
     @classmethod
     def get_representation_template(cls, program_annot):
-        # print("in repr template")
+
         max_accesses = 15
         min_accesses = 1
         max_depth = 5
 
-        comp_name = list(program_annot['computations'].keys())[
-            0]  # for single comp programs, there is only one computation
+        comp_name = list(program_annot['computations'].keys())[0]
         comp_dict = program_annot['computations'][comp_name]
 
         if len(comp_dict['accesses']) > max_accesses:
@@ -389,14 +355,13 @@ class ScheduleUtils:
             raise LoopsDepthException
 
         comp_repr_template = []
-        #         iterators representation + transformations placeholders
+
         iterators_repr = []
         for iter_i, iterator_name in enumerate(comp_dict['iterators']):
             iterator_dict = program_annot['iterators'][iterator_name]
             iterators_repr.extend(
                 [iterator_dict['lower_bound'], iterator_dict['upper_bound']])
 
-            # transformations placeholders
             l_code = 'L' + iterator_name
             iterators_repr.extend([
                 l_code + 'Interchanged', l_code + 'Skewed',
@@ -406,64 +371,44 @@ class ScheduleUtils:
                 l_code + "_1" + 'SkewFactor', l_code + "_1" + 'Parallelized',
                 l_code + "_1" + 'Tiled', l_code + 'TileFactor',
                 l_code + "_1" + 'Reversed'
-            ])  #unrolling is skipped since it is added only once
+            ])
 
-        # Adding padding
         iterator_repr_size = int(
             len(iterators_repr) / (2 * len(comp_dict['iterators'])))
-        iterators_repr.extend(
-            [0] * iterator_repr_size * 2 *
-            (max_depth -
-             len(comp_dict['iterators'])))  # adding iterators padding
+        iterators_repr.extend([0] * iterator_repr_size * 2 *
+                              (max_depth - len(comp_dict['iterators'])))
 
-        # Adding unrolling placeholder since unrolling can only be applied to the innermost loop
         iterators_repr.extend(['Unrolled', 'UnrollFactor'])
 
-        # Adding the iterators representation to computation vector
         comp_repr_template.extend(iterators_repr)
 
-        #  Write access representation to computation vector
         padded_write_matrix = cls.pad_access_matrix(
             cls.isl_to_write_matrix(comp_dict['write_access_relation']),
             max_depth)
         write_access_repr = [comp_dict['write_buffer_id'] + 1
-                             ] + padded_write_matrix.flatten().tolist(
-                             )  # buffer_id + flattened access matrix
+                             ] + padded_write_matrix.flatten().tolist()
 
-        #     # print('write ', comp_dict['write_buffer_id']+1,'\n',padded_write_matrix)
-
-        # Adding write access representation to computation vector
         comp_repr_template.extend(write_access_repr)
 
-        # Read Access representation
         read_accesses_repr = []
         for read_access_dict in comp_dict['accesses']:
             read_access_matrix = cls.pad_access_matrix(
                 read_access_dict['access_matrix'], max_depth)
             read_access_repr = [read_access_dict['buffer_id'] + 1
-                                ] + read_access_matrix.flatten().tolist(
-                                )  # buffer_id + flattened access matrix
+                                ] + read_access_matrix.flatten().tolist()
             read_accesses_repr.extend(read_access_repr)
 
-    #         # print('read ', read_access_dict['buffer_id']+1,'\n',read_access_matrix)
+        access_repr_len = (max_depth + 1) * (max_depth + 2) + 1
+        read_accesses_repr.extend([0] * access_repr_len *
+                                  (max_accesses - len(comp_dict['accesses'])))
 
-        access_repr_len = (max_depth + 1) * (
-            max_depth + 2) + 1  # access matrix size +1 for buffer id
-        read_accesses_repr.extend(
-            [0] * access_repr_len *
-            (max_accesses -
-             len(comp_dict['accesses'])))  #adding accesses padding
-
-        # Adding read Accesses to the representation to computation vector
         comp_repr_template.extend(read_accesses_repr)
 
-        # Adding Operations count to computation vector
         comp_repr_template.append(comp_dict['number_of_additions'])
         comp_repr_template.append(comp_dict['number_of_subtraction'])
         comp_repr_template.append(comp_dict['number_of_multiplication'])
         comp_repr_template.append(comp_dict['number_of_division'])
 
-        # Track the indices to the placeholders in a a dict
         placeholders_indices_dict = {}
         for i, element in enumerate(comp_repr_template):
             if isinstance(element, str):
@@ -552,7 +497,6 @@ class ScheduleUtils:
                 depth_2 = action_params["second_dim_index"]
 
                 keys = list(it_list[comp].keys())
-                # print("keys: ", keys)
 
                 i = len(keys) - 1
 
@@ -569,7 +513,7 @@ class ScheduleUtils:
                 else:
                     if action_params["tiling_depth"] == 3:
                         depth_3 = action_params["third_dim_index"]
-                        # print("third depth is", depth_3)
+
                         while i > depth_3:
                             if action_params["tiling_loop_1"] and action_params[
                                     "tiling_loop_2"] and action_params[
@@ -590,9 +534,7 @@ class ScheduleUtils:
                 if action_params["tiling_depth"] == 2:
                     if action_params["tiling_loop_1"] and action_params[
                             "tiling_loop_2"]:
-                        # print("in action params == 7 and tiling_loop_1 and tiling_loop_2")
 
-                        #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_1][
                             'upper_bound'] = it_list[comp][depth_1][
                                 'upper_bound'] / action_params["first_factor"]
@@ -604,10 +546,10 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_1 +
                             2]['upper_bound'] = action_params["first_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_1 +
                                                              2]['iterator'])
-                        #update the loop bounds if tiling is applied on loop 2
+
                         it_list[comp][depth_2][
                             'upper_bound'] = it_list[comp][depth_2][
                                 'upper_bound'] / action_params["second_factor"]
@@ -619,14 +561,13 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_2 +
                             2]['upper_bound'] = action_params["second_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_2 +
                                                              2]['iterator'])
 
                     else:
                         if action_params["tiling_loop_1"]:
-                            # print("in action params == 7 and tiling_loop_1")
-                            #update the loop bounds if tiling is applied on loop 1
+
                             it_list[comp][depth_1]['upper_bound'] = it_list[
                                 comp][depth_1]['upper_bound'] / action_params[
                                     "first_factor"]
@@ -640,13 +581,11 @@ class ScheduleUtils:
                             it_list[comp][depth_1 + 2][
                                 'upper_bound'] = action_params["first_factor"]
 
-                            #Add the new iterator to added_iterators
                             added_iterators.append(
                                 it_list[comp][depth_1 + 2]['iterator'])
 
                         elif action_params["tiling_loop_2"]:
-                            # print("in action params == 7 and tiling_loop_2")
-                            #update the loop bounds if tiling is applied on loop 2
+
                             it_list[comp][depth_2]['upper_bound'] = it_list[
                                 comp][depth_2]['upper_bound'] / action_params[
                                     "second_factor"]
@@ -660,7 +599,6 @@ class ScheduleUtils:
                             it_list[comp][depth_2 + 1][
                                 'upper_bound'] = action_params["second_factor"]
 
-                            #Add the new iterator to added_iterators
                             added_iterators.append(
                                 it_list[comp][depth_2 + 1]['iterator'])
 
@@ -668,9 +606,7 @@ class ScheduleUtils:
 
                     if action_params["tiling_loop_1"] and action_params[
                             "tiling_loop_2"] and action_params["tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2 and tiling_loop_3")
 
-                        #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_1][
                             'upper_bound'] = it_list[comp][depth_1][
                                 'upper_bound'] / action_params["first_factor"]
@@ -683,11 +619,9 @@ class ScheduleUtils:
                             depth_1 +
                             3]['upper_bound'] = action_params["first_factor"]
 
-                        #Add the new iterator to added_iterators
                         added_iterators.append(it_list[comp][depth_1 +
                                                              3]['iterator'])
 
-                        #update the loop bounds if tiling is applied on loop 2
                         it_list[comp][depth_2][
                             'upper_bound'] = it_list[comp][depth_2][
                                 'upper_bound'] / action_params["second_factor"]
@@ -700,11 +634,9 @@ class ScheduleUtils:
                             depth_2 +
                             3]['upper_bound'] = action_params["second_factor"]
 
-                        #Add the new iterator to added_iterators
                         added_iterators.append(it_list[comp][depth_2 +
                                                              3]['iterator'])
 
-                        #update the loop bounds if tiling is applied on loop 1=3
                         it_list[comp][depth_3][
                             'upper_bound'] = it_list[comp][depth_3][
                                 'upper_bound'] / action_params["third_factor"]
@@ -717,15 +649,12 @@ class ScheduleUtils:
                             depth_3 +
                             3]['upper_bound'] = action_params["third_factor"]
 
-                        #Add the new iterator to added_iterators
                         added_iterators.append(it_list[comp][depth_3 +
                                                              3]['iterator'])
 
                     elif action_params["tiling_loop_1"] and action_params[
                             "tiling_loop_2"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_2")
 
-                        #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_1][
                             'upper_bound'] = it_list[comp][depth_1][
                                 'upper_bound'] / action_params["first_factor"]
@@ -737,11 +666,10 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_1 +
                             3]['upper_bound'] = action_params["first_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_1 +
                                                              3]['iterator'])
 
-                        #update the loop bounds if tiling is applied on loop 2
                         it_list[comp][depth_2][
                             'upper_bound'] = it_list[comp][depth_2][
                                 'upper_bound'] / action_params["second_factor"]
@@ -753,15 +681,13 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_2 +
                             3]['upper_bound'] = action_params["second_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_2 +
                                                              3]['iterator'])
 
                     elif action_params["tiling_loop_2"] and action_params[
                             "tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_2 and tiling_loop_3")
 
-                        #update the loop bounds if tiling is applied on loop 2
                         it_list[comp][depth_2][
                             'upper_bound'] = it_list[comp][depth_2][
                                 'upper_bound'] / action_params["second_factor"]
@@ -774,11 +700,9 @@ class ScheduleUtils:
                             depth_2 +
                             2]['upper_bound'] = action_params["second_factor"]
 
-                        #Add the new iterator to added_iterators
                         added_iterators.append(it_list[comp][depth_2 +
                                                              2]['iterator'])
 
-                        #update the loop bounds if tiling is applied on loop 1
                         it_list[comp][depth_3][
                             'upper_bound'] = it_list[comp][depth_3][
                                 'upper_bound'] / action_params["third_factor"]
@@ -790,15 +714,13 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_3 +
                             2]['upper_bound'] = action_params["third_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_3 +
                                                              2]['iterator'])
 
                     elif action_params["tiling_loop_1"] and action_params[
                             "tiling_loop_3"]:
-                        # print("in action params == 10 and tiling_loop_1 and tiling_loop_3")
 
-                        #update the loop bounds if tiling is applied on loop 2
                         it_list[comp][depth_1][
                             'upper_bound'] = it_list[comp][depth_1][
                                 'upper_bound'] / action_params["first_factor"]
@@ -810,11 +732,10 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_1 +
                             3]['upper_bound'] = action_params["first_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_1 +
                                                              3]['iterator'])
 
-                        #update the loop bounds if tiling is applied on loop 3
                         it_list[comp][depth_3][
                             'upper_bound'] = it_list[comp][depth_3][
                                 'upper_bound'] / action_params["third_factor"]
@@ -826,12 +747,11 @@ class ScheduleUtils:
                         it_list[comp][
                             depth_3 +
                             2]['upper_bound'] = action_params["third_factor"]
-                        #Add the new iterator to added_iterators
+
                         added_iterators.append(it_list[comp][depth_3 +
                                                              2]['iterator'])
                     else:
                         if action_params["tiling_loop_1"]:
-                            # print("in action params == 10 and tiling_loop_1")
 
                             it_list[comp][depth_1]['upper_bound'] = it_list[
                                 comp][depth_1]['upper_bound'] / action_params[
@@ -845,12 +765,11 @@ class ScheduleUtils:
                                               depth_1]['lower_bound']
                             it_list[comp][depth_1 + 3][
                                 'upper_bound'] = action_params["first_factor"]
-                            #Add the new iterator to added_iterators
+
                             added_iterators.append(
                                 it_list[comp][depth_1 + 3]['iterator'])
 
                         elif action_params["tiling_loop_2"]:
-                            # print("in action params == 10 and tiling_loop_2")
 
                             it_list[comp][depth_2]['upper_bound'] = it_list[
                                 comp][depth_2]['upper_bound'] / action_params[
@@ -864,14 +783,12 @@ class ScheduleUtils:
                                               depth_2]['lower_bound']
                             it_list[comp][depth_2 + 2][
                                 'upper_bound'] = action_params["second_factor"]
-                            #Add the new iterator to added_iterators
+
                             added_iterators.append(
                                 it_list[comp][depth_2 + 2]['iterator'])
 
                         elif action_params["tiling_loop_3"]:
-                            # print("in action params == 10 and tiling_loop_3")
 
-                            #update the loop bounds if tiling is applied on loop 1
                             it_list[comp][depth_3]['upper_bound'] = it_list[
                                 comp][depth_3]['upper_bound'] / action_params[
                                     "third_factor"]
@@ -884,16 +801,16 @@ class ScheduleUtils:
                                               depth_3]['lower_bound']
                             it_list[comp][depth_3 + 1][
                                 'upper_bound'] = action_params["third_factor"]
-                            #Add the new iterator to added_iterators
+
                             added_iterators.append(
                                 it_list[comp][depth_3 + 1]['iterator'])
 
-            elif id in range(41, 44):  #Unrolling
+            elif id in range(41, 44):
                 it_list[comp][action_params["dim_index"]][
                     'upper_bound'] = it_list[comp][action_params["dim_index"]][
                         'upper_bound'] / action_params['unrolling_factor']
 
-            elif id in range(44, 46):  #Skewing
+            elif id in range(44, 46):
                 depth_1 = action_params["first_dim_index"]
                 depth_2 = action_params["second_dim_index"]
 
@@ -919,7 +836,7 @@ class ScheduleUtils:
                 it_list[comp][depth_2]["lower_bound"] = l2_lower_bound
                 it_list[comp][depth_2]["upper_bound"] = l2_upper_bound
 
-            elif id in range(48, 56):  #Reversal
+            elif id in range(48, 56):
                 tmp = it_list[comp][action_params["dim_index"]]['lower_bound']
                 it_list[comp][
                     action_params["dim_index"]]['lower_bound'] = it_list[comp][

@@ -14,5 +14,5 @@ __all__ = [
     "NumpyEncoder", "LCException", "SkewParamsException", "IsTiledException",
     "IsInterchangedException", "IsSkewedException", "IsUnrolledException",
     "IsParallelizedException", "IsReversedException", "SkewUnrollException",
-    "ScheduleUtils", "Schedule", "Tiramisu_Program", "InternalExecException"
+    "ScheduleUtils", "Schedule", "TiramisuProgram", "InternalExecException"
 ]
