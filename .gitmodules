@@ -1,0 +1,4 @@
+[submodule "utils/RandomTiramisu"]
+	path = utils/RandomTiramisu
+	url = git@github.com:Tiramisu-Compiler/RandomTiramisu.git
+	branch = rl_autoscheduler
