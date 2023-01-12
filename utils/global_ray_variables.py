@@ -33,7 +33,7 @@ class GlobalVarActor:
                 self.lc_data = []
         else:
             self.lc_data = []
-            with open("lc_data.json","w+") as f:
+            with open("lc_data.json", "w+") as f:
                 f.write(json.dumps(self.lc_data))
 
     def get_dataset(self, path):
@@ -46,6 +46,7 @@ class GlobalVarActor:
         self.progs_list = v
         return True
 
+    # Get programs of a worker by its id
     def get_progs_list(self, id):
         return [
             item for (index, item) in enumerate(self.progs_list)
@@ -58,7 +59,7 @@ class GlobalVarActor:
 
     def get_lc_data(self) -> List:
         return self.lc_data
-    
+
     def write_lc_data(self):
         print("Saving lc_data to disk")
         with open("lc_data.json", "w") as f:
@@ -97,10 +98,10 @@ class Actor:
 
     def get_lc_data(self) -> List:
         return ray.get(self.data_registry.get_lc_data.remote())
-    
+
     def write_lc_data(self):
         return ray.get(self.data_registry.write_lc_data.remote())
-    
+
     def get_progs_dict(self):
         return ray.get(self.data_registry.get_progs_dict.remote())
 
