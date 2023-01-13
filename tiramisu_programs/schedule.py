@@ -75,9 +75,10 @@ class Schedule:
             self.schedule_dict[comp] = dict()
             self.schedule_dict[comp]["dim"] = dim
 
-            # TODO what's the difference between the two transformation_matrix/matrices? Is it to keep history?
+            # Product of the list of matrices
             self.schedule_dict[comp]["transformation_matrix"] = np.eye(
                 dim, dim)
+            # Transformation matrices
             self.schedule_dict[comp]["transformation_matrices"] = [
                 np.eye(dim, dim)
             ]
@@ -87,7 +88,6 @@ class Schedule:
         self.schedule_dict['tree_structure'] = get_tree_structure(
             self.annotations)
 
-        # TODO Matrix representation of the programs??
         self.templates = dict()
         (self.templates["prog_tree"],
          self.templates["comps_repr_templates_list"],
@@ -97,7 +97,6 @@ class Schedule:
             self.annotations,
             self.schedule_dict,
             max_depth=self.MAX_DEPTH - 1)
-
 
         self.schedule_dict["fusions"] = []
         self.placeholders = self.comps_placeholders
@@ -205,7 +204,7 @@ class Schedule:
                 [self.repr["computations_indices"],
                  np.full(5, -1)])
 
-        # TODO ask about these
+        # Disable some actions based on the number of iterators available
         if len(self.common_it) == 5:
             self.repr["action_mask"] = np.array([
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -277,22 +276,22 @@ class Schedule:
 
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[comp][
-            params["first_dim_index"]]['iterator'] in iterators:
+                params["first_dim_index"]]['iterator'] in iterators:
             loop_1 = iterators.index(
                 self.it_dict[comp][params["first_dim_index"]]['iterator'])
         elif self.it_dict[comp][
-            params["first_dim_index"]]['iterator'] in self.added_iterators:
+                params["first_dim_index"]]['iterator'] in self.added_iterators:
             loop_1 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][params["first_dim_index"]]['iterator'])
         self.repr["loops_representation"][loop_1][2] = 1
 
         if self.it_dict[comp][
-            params["second_dim_index"]]['iterator'] in iterators:
+                params["second_dim_index"]]['iterator'] in iterators:
             loop_2 = iterators.index(
                 self.it_dict[comp][params["second_dim_index"]]['iterator'])
         elif self.it_dict[comp][params["second_dim_index"]][
-            'iterator'] in self.added_iterators:
+                'iterator'] in self.added_iterators:
             loop_2 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][params["second_dim_index"]]['iterator'])
@@ -330,7 +329,7 @@ class Schedule:
                 'tiling_dims': [
                     self.it_dict[comp][first_dim_index]['iterator'],
                     self.it_dict[comp][second_dim_index]['iterator']
-                ],
+                    ],
                 'tiling_factors':
                     [params["first_factor"], params["second_factor"]]
             }
@@ -344,8 +343,8 @@ class Schedule:
             if params["tiling_loop_1"]:
 
                 new_upper_bound_1 = self.repr["representation"][
-                                        self.comp_indic_dict[comp]][first_dim_index * 20 +
-                                                                    1] / params["first_factor"]
+                    self.comp_indic_dict[comp]][first_dim_index * 20 +
+                                                1] / params["first_factor"]
                 self.repr["representation"][self.comp_indic_dict[comp]][
                     first_dim_index * 20 + 1] = new_upper_bound_1
                 new_inner_upper_bound_1 = params["first_factor"]
@@ -360,7 +359,7 @@ class Schedule:
 
                 loop_repr = []
                 if self.repr["representation"][comp_index][
-                    self.placeholders[comp][l_code + "Reversed"]] == 1:
+                        self.placeholders[comp][l_code + "Reversed"]] == 1:
                     lower_bound = self.repr["representation"][comp_index][
                         second_dim_index * 20 + 1]
                 else:
@@ -383,8 +382,8 @@ class Schedule:
             if params["tiling_loop_2"]:
 
                 new_upper_bound_2 = self.repr["representation"][
-                                        self.comp_indic_dict[comp]][second_dim_index * 20 +
-                                                                    1] / params["second_factor"]
+                    self.comp_indic_dict[comp]][second_dim_index * 20 +
+                                                1] / params["second_factor"]
                 self.repr["representation"][self.comp_indic_dict[comp]][
                     second_dim_index * 20 + 1] = new_upper_bound_2
                 new_inner_upper_bound_2 = params["second_factor"]
@@ -400,7 +399,7 @@ class Schedule:
                 loop_repr = []
 
                 if self.repr["representation"][comp_index][
-                    self.placeholders[comp][l_code + "Reversed"]] == 1:
+                        self.placeholders[comp][l_code + "Reversed"]] == 1:
                     lower_bound = self.repr["representation"][comp_index][
                         second_dim_index * 20 + 1]
                 else:
@@ -422,11 +421,11 @@ class Schedule:
                         self.it_dict[comp][first_dim_index]['iterator'],
                         self.it_dict[comp][second_dim_index]['iterator'],
                         self.it_dict[comp][third_dim_index]['iterator']
-                    ],
+                        ],
                     'tiling_factors': [
                         params["first_factor"], params["second_factor"],
                         params["third_factor"]
-                    ]
+                        ]
                 }
                 l_code = "L" + self.it_dict[comp][third_dim_index]['iterator']
                 self.repr["representation"][self.comp_indic_dict[comp]][
@@ -438,8 +437,8 @@ class Schedule:
                 if params["tiling_loop_3"]:
 
                     new_upper_bound_3 = self.repr["representation"][
-                                            self.comp_indic_dict[comp]][third_dim_index * 20 +
-                                                                        1] / params["third_factor"]
+                        self.comp_indic_dict[comp]][third_dim_index * 20 +
+                                                    1] / params["third_factor"]
                     self.repr["representation"][self.comp_indic_dict[comp]][
                         third_dim_index * 20 + 1] = new_upper_bound_3
                     new_inner_upper_bound_3 = params["third_factor"]
@@ -454,7 +453,7 @@ class Schedule:
 
                     loop_repr = []
                     if self.repr["representation"][comp_index][
-                        self.placeholders[comp][l_code + "Reversed"]] == 1:
+                            self.placeholders[comp][l_code + "Reversed"]] == 1:
                         lower_bound = self.repr["representation"][comp_index][
                             third_dim_index * 20 + 1]
                     else:
@@ -474,7 +473,7 @@ class Schedule:
             loop_1 = iterators.index(
                 self.it_dict[comp][first_dim_index]['iterator'])
         elif self.it_dict[comp][first_dim_index][
-            'iterator'] in self.added_iterators:
+                'iterator'] in self.added_iterators:
             loop_1 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][first_dim_index]['iterator'])
@@ -486,7 +485,7 @@ class Schedule:
             loop_2 = iterators.index(
                 self.it_dict[comp][second_dim_index]['iterator'])
         elif self.it_dict[comp][second_dim_index][
-            'iterator'] in self.added_iterators:
+                'iterator'] in self.added_iterators:
             loop_2 = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][second_dim_index]['iterator'])
@@ -500,7 +499,7 @@ class Schedule:
                 loop_3 = iterators.index(
                     self.it_dict[comp][third_dim_index]['iterator'])
             elif self.it_dict[comp][third_dim_index][
-                'iterator'] in self.added_iterators:
+                    'iterator'] in self.added_iterators:
                 loop_3 = len(
                     self.annotations['iterators']
                 ) + self.added_iterators.index(
@@ -514,7 +513,7 @@ class Schedule:
 
                 if len(self.common_it) == 5:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE05,
                             rl_interface.action.Action.INTERCHANGE06,
@@ -536,11 +535,11 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE67
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE05,
                             rl_interface.action.Action.INTERCHANGE06,
@@ -555,7 +554,7 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE56
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE05,
                             rl_interface.action.Action.INTERCHANGE15,
@@ -566,7 +565,7 @@ class Schedule:
 
                 if len(self.common_it) == 4:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE04,
                             rl_interface.action.Action.INTERCHANGE05,
@@ -585,11 +584,11 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE56
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE04,
                             rl_interface.action.Action.INTERCHANGE05,
@@ -602,7 +601,7 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE45
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE04,
                             rl_interface.action.Action.INTERCHANGE14,
@@ -612,7 +611,7 @@ class Schedule:
 
                 if len(self.common_it) == 3:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE03,
                             rl_interface.action.Action.INTERCHANGE04,
@@ -628,11 +627,11 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE45
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE03,
                             rl_interface.action.Action.INTERCHANGE04,
@@ -643,7 +642,7 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE34
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE03,
                             rl_interface.action.Action.INTERCHANGE13,
@@ -652,7 +651,7 @@ class Schedule:
 
                 if len(self.common_it) == 2:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE02,
                             rl_interface.action.Action.INTERCHANGE03,
@@ -665,11 +664,11 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE34
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE02,
                             rl_interface.action.Action.INTERCHANGE03,
@@ -678,7 +677,7 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE23
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE02,
                             rl_interface.action.Action.INTERCHANGE12
@@ -686,7 +685,7 @@ class Schedule:
 
                 if len(self.common_it) == 1:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE01,
                             rl_interface.action.Action.INTERCHANGE02,
@@ -696,11 +695,11 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE23
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE01,
                             rl_interface.action.Action.INTERCHANGE02,
@@ -708,7 +707,7 @@ class Schedule:
                             rl_interface.action.Action.INTERCHANGE13
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.INTERCHANGE01
                         ]] = 1
@@ -716,116 +715,116 @@ class Schedule:
             if self.is_reversed == False:
                 if len(self.common_it) == 5:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL5,
                             rl_interface.action.Action.REVERSAL6,
                             rl_interface.action.Action.REVERSAL7
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL5,
                             rl_interface.action.Action.REVERSAL6
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][
                             rl_interface.action.Action.REVERSAL5] = 1
 
                 elif len(self.common_it) == 4:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL4,
                             rl_interface.action.Action.REVERSAL5,
                             rl_interface.action.Action.REVERSAL6
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL4,
                             rl_interface.action.Action.REVERSAL5
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][
                             rl_interface.action.Action.REVERSAL4] = 1
 
                 elif len(self.common_it) == 3:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL3,
                             rl_interface.action.Action.REVERSAL4,
                             rl_interface.action.Action.REVERSAL5
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL3,
                             rl_interface.action.Action.REVERSAL4
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][
                             rl_interface.action.Action.REVERSAL3] = 1
 
                 elif len(self.common_it) == 2:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL2,
                             rl_interface.action.Action.REVERSAL3,
                             rl_interface.action.Action.REVERSAL4
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL2,
                             rl_interface.action.Action.REVERSAL3
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][
                             rl_interface.action.Action.REVERSAL2] = 1
 
                 elif len(self.common_it) == 1:
                     if params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] and params["tiling_loop_3"]:
+                            "tiling_loop_2"] and params["tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL1,
                             rl_interface.action.Action.REVERSAL2,
                             rl_interface.action.Action.REVERSAL3
                         ]] = 1
                     elif params["tiling_loop_1"] and params[
-                        "tiling_loop_2"] or params[
-                        "tiling_loop_2"] and params[
-                        "tiling_loop_3"] or params[
-                        "tiling_loop_1"] and params[
-                        "tiling_loop_3"]:
+                            "tiling_loop_2"] or params[
+                            "tiling_loop_2"] and params[
+                            "tiling_loop_3"] or params[
+                            "tiling_loop_1"] and params[
+                            "tiling_loop_3"]:
                         self.repr["action_mask"][[
                             rl_interface.action.Action.REVERSAL1,
                             rl_interface.action.Action.REVERSAL2
                         ]] = 1
                     elif params["tiling_loop_1"] or params[
-                        "tiling_loop_2"] or params["tiling_loop_3"]:
+                            "tiling_loop_2"] or params["tiling_loop_3"]:
                         self.repr["action_mask"][
                             rl_interface.action.Action.REVERSAL1] = 1
 
@@ -846,21 +845,21 @@ class Schedule:
                 ["UnrollFactor"]] = params[comp]["unrolling_factor"]
 
             l_code = "L" + self.it_dict[comp][params[comp]
-            ["dim_index"]]['iterator']
+                                              ["dim_index"]]['iterator']
             index_upper_bound = self.placeholders[comp][l_code +
                                                         'Interchanged'] - 1
             self.repr["representation"][self.comp_indic_dict[comp]][
                 index_upper_bound] = self.repr["representation"][
-                                         self.comp_indic_dict[comp]][index_upper_bound] / params[
-                                         comp]["unrolling_factor"]
+                self.comp_indic_dict[comp]][index_upper_bound] / params[
+                comp]["unrolling_factor"]
 
             iterators = list(self.annotations["iterators"].keys())
             if self.it_dict[comp][params[comp]
-            ["dim_index"]]['iterator'] in iterators:
+                                  ["dim_index"]]['iterator'] in iterators:
                 loop_index = iterators.index(
                     self.it_dict[comp][params[comp]["dim_index"]]['iterator'])
             elif self.it_dict[comp][params[comp]["dim_index"]][
-                'iterator'] in self.added_iterators:
+                    'iterator'] in self.added_iterators:
                 loop_index = len(
                     self.annotations['iterators']
                 ) + self.added_iterators.index(
@@ -944,8 +943,8 @@ class Schedule:
         self.repr["loops_representation"][loop_1][8] = params['first_factor']
 
         self.repr["loops_representation"][loop_1][9] = self.repr[
-                                                           "representation"][0][index1_upper_bound] - self.repr[
-                                                           "representation"][0][index1_lower_bound]
+            "representation"][0][index1_upper_bound] - self.repr[
+            "representation"][0][index1_lower_bound]
 
         if self.it_dict[comp][dim_2]['iterator'] in iterators:
             loop_2 = iterators.index(self.it_dict[comp][dim_2]['iterator'])
@@ -956,8 +955,8 @@ class Schedule:
         self.repr["loops_representation"][loop_2][7] = 1
         self.repr["loops_representation"][loop_2][8] = params['second_factor']
         self.repr["loops_representation"][loop_2][9] = self.repr[
-                                                           "representation"][0][index2_upper_bound] - self.repr[
-                                                           "representation"][0][index2_lower_bound]
+            "representation"][0][index2_upper_bound] - self.repr[
+            "representation"][0][index2_lower_bound]
 
         self.repr["action_mask"][44] = 0
         self.repr["action_mask"][45] = 0
@@ -998,11 +997,11 @@ class Schedule:
 
         iterators = list(self.annotations["iterators"].keys())
         if self.it_dict[first_comp][
-            params["dim_index"]]['iterator'] in iterators:
+                params["dim_index"]]['iterator'] in iterators:
             loop_index = iterators.index(
                 self.it_dict[first_comp][params["dim_index"]]['iterator'])
         elif self.it_dict[first_comp][
-            params["dim_index"]]['iterator'] in self.added_iterators:
+                params["dim_index"]]['iterator'] in self.added_iterators:
             loop_index = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[first_comp][params["dim_index"]]['iterator'])
@@ -1038,7 +1037,7 @@ class Schedule:
             loop_index = iterators.index(
                 self.it_dict[comp][params["dim_index"]]['iterator'])
         elif self.it_dict[comp][
-            params["dim_index"]]['iterator'] in self.added_iterators:
+                params["dim_index"]]['iterator'] in self.added_iterators:
             loop_index = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][params["dim_index"]]['iterator'])
@@ -1075,7 +1074,7 @@ class Schedule:
             loop_index = iterators.index(
                 self.it_dict[comp][params["dim_index"]]['iterator'])
         elif self.it_dict[comp][
-            params["dim_index"]]['iterator'] in self.added_iterators:
+                params["dim_index"]]['iterator'] in self.added_iterators:
             loop_index = len(
                 self.annotations['iterators']) + self.added_iterators.index(
                 self.it_dict[comp][params["dim_index"]]['iterator'])

@@ -67,16 +67,16 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.action_space = gym.spaces.Discrete(62)
 
         self.observation_space = gym.spaces.Dict({
-            # Computation representation (5 is the MAX computations??) TODO
+            # Computation representation (5 is the MAX computations)
             "representation":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 1052)),
             # Mask to hide actions from being taken 62 masks for 62 actions
             "action_mask":
             gym.spaces.Box(low=0, high=1, shape=(62, )),
-            # Representation of loops WHY the 15 though?? TODO
+            # Representation of loops
             "loops_representation":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15, 26)),
-            # Loop indices of loops instead in loop i . 12 MAX loops we can represent if so why is the loops_representation 15??? TODO
+            # Loop indices of loops instead in loop i
             "child_list":
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 11)),
             # Whether loop i has computations or not
