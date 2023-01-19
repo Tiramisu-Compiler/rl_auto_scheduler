@@ -1,5 +1,7 @@
 # RL for performance optimization
 
+The following sections represent the steps in order to successfully train the RL agent.
+
 ## Generate the dataset
 To generate the dataset, you use the script `utils/program_generator/tiramisu_maker.py`. Here are the options to pass the script and their default values:
 ```
