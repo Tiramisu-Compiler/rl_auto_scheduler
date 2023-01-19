@@ -90,7 +90,7 @@ python train_ppo.py --num-workers 1
 ```
 To run on slurm, you execute the following command:
 ```bash
-sbatch run_rllib_slurm.sh
+sbatch scripts/run_rllib_slurm.sh
 
 ``` 
 
