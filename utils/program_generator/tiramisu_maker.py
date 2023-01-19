@@ -1,3 +1,4 @@
+import argparse
 from configuration import *
 import subprocess
 from pathlib import Path
@@ -936,7 +937,15 @@ def generate_programs(output_path, nb_programs, first_seed='auto'):
         with open(program_folder + '/' + program.name + '_wrapper.h', 'w') as f:
             f.write(program.write_wrapper_h())
 
-
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-path", default="Dataset_multi", type=str, help="The location where to save the dataset.")
+    parser.add_argument("--first-seed", default=105100, type=int, help="The first seed to start generating the programs from. Every seed produces a program,"
+                                                                        "and two different seeds produce two different programs.")
+    parser.add_argument("--nb-programs", default=20000, type=int, help="The number of programs to generate.")
+    return parser.parse_args()
+    
 if __name__ == '__main__':
-    generate_programs(output_path='Dataset_multi', first_seed=105100, nb_programs=20000)
+    args = get_arguments()
+    generate_programs(output_path=args.output_path, first_seed=args.first_seed, nb_programs=args.nb_programs)
 
