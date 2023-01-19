@@ -44,9 +44,6 @@ Then, you only keep the parts before `bin/python` and you set it to the variable
 
 
 
-
-
-
 ## Compilation commands
 Depending on the c++ installation and the machine, the compilation command may differ. To change the compilation command, change the variables `compile_tiramisu_cmd` and `compile_wrapper_cmd` in the file `utils/rl_autoscheduler_config.py`. Examples of compilation commands:
 ```bash
@@ -71,6 +68,18 @@ ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I$
 
 ```
 
+## SLURM configuration
+The file `scripts/run_rllib_slurm.sh` can be configured to your needs in the file heading. The settings that needs to be configure are:  
+* The partition name on line 2.
+* Number of needed nodes on line 3.
+* The number of cpus per node on line 6, and
+* The time limit for excution on line 7
+
+When using SLURM, the `outputs` folder needs to be created:  
+```bash
+mkdir outputs
+```
+
 ## Running the script
 To run the script on one worker, you use the following command:
 ```bash
@@ -81,4 +90,13 @@ To run on slurm, you execute the following command:
 ```bash
 sbatch run_rllib_slurm.sh
 
-```  
+``` 
+
+## Visualization
+We use tensorboard for visualization, to visualize the experiements, use the following command:  
+```bash
+tensorboard dev upload --logdir ray_results/
+```
+
+## Logs
+Logs are available under `outputs`. The filename job.[job_id].out (where [job_id] is the id attributed to the job by SLURM) contains all the execution logs, while the file job.[job_id].err contains all the errors.  
