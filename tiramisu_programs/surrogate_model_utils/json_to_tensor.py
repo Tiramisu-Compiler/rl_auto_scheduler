@@ -83,7 +83,7 @@ def get_sched_rep(program_json, sched_json, max_depth):
         # Adding unrolling placeholder since unrolling can only be applied to the innermost loop
         iterators_repr.extend([c_code + "-Unrolled", c_code + "-UnrollFactor"])
 
-        # Adding transformation matrix place holder
+        # Adding transformation matrix placeholder
         iterators_repr.append(c_code + "-TransformationMatrixStart")
         iterators_repr.extend(["M"] * (((max_depth + 1) ** 2) * MAX_MATRICES - 2))
         iterators_repr.append(c_code + "-TransformationMatrixEnd")

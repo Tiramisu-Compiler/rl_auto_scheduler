@@ -9,7 +9,9 @@ __pycache__/
 *.txt
 *.json
 *.log
-.svn/
 *.yaml
 *.yml
 scripts/env.sh
+Dataset*
+.vscode
+.idea

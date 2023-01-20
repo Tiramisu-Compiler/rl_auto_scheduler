@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 import numpy as np
 import re
-import sys, os, subprocess
+import sys
+import os
+import subprocess
 from pathlib import Path
 from datetime import datetime
 import re
@@ -28,18 +30,24 @@ class CPP_File(object):
             bool: Whether or not the compilation and running was successful.
         """
         # print("inside compile and run")
+
+        # Format the path to the cpp file to compile.
         os.environ["FUNC_DIR"] = ("/".join(Path(file_path).parts[:-1]) if len(
             Path(file_path).parts) > 1 else ".") + "/"
         os.environ["FILE_PATH"] = file_path
 
+        # Compile the C++ file.
         failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd,
                                 file_path)
+
+        # Print the program that failed to compile.
         if failed:
             print(f"Error occured while compiling {file_path}")
             with open(file_path) as file:
                 print(file.read(), file=sys.stderr, flush=True)
             return False
         else:
+            # Run the compiled program.
             failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd,
                                     file_path)
             if failed:
@@ -157,21 +165,21 @@ class CPP_File(object):
         os.mkdir(target_path)
         os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
-    
+
     @classmethod
-    def clean_cpp_file(cls, Dataset_path, func_name):
-        """Backup the dataset generator files into the folder Dataset_copies, stored locally.
+    def clean_cpp_file(cls, dataset_path, func_name):
+        """Clean the files of the function to run from the existing dataset copy.
 
         Args:
             Dataset_path (str): The path to the dataset.
-            func_name (str): The function to copy
+            func_name (str): The function to remove
 
         Returns:
             str: The new copied function path.
         """
-        target_path = "{}/Dataset_copies/{}".format(".", func_name)
+        target_path = f"{dataset_path}{func_name}"
 
-        if os.path.isdir("./Dataset_copies/") and os.path.isdir(target_path):
+        if os.path.isdir(dataset_path) and os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
             return True
         else:
