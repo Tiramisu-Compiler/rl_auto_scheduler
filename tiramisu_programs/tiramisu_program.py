@@ -5,6 +5,8 @@ import re
 import time
 from pathlib import Path
 
+import ray
+
 import tiramisu_programs
 
 
@@ -99,22 +101,31 @@ $buffers_init$
         self.file_path = file_path
         with open(file_path, 'r') as f:
             self.original_str = f.read()
+
         self.func_folder = ('/'.join(Path(file_path).parts[:-1])
                             if len(Path(file_path).parts) > 1 else '.') + '/'
+
         self.body = re.findall(r'(tiramisu::init(?s:.)+)tiramisu::codegen',
                                self.original_str)[0]
+
         self.name = re.findall(r'tiramisu::init\(\"(\w+)\"\);',
                                self.original_str)[0]
+
         self.comp_name = re.findall(r'computation (\w+)\(', self.original_str)
+
         self.code_gen_line = re.findall(r'tiramisu::codegen\({.+;',
                                         self.original_str)[0]
+
         buffers_vect = re.findall(r'{(.+)}', self.code_gen_line)[0]
+
         self.IO_buffer_names = re.findall(r'\w+', buffers_vect)
+
         self.buffer_sizes = []
         for buf_name in self.IO_buffer_names:
             sizes_vect = re.findall(r'buffer ' + buf_name + '.*{(.*)}',
                                     self.original_str)[0]
             self.buffer_sizes.append(re.findall(r'\d+', sizes_vect))
+
         self.program_annotations = ''
         self.wrapper_is_compiled = False
         self.initial_execution_time = 1.0
@@ -122,6 +133,8 @@ $buffers_init$
     def get_program_annotations(self):
         if not self.program_annotations == '':
             return self.program_annotations
+
+        # create a cpp file to get the annotations
         get_json_lines = '''
     auto ast = tiramisu::auto_scheduler::syntax_tree(tiramisu::global::get_implicit_function());
     std::string program_json = tiramisu::auto_scheduler::evaluate_by_learning_model::get_program_json(ast);
@@ -135,8 +148,12 @@ $buffers_init$
 
         with open(output_file, 'w') as f:
             f.write(get_json_prog)
+
+        # compile the cpp file and run to generate annotations in json file
         tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
             self.config, output_file, 'Generating program annotations')
+
+        # Read the json file and return the annotations
         with open(self.func_folder + self.name + '_program_annotations.json',
                   'r') as f:
             self.program_annotations = json.loads(f.read())

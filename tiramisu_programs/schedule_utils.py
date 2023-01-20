@@ -2,7 +2,7 @@ import json
 import re
 
 import numpy as np
-
+import ray
 
 class LargeAccessMatices(Exception):
     pass
@@ -241,8 +241,7 @@ class ScheduleUtils:
 
                         comp = list(schedule.keys())[0]
                         schedule_str = schedule[comp]["schedule_str"]
-                        schedules_set[schedule_str] = schedule[comp][
-                            "execution_times"]
+                        schedules_set[schedule_str] = schedule[comp]["execution_times"]
 
                     functions_set[fun] = schedules_set
 
