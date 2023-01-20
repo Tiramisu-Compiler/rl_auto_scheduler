@@ -2,8 +2,9 @@
 
 The following sections represent the steps in order to successfully train the RL agent.
 
+
 ## Generate the dataset
-To generate the dataset, you use the script `utils/program_generator/tiramisu_maker.py`. Here are the options to pass the script and their default values:
+To generate the dataset, you use the script `tiramisu_maker.py` from the submodule `RandomTiramisu` at `utils`. Here are the options to pass the script and their default values:
 ```
   -h, --help            show this help message and exit
   --output-path OUTPUT_PATH [Default = "Dataset_multi"]
