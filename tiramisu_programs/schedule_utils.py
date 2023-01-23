@@ -1,8 +1,12 @@
 import json
 import re
+from typing import List
 
 import numpy as np
 import ray
+
+from tiramisu_programs.optimization import OptimizationCommand
+
 
 class LargeAccessMatices(Exception):
     pass
@@ -130,99 +134,141 @@ class ScheduleUtils:
         return matrix
 
     @classmethod
-    def sched_json_to_sched_str(cls, sched_json, prog_it):
-        orig_loop_nest = []
-        orig_loop_nest.append(list(prog_it.keys())[0])
-        child_list = prog_it[list(prog_it.keys())[0]]['child_iterators']
-        while len(child_list) > 0:
-            child_loop = prog_it[child_list[0]]
-            orig_loop_nest.append(child_list[0])
-            child_list = child_loop['child_iterators']
-
+    def sched_json_to_sched_str(cls, sched_json, program_json):
         comp_name = [
-            n for n in sched_json.keys() if
-            not n in ['unfuse_iterators', 'tree_structure', 'execution_times']
-        ][0]
-        schedule = sched_json[comp_name]
-        transf_loop_nest = orig_loop_nest
-        sched_str = ''
+            n
+            for n in sched_json.keys()
+            if not n in ["unfuse_iterators", "tree_structure", "execution_times", "fusions", "sched_str"]
+        ]
+        sched_str = ""
 
-        if schedule['interchange_dims']:
-            first_dim_index = transf_loop_nest.index(
-                schedule['interchange_dims'][0])
-            second_dim_index = transf_loop_nest.index(
-                schedule['interchange_dims'][1])
-            sched_str += 'I(L' + str(first_dim_index) + ',L' + str(
-                second_dim_index) + ')'
-            transf_loop_nest[first_dim_index], transf_loop_nest[
-                second_dim_index] = transf_loop_nest[
-                    second_dim_index], transf_loop_nest[first_dim_index]
-        if schedule['skewing']['skewed_dims']:
-            first_dim_index = transf_loop_nest.index(
-                schedule['skewing']['skewed_dims'][0])
-            second_dim_index = transf_loop_nest.index(
-                schedule['skewing']['skewed_dims'][1])
-            first_factor = schedule['skewing']['skewing_factors'][0]
-            second_factor = schedule['skewing']['skewing_factors'][1]
-            sched_str += 'S(L' + str(first_dim_index) + ',L' + str(
-                second_dim_index) + ',' + str(first_factor) + ',' + str(
-                    second_factor) + ')'
-        if schedule['parallelized_dim']:
-            dim_index = transf_loop_nest.index(schedule['parallelized_dim'])
-            sched_str += 'P(L' + str(dim_index) + ')'
-        if schedule['tiling']['tiling_dims']:
-            if schedule['tiling']['tiling_depth'] == 2:
-                first_dim = schedule['tiling']['tiling_dims'][0]
-                second_dim = schedule['tiling']['tiling_dims'][1]
+        if ("fusions" in sched_json and sched_json["fusions"]):
+            for fusion in sched_json["fusions"]:
+                sched_str += "F("
+                for name in comp_name:
+                    if name in fusion:
+                        sched_str += name + ","
 
-                first_dim_index = transf_loop_nest.index(first_dim)
-                second_dim_index = transf_loop_nest.index(second_dim)
-                first_factor = schedule['tiling']['tiling_factors'][0]
-                second_factor = schedule['tiling']['tiling_factors'][1]
-                sched_str += 'T2(L' + str(first_dim_index) + ',L' + str(
-                    second_dim_index) + ',' + str(first_factor) + ',' + str(
-                        second_factor) + ')'
-                i = transf_loop_nest.index(first_dim)
-                transf_loop_nest[
-                    i:i + 1] = first_dim + '_outer', second_dim + '_outer'
-                i = transf_loop_nest.index(second_dim)
-                transf_loop_nest[
-                    i:i + 1] = first_dim + '_inner', second_dim + '_inner'
-            else:
-                first_dim = schedule['tiling']['tiling_dims'][0]
-                second_dim = schedule['tiling']['tiling_dims'][1]
-                third_dim = schedule['tiling']['tiling_dims'][2]
-                first_dim_index = transf_loop_nest.index(first_dim)
-                second_dim_index = transf_loop_nest.index(second_dim)
-                third_dim_index = transf_loop_nest.index(third_dim)
-                first_factor = schedule['tiling']['tiling_factors'][0]
-                second_factor = schedule['tiling']['tiling_factors'][1]
-                third_factor = schedule['tiling']['tiling_factors'][2]
-                sched_str += 'T3(L' + str(first_dim_index) + ',L' + str(
-                    second_dim_index) + ',L' + str(
-                        third_dim_index) + ',' + str(first_factor) + ',' + str(
-                            second_factor) + ',' + str(third_factor) + ')'
-                i = transf_loop_nest.index(first_dim)
-                transf_loop_nest[
-                    i:i +
-                    1] = first_dim + '_outer', second_dim + '_outer', third_dim + '_outer'
-                i = transf_loop_nest.index(second_dim)
-                transf_loop_nest[
-                    i:i +
-                    1] = first_dim + '_inner', second_dim + '_inner', third_dim + '_inner'
-                transf_loop_nest.remove(third_dim)
-        if schedule['unrolling_factor']:
-            dim_index = len(transf_loop_nest) - 1
-            dim_name = transf_loop_nest[-1]
-            sched_str += 'U(L' + str(dim_index) + ',' + str(
-                schedule['unrolling_factor']) + ')'
-            transf_loop_nest[dim_index:dim_index +
-                             1] = dim_name + '_Uouter', dim_name + '_Uinner'
-        if schedule["reversed_dim"]:
-            dim_index = transf_loop_nest.index(schedule["reversed_dim"])
-            sched_str += 'R(L' + str(dim_index) + ')'
+                sched_str = sched_str[:-1]
+                sched_str += ")"
 
+        for name in comp_name:
+            transf_loop_nest = cls.get_original_iterators(program_json)
+            schedule = sched_json[name]
+            sched_str += '{' + name + '}:'
+
+            for transformation in schedule["transformations_list"]:
+
+                if (transformation[0] == 1):
+                    sched_str += "I(L" + str(transformation[1]) + \
+                        ",L" + str(transformation[2]) + ")"
+
+                elif (transformation[0] == 2):
+                    sched_str += f"R(L{str(transformation[3])})"
+                elif (transformation[0] == 3):
+                    sched_str += "S(L" + str(transformation[4]) + ",L" + str(
+                        transformation[5]) + "," + str(transformation[6]) + "," + str(transformation[7]) + ")"
+
+            if schedule["parallelized_dim"]:
+
+                dim_index = transf_loop_nest.index(
+                    schedule["parallelized_dim"])
+                sched_str += "P(L" + str(dim_index) + ")"
+
+            if schedule["tiling"]:
+                if schedule["tiling"]["tiling_depth"] == 2:
+                    first_dim = schedule["tiling"]["tiling_dims"][0]
+                    second_dim = schedule["tiling"]["tiling_dims"][1]
+                    first_dim_index = transf_loop_nest.index(first_dim)
+                    second_dim_index = transf_loop_nest.index(second_dim)
+                    first_factor = schedule["tiling"]["tiling_factors"][0]
+                    second_factor = schedule["tiling"]["tiling_factors"][1]
+                    sched_str += (
+                        "T2(L"
+                        + str(first_dim_index)
+                        + ",L"
+                        + str(second_dim_index)
+                        + ","
+                        + str(first_factor)
+                        + ","
+                        + str(second_factor)
+                        + ")"
+                    )
+                    i = transf_loop_nest.index(first_dim)
+                    transf_loop_nest[i: i + 1] = first_dim + \
+                        "_outer", second_dim + "_outer"
+                    i = transf_loop_nest.index(second_dim)
+                    transf_loop_nest[i: i + 1] = first_dim + \
+                        "_inner", second_dim + "_inner"
+                else:
+                    first_dim = schedule["tiling"]["tiling_dims"][0]
+                    second_dim = schedule["tiling"]["tiling_dims"][1]
+                    third_dim = schedule["tiling"]["tiling_dims"][2]
+                    first_dim_index = transf_loop_nest.index(first_dim)
+                    second_dim_index = transf_loop_nest.index(second_dim)
+                    third_dim_index = transf_loop_nest.index(third_dim)
+                    first_factor = schedule["tiling"]["tiling_factors"][0]
+                    second_factor = schedule["tiling"]["tiling_factors"][1]
+                    third_factor = schedule["tiling"]["tiling_factors"][2]
+                    sched_str += (
+                        "T3(L"
+                        + str(first_dim_index)
+                        + ",L"
+                        + str(second_dim_index)
+                        + ",L"
+                        + str(third_dim_index)
+                        + ","
+                        + str(first_factor)
+                        + ","
+                        + str(second_factor)
+                        + ","
+                        + str(third_factor)
+                        + ")"
+                    )
+                    i = transf_loop_nest.index(first_dim)
+                    transf_loop_nest[i: i + 1] = (
+                        first_dim + "_outer",
+                        second_dim + "_outer",
+                        third_dim + "_outer",
+                    )
+                    i = transf_loop_nest.index(second_dim)
+                    transf_loop_nest[i: i + 1] = (
+                        first_dim + "_inner",
+                        second_dim + "_inner",
+                        third_dim + "_inner",
+                    )
+                    transf_loop_nest.remove(third_dim)
+
+            if schedule["unrolling_factor"]:
+                dim_index = len(transf_loop_nest) - 1
+                dim_name = transf_loop_nest[-1]
+                sched_str += "U(L" + str(dim_index) + "," + \
+                    schedule["unrolling_factor"] + ")"
+                transf_loop_nest[dim_index: dim_index + 1] = (
+                    dim_name + "_Uouter",
+                    dim_name + "_Uinner",
+                )
         return sched_str
+
+    @classmethod
+    def get_original_iterators(cls, program_json):
+        iterators = program_json['iterators']
+        to_explore = []
+        result = []
+        to_explore.append(list(iterators.keys())[0])
+        while (to_explore):
+            it_name = to_explore.pop(0)
+            iterator = iterators[it_name]
+            result.append(it_name)
+            for element in iterator["child_iterators"]:
+                to_explore.append(element)
+
+        return result
+
+    @classmethod
+    def list_optimizations_to_sched_str(cls, schedule: List[OptimizationCommand]):
+
+        pass
 
     @classmethod
     def get_schedules_str(cls, programs_list, programs_dict):
@@ -231,17 +277,14 @@ class ScheduleUtils:
             functions_set = {}
 
             for fun in programs_list:
-
                 if 'schedules_list' in programs_dict[fun].keys():
                     schedules = programs_dict[fun]['schedules_list']
 
                     schedules_set = {}
 
                     for schedule in schedules:
-
-                        comp = list(schedule.keys())[0]
-                        schedule_str = schedule[comp]["schedule_str"]
-                        schedules_set[schedule_str] = schedule[comp]["execution_times"]
+                        schedule_str = schedule["sched_str"]
+                        schedules_set[schedule_str] = schedule["execution_times"]
 
                     functions_set[fun] = schedules_set
 
@@ -477,7 +520,7 @@ class ScheduleUtils:
         for child_iterator in program_json['iterators'][root_iterator][
                 'child_iterators']:
             tree_struct['child_list'].append(
-                self.get_orig_tree_struct(program_json, child_iterator))
+                cls.get_orig_tree_struct(program_json, child_iterator))
         return tree_struct
 
     @classmethod
@@ -845,3 +888,100 @@ class ScheduleUtils:
         it_list = dict(sorted(it_list.items()))
 
         return it_list
+
+
+def optimlist_to_str(optim_list):
+    """Converts a list of OptimizationCommand to a string.
+    """
+
+    comp_names = list(set([
+        comp for optim in optim_list for comp in optim.comps
+    ]))
+
+    comp_names.sort()
+
+    sched_str = ""
+
+    # Add fusions first
+    fusions = [optim for optim in optim_list if optim.type == "Fusion"]
+    for fusion in fusions:
+        sched_str += "F("
+        for name in fusion.comps:
+            sched_str += name + ","
+
+        sched_str = sched_str[:-1]
+        sched_str += ")"
+
+    # Iterate over the comps and add their transformations
+    for name in comp_names:
+        sched_str += '{' + name + '}:'
+
+        for transformation in optim_list:
+            # Skip the transformation if it doesn't include the comp
+            if name not in transformation.comps:
+                continue
+
+            if transformation.type == "Interchange":
+                sched_str += "I(L" + str(transformation.params_list[0]) + \
+                             ",L" + str(transformation.params_list[1]) + ")"
+
+            elif transformation.type == "Reversal":
+                sched_str += f"R(L{str(transformation.params_list[0])})"
+
+            elif transformation.type == "Skewing":
+                sched_str += "S(L" + str(transformation.params_list[0]) + ",L" + str(
+                    transformation.params_list[1]) + "," + str(transformation.params_list[2]) + "," + str(
+                    transformation.params_list[3]) + ")"
+
+            elif transformation.type == "Parallelization":
+                sched_str += "P(L" + str(transformation.params_list[0]) + ")"
+
+            elif transformation.type == "Tiling":
+                # T2
+                if len(transformation.params_list) == 4:
+                    first_dim_index = transformation.params_list[0]
+                    second_dim_index = transformation.params_list[1]
+                    first_factor = transformation.params_list[2]
+                    second_factor = transformation.params_list[3]
+                    sched_str += (
+                        "T2(L"
+                        + str(first_dim_index)
+                        + ",L"
+                        + str(second_dim_index)
+                        + ","
+                        + str(first_factor)
+                        + ","
+                        + str(second_factor)
+                        + ")"
+                    )
+                # T3
+                else:
+                    first_dim_index = transformation.params_list[0]
+                    second_dim_index = transformation.params_list[1]
+                    third_dim_index = transformation.params_list[2]
+                    first_factor = transformation.params_list[3]
+                    second_factor = transformation.params_list[4]
+                    third_factor = transformation.params_list[5]
+                    sched_str += (
+                        "T3(L"
+                        + str(first_dim_index)
+                        + ",L"
+                        + str(second_dim_index)
+                        + ",L"
+                        + str(third_dim_index)
+                        + ","
+                        + str(first_factor)
+                        + ","
+                        + str(second_factor)
+                        + ","
+                        + str(third_factor)
+                        + ")"
+                    )
+
+            elif transformation.type == "Unrolling":
+                dim_index = transformation.params_list[name][0]
+                unrolling_factor = transformation.params_list[name][1]
+                sched_str += "U(L" + str(dim_index) + "," + \
+                    str(unrolling_factor) + ")"
+
+    return sched_str

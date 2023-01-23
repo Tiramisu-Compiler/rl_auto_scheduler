@@ -61,6 +61,7 @@ class ScheduleController:
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
+            ray.util.pdb.set_trace()
 
         if action.id in range(28):  # Interchange
             if not self.schedule_object.is_interchaged:
@@ -73,6 +74,15 @@ class ScheduleController:
                                              self.schedule_object.comps)
                 self.schedule.append(optim1)
 
+                tmp_sched_str = optimlist_to_str(self.schedule)
+                print(tmp_sched_str)
+
+                # check if we can find the schedule in the dataset load the legality check
+                if self.config.environment.use_dataset:
+                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                        if tmp_sched_str == sched_json['sched_str']:
+                            saved_legality = 1 if sched_json['legality_check'] else None
+
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
@@ -84,12 +94,14 @@ class ScheduleController:
                     print("X: The action produced an error.")
                     self.pop_schedule(action=action)
                     raise LCException
+
                 if lc_check == 0:
                     print("X: Illegal action")
                     self.pop_schedule(action=action)
                     info = {"illegal_action": True}
                     done = False
                     return self.schedule_object.repr, 1.0, done, info
+
                 self.schedule_object.apply_interchange(action_params)
                 print("O: Interchange applied")
                 self.schedule_object.is_interchaged = True
@@ -116,6 +128,15 @@ class ScheduleController:
 
                 self.schedule.append(optim2)
 
+                tmp_sched_str = optimlist_to_str(self.schedule)
+                print(tmp_sched_str)
+
+                # check if we can find the schedule in the dataset load the legality check
+                if self.config.environment.use_dataset:
+                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                        if tmp_sched_str == sched_json['sched_str']:
+                            saved_legality = 1 if sched_json['legality_check'] else None
+
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
@@ -140,8 +161,8 @@ class ScheduleController:
 
                 done = True
                 exit = True
-                self.schedule_object.schedule_str = ScheduleUtils.sched_str(
-                    self.schedule_object.schedule_str, action.id,
+                self.schedule_object.sched_str = ScheduleUtils.sched_str(
+                    self.schedule_object.sched_str, action.id,
                     action_params, self.schedule_object.comp_indic_dict)
             else:
                 print("X: Tiling already applied exception")
@@ -169,6 +190,16 @@ class ScheduleController:
                     optim3 = OptimizationCommand("Unrolling", params,
                                                  self.non_skewed_comps)
                     self.schedule.append(optim3)
+
+                    tmp_sched_str = optimlist_to_str(self.schedule)
+                    print(tmp_sched_str)
+
+                    # check if we can find the schedule in the dataset load the legality check
+                    if self.config.environment.use_dataset:
+                        for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                            if tmp_sched_str == sched_json['sched_str']:
+                                saved_legality = 1 if sched_json['legality_check'] else None
+
                     start_time = time.time()
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
@@ -189,8 +220,6 @@ class ScheduleController:
 
                     self.schedule_object.apply_unrolling(action_params)
                     print("O: Unrolling applied")
-                    for i in range(41, 44):
-                        self.schedule_object.repr["action_mask"][i] = 0
                     self.schedule_object.is_unrolled = True
                 else:
                     lc_check = 0
@@ -279,6 +308,15 @@ class ScheduleController:
                 optim5 = OptimizationCommand("Parallelization", params,
                                              self.schedule_object.comps)
                 self.schedule.append(optim5)
+
+                tmp_sched_str = optimlist_to_str(self.schedule)
+
+                # check if we can find the schedule in the dataset load the legality check
+                if self.config.environment.use_dataset:
+                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                        if tmp_sched_str == sched_json['sched_str']:
+                            saved_legality = 1 if sched_json['legality_check'] else None
+
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -315,6 +353,17 @@ class ScheduleController:
                 optim6 = OptimizationCommand("Reversal", params,
                                              self.schedule_object.comps)
                 self.schedule.append(optim6)
+
+                tmp_sched_str = optimlist_to_str(self.schedule)
+                print(tmp_sched_str)
+                ray.util.pdb.set_trace()
+                # check if we can find the schedule in the dataset load the legality check
+                if self.config.environment.use_dataset:
+                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                        if tmp_sched_str == sched_json['sched_str']:
+                            saved_legality = 1 if sched_json['legality_check'] else None
+
+                ray.util.pdb.set_trace()
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -355,6 +404,15 @@ class ScheduleController:
 
                 self.schedule.append(optim7)
 
+                tmp_sched_str = optimlist_to_str(self.schedule)
+                print(tmp_sched_str)
+
+                # check if we can find the schedule in the dataset load the legality check
+                if self.config.environment.use_dataset:
+                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                        if tmp_sched_str == sched_json['sched_str']:
+                            saved_legality = 1 if sched_json['legality_check'] else None
+
                 start_time = time.time()
 
                 if self.schedule_object.is_unrolled:
@@ -392,8 +450,8 @@ class ScheduleController:
 
         if (not exit and lc_check != 0) and not (action.id in range(
                 41, 44) and self.schedule_object.is_skewed):
-            self.schedule_object.schedule_str = ScheduleUtils.sched_str(
-                self.schedule_object.schedule_str, action.id, action_params,
+            self.schedule_object.sched_str = ScheduleUtils.sched_str(
+                self.schedule_object.sched_str, action.id, action_params,
                 self.schedule_object.comp_indic_dict)
             if not action.id in range(41, 44):
                 self.schedule_object.it_dict = ScheduleUtils.update_iterators(
@@ -467,7 +525,7 @@ class ScheduleController:
                         unroll_optimisation.params_list[comp][0]) + "," + str(
                             unroll_factor) + ",C" + str(
                                 self.schedule_object.comp_indic_dict[comp]) + ")"
-                self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+                self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
                     unrolling_str, "") + new_unrolling_str
                 self.schedule.remove(unroll_optimisation)
                 self.schedule.append(new_unrolling_optim)
@@ -500,8 +558,8 @@ class ScheduleController:
 
                     try:
 
-                        self.schedule_object.schedule_str = ScheduleUtils.sched_str(
-                            self.schedule_object.schedule_str, action.id,
+                        self.schedule_object.sched_str = ScheduleUtils.sched_str(
+                            self.schedule_object.sched_str, action.id,
                             action_params, self.schedule_object.comp_indic_dict)
                         parallelized_exec_time = self.get_exec_time()
                         parallelization_str = 'P(L' + str(
@@ -509,7 +567,7 @@ class ScheduleController:
                     except:
                         print("X: Illegal action")
                         self.schedule.remove(optim5)
-                        self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+                        self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
                             parallelization_str, "")
 
                     if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
@@ -522,8 +580,8 @@ class ScheduleController:
                     else:
                         self.schedule.remove(optim5)
                         self.new_scheds[self.schedule_object.prog.name].pop(
-                            self.schedule_object.schedule_str)
-                        self.schedule_object.schedule_str = self.schedule_object.schedule_str.replace(
+                            self.schedule_object.sched_str)
+                        self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
                             parallelization_str, "")
                         self.schedule_object.schedule_dict[first_comp][
                             "parallelized_dim"] = None
@@ -540,7 +598,7 @@ class ScheduleController:
 
         if exec_time != 0:
             print("\nThe final schedule is ",
-                  self.schedule_object.schedule_str)
+                  self.schedule_object.sched_str)
             self.speedup = (
                 self.schedule_object.prog.initial_execution_time / exec_time)
             print("The speedup is: ", self.speedup)
@@ -551,8 +609,8 @@ class ScheduleController:
     def get_exec_time_by_model(self, optims_list, cmd_type, nb_executions,
                                initial_exec_time):
         self.schedule_list_model.append({
-            "schedule_str":
-            self.schedule_object.schedule_str,
+            "sched_str":
+            self.schedule_object.sched_str,
             "schedule_dict":
             self.schedule_object.schedule_dict
         })
@@ -589,17 +647,17 @@ class ScheduleController:
     def get_exec_time(self):
         prog_name = self.schedule_object.prog.name
         execution_time = 0
-        if self.schedule_object.schedule_str != "" and self.schedule != []:
+        if self.schedule_object.sched_str != "" and self.schedule != []:
             if prog_name in self.scheds.keys():
-                if self.schedule_object.schedule_str in self.scheds[prog_name]:
+                if self.schedule_object.sched_str in self.scheds[prog_name]:
                     execution_time = self.scheds[prog_name][
-                        self.schedule_object.schedule_str][0]
+                        self.schedule_object.sched_str][0]
                 else:
                     if prog_name in self.new_scheds.keys(
-                    ) and self.schedule_object.schedule_str in self.new_scheds[
+                    ) and self.schedule_object.sched_str in self.new_scheds[
                             prog_name].keys():
                         execution_time = self.new_scheds[prog_name][
-                            self.schedule_object.schedule_str][1]
+                            self.schedule_object.sched_str][1]
                     else:
                         curr_sched = copy.deepcopy(self.schedule)
                         self.new_scheds[prog_name] = {}
@@ -607,21 +665,21 @@ class ScheduleController:
                             self.schedule, 'sched_eval', self.nb_executions,
                             self.schedule_object.prog.initial_execution_time)
                         self.new_scheds[prog_name][
-                            self.schedule_object.schedule_str] = (
+                            self.schedule_object.sched_str] = (
                                 curr_sched, execution_time, 0)
             else:
                 if prog_name in self.new_scheds.keys():
-                    if self.schedule_object.schedule_str in self.new_scheds[
+                    if self.schedule_object.sched_str in self.new_scheds[
                             prog_name].keys():
                         execution_time = self.new_scheds[prog_name][
-                            self.schedule_object.schedule_str][1]
+                            self.schedule_object.sched_str][1]
                     else:
                         curr_sched = copy.deepcopy(self.schedule)
                         execution_time = self.measurement_env(
                             self.schedule, 'sched_eval', self.nb_executions,
                             self.schedule_object.prog.initial_execution_time)
                         self.new_scheds[prog_name][
-                            self.schedule_object.schedule_str] = (
+                            self.schedule_object.sched_str] = (
                                 curr_sched, execution_time, 0)
                 else:
                     curr_sched = copy.deepcopy(self.schedule)
@@ -632,15 +690,15 @@ class ScheduleController:
                         self.schedule_object.prog.initial_execution_time)
                     sched_time = time.time() - start_time
                     self.new_scheds[prog_name][
-                        self.schedule_object.schedule_str] = (curr_sched,
-                                                              execution_time,
-                                                              0)
+                        self.schedule_object.sched_str] = (curr_sched,
+                                                           execution_time,
+                                                           0)
         else:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time
 
     def save_legality_data(self, action, lc_check):
-        key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
+        key = f"{self.schedule_object.prog.name}@{self.schedule_object.sched_str}@{action}"
         self.lc_data.append(
             [
                 key,
@@ -649,7 +707,7 @@ class ScheduleController:
         )
 
     def get_legality(self, action):
-        key = f"{self.schedule_object.prog.name}@{self.schedule_object.schedule_str}@{action}"
+        key = f"{self.schedule_object.prog.name}@{self.schedule_object.sched_str}@{action}"
         values = [v for (k, v) in self.lc_data if k == key]
         return values[0] if len(values) else None
 

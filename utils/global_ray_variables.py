@@ -1,3 +1,6 @@
+import bz2
+import logging
+import pickle
 from typing import List
 import ray
 import json
@@ -7,13 +10,17 @@ import os
 @ray.remote
 class GlobalVarActor:
 
-    def __init__(self, programs_file, dataset_path, num_workers=7):
+    def __init__(self, programs_file, dataset_path, num_workers=7, use_dataset=False, json_dataset=None):
         self.index = -1
         self.num_workers = num_workers
-        self.progs_list = self.get_dataset(dataset_path)
+        self.progs_list = []
         self.programs_file = programs_file
         self.progs_dict = dict()
         self.lc_data = []
+        self.json_dataset = json_dataset
+
+        self.get_dataset(
+            dataset_path, use_dataset, json_dataset_path=json_dataset["path"])
         # if os.path.isfile(programs_file):
         #     try:
         #         with open(programs_file) as f:
@@ -36,11 +43,20 @@ class GlobalVarActor:
             with open("lc_data.json", "w+") as f:
                 f.write(json.dumps(self.lc_data))
 
-    def get_dataset(self, path):
-        os.getcwd()
-        print("***************************", os.getcwd())
-        prog_list = os.listdir(path)
-        return prog_list
+    # Load the dataset of programs
+    def get_dataset(self, path, use_dataset=False, json_dataset_path=None):
+        if use_dataset:
+            logging.info(f"reading dataset from json at:{json_dataset_path}")
+            with bz2.BZ2File(json_dataset_path, 'rb') as f:
+                self.progs_dict = pickle.load(f)
+                self.progs_list = list(self.progs_dict.keys())
+            logging.info(
+                f"[Done] reading dataset from json at:{json_dataset_path}")
+
+        else:
+            os.getcwd()
+            logging.info(f"reading dataset from ls at: {os.getcwd()}")
+            self.progs_list = os.listdir(path)
 
     def set_progs_list(self, v):
         self.progs_list = v

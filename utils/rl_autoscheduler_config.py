@@ -22,6 +22,11 @@ class EnvironmentConfig:
     dataset_path: str = "../../Dataset_multi/"
     programs_file: str = "./multicomp.json"
     clean_files: bool = True
+    json_dataset: dict = field(default_factory=lambda: {
+        "path": None,
+        "cpp_root": None
+    })
+    use_dataset: bool = False
 
 
 @dataclass

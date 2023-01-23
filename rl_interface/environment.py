@@ -1,5 +1,6 @@
 # np.set_printoptions(threshold=sys.maxsize)
 import copy
+import logging
 import random
 import sys
 import time
@@ -45,11 +46,12 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.previous_cpp_file = None
         self.shared_variable_actor = shared_variable_actor
 
-        print("Loading data from {} \n".format(
-            config.environment.dataset_path))    # FIX that here
+        if config.environment.use_dataset:
+            self.dataset_path = config.environment.json_dataset['cpp_root']
 
         self.id = ray.get(self.shared_variable_actor.increment.remote())
 
+        logging.info("worker getting its list of programs")
         # List of function names
         self.progs_list = ray.get(
             self.shared_variable_actor.get_progs_list.remote(self.id))
@@ -57,9 +59,9 @@ class TiramisuScheduleEnvironment(gym.Env):
         # Dict of programs with their annotations, schedules, exectution times and traces
         self.progs_dict = ray.get(
             self.shared_variable_actor.get_progs_dict.remote())
-        print("Loaded the dataset!")
+        logging.info("Loaded the dataset!")
 
-        # Dict of function with a Dict containing schedules in STR format and their execution time
+        # Dict of function with a Dict containing schedules in STR format and their execution time TODO is this used?
         self.scheds = tiramisu_programs.schedule_utils.ScheduleUtils.get_schedules_str(
             list(self.progs_dict.keys()),
             self.progs_dict)  # to use it to get the execution time
@@ -107,22 +109,23 @@ class TiramisuScheduleEnvironment(gym.Env):
                     tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
                         self.dataset_path, self.previous_cpp_file)
                 # Choose a random program (function)
-                random_prog_index = random.randint(0, len(self.progs_list) - 1)
+                function_name = random.choice(self.progs_list)
 
                 # Copy the function's files to the dataset copy created
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, self.progs_list[random_prog_index])
+                    self.dataset_path, function_name)
 
                 # Set up the function files to be deleted on the next iteration
-                self.previous_cpp_file = self.progs_list[random_prog_index]
+                self.previous_cpp_file = function_name
 
                 # Load the tiramisu program from the file
                 self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
-                    self.config, file)
+                    self.config, file, progs_dict=self.progs_dict)
 
                 print(f"Trying with program {self.prog.name}")
 
-                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
+                self.schedule_object = tiramisu_programs.schedule.Schedule(
+                    self.prog)
 
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
                     schedule=self.schedule_object,
@@ -131,7 +134,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                     config=self.config)
 
                 # Load the legality check list. Starts empty
-                lc_data = ray.get(self.shared_variable_actor.get_lc_data.remote())
+                lc_data = ray.get(
+                    self.shared_variable_actor.get_lc_data.remote())
 
                 self.schedule_controller.load_legality_data(lc_data)
 
@@ -152,10 +156,13 @@ class TiramisuScheduleEnvironment(gym.Env):
                         self.prog.initial_execution_time = self.progs_dict[
                             self.prog.name]["initial_execution_time"]
                 else:
-                    self.prog.initial_execution_time = 1.0
-                    self.progs_dict[self.prog.name] = {}
-                    self.progs_dict[self.prog.name]["initial_execution_time"] = self.prog.initial_execution_time
-                self.progs_dict[self.prog.name]["program_annotation"] = self.schedule_object.annotations
+                    if not self.config.environment.use_dataset:
+                        self.prog.initial_execution_time = 1.0
+                        self.progs_dict[self.prog.name] = {}
+                        self.progs_dict[self.prog.name]["initial_execution_time"] = self.prog.initial_execution_time
+
+                if not self.config.environment.use_dataset:
+                    self.progs_dict[self.prog.name]["program_annotation"] = self.schedule_object.annotations
 
             except:
                 print("RESET_ERROR_STDERR",
@@ -177,7 +184,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         """
         action_name = rl_interface.Action.ACTIONS_ARRAY[raw_action]
         print("\n ----> {} [ {} ] \n".format(
-            action_name, self.schedule_object.schedule_str))
+            action_name, self.schedule_object.sched_str))
         info = {}
         applied_exception = False
         reward = 0.0
@@ -216,6 +223,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                     "depth": self.depth,
                     "error": "ended with error in the step function",
                 }
+
         self.obs = copy.deepcopy(self.schedule_object.get_representation())
         if (self.schedule_controller.depth
                 == self.schedule_object.MAX_DEPTH) or (self.steps >= 20):
@@ -230,12 +238,12 @@ class TiramisuScheduleEnvironment(gym.Env):
                 self.schedule_controller.get_legality_data()))
             if "schedule" in self.progs_dict[self.prog.name]:
                 self.schedule_object.schedule_dict["speedup"] = speedup
-                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
                 self.progs_dict[self.prog.name]["schedules_list"].append(
                     self.schedule_object.schedule_dict)
             else:
                 self.schedule_object.schedule_dict["speedup"] = speedup
-                self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
+                self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
                 self.progs_dict[self.prog.name]["schedules_list"] = [
                     self.schedule_object.schedule_dict]
         reward_object = rl_interface.Reward(speedup)

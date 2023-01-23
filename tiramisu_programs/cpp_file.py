@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 import re
 import torch
+import ray
 
 from tiramisu_programs.schedule_utils import TimeOutException
 
@@ -162,8 +163,16 @@ class CPP_File(object):
             os.system("rm -r {}".format(target_path))
             # print("directory removed")
 
+        with open(original_path, 'r') as f:
+            original_str = f.read()
+
+        original_str = original_str.replace(
+            f'#include "{func_name}_wrapper.h"', '')
+
         os.mkdir(target_path)
-        os.system("cp -r {} {}".format(original_path, target_path))
+        with open(f"{target_path}/{file_name}", 'w') as f:
+            f.write(original_str)
+        # os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
 
     @classmethod
@@ -177,9 +186,9 @@ class CPP_File(object):
         Returns:
             str: The new copied function path.
         """
-        target_path = f"{dataset_path}{func_name}"
+        target_path = "{}/Dataset_copies/{}".format(".", func_name)
 
-        if os.path.isdir(dataset_path) and os.path.isdir(target_path):
+        if os.path.isdir("./Dataset_copies") and os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
             return True
         else:

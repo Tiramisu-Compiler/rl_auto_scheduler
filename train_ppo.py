@@ -1,3 +1,4 @@
+import logging
 import os
 # import hydra
 import argparse
@@ -18,6 +19,9 @@ from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-workers", default=-1, type=int)
+    parser.add_argument("--use-dataset", default=False, type=bool)
+    parser.add_argument("--log-level", default="INFO",  # TODO change back to WARN
+                        type=str, choices=list(logging._nameToLevel.keys()))
     return parser.parse_args()
 
 
@@ -27,7 +31,7 @@ def main(config: RLAutoSchedulerConfig):
     progs_list_registery = GlobalVarActor.remote(
         config.environment.programs_file,
         config.environment.dataset_path,
-        num_workers=config.ray.num_workers)
+        num_workers=config.ray.num_workers, use_dataset=config.environment.use_dataset, json_dataset=config.environment.json_dataset)
     shared_variable_actor = Actor.remote(progs_list_registery)
 
     register_env(
@@ -73,6 +77,8 @@ if __name__ == "__main__":
     args = get_arguments()
     if args.num_workers != -1:
         config.ray.num_workers = args.num_workers
+    config.environment.use_dataset = args.use_dataset
+    logging.basicConfig(level=logging._nameToLevel[args.log_level])
     if args.num_workers == 1:
         with ray.init():
             main(config)

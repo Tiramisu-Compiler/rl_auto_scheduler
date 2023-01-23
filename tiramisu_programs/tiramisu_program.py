@@ -96,7 +96,7 @@ $buffers_init$
     return 0;
 }'''
 
-    def __init__(self, config, file_path):
+    def __init__(self, config, file_path, progs_dict=None):
         self.config = config
         self.file_path = file_path
         with open(file_path, 'r') as f:
@@ -110,6 +110,9 @@ $buffers_init$
 
         self.name = re.findall(r'tiramisu::init\(\"(\w+)\"\);',
                                self.original_str)[0]
+
+        self.original_str = self.original_str.replace(
+            f'#include "{self.name}_wrapper.h"', '')
 
         self.comp_name = re.findall(r'computation (\w+)\(', self.original_str)
 
@@ -126,37 +129,44 @@ $buffers_init$
                                     self.original_str)[0]
             self.buffer_sizes.append(re.findall(r'\d+', sizes_vect))
 
-        self.program_annotations = ''
+        self.program_annotations = None
         self.wrapper_is_compiled = False
         self.initial_execution_time = 1.0
+        self.json_representation = None
+        if config.environment.use_dataset:
+            self.json_representation = progs_dict[self.name]
 
     def get_program_annotations(self):
-        if not self.program_annotations == '':
+        if self.program_annotations is not None:
             return self.program_annotations
 
-        # create a cpp file to get the annotations
-        get_json_lines = '''
-    auto ast = tiramisu::auto_scheduler::syntax_tree(tiramisu::global::get_implicit_function());
-    std::string program_json = tiramisu::auto_scheduler::evaluate_by_learning_model::get_program_json(ast);
-    std::ofstream out("''' + self.func_folder + self.name + '''_program_annotations.json");
-    out << program_json;
-    out.close();
-    '''
-        get_json_prog = self.original_str.replace(self.code_gen_line,
-                                                  get_json_lines)
-        output_file = self.func_folder + self.name + '_get_prog_annot.cpp'
+        if self.config.environment.use_dataset:
+            self.program_annotations = self.json_representation['program_annotation']
+        else:
+            # create a cpp file to get the annotations
+            get_json_lines = '''
+        auto ast = tiramisu::auto_scheduler::syntax_tree(tiramisu::global::get_implicit_function());
+        std::string program_json = tiramisu::auto_scheduler::evaluate_by_learning_model::get_program_json(ast);
+        std::ofstream out("''' + self.func_folder + self.name + '''_program_annotations.json");
+        out << program_json;
+        out.close();
+        '''
+            get_json_prog = self.original_str.replace(self.code_gen_line,
+                                                      get_json_lines)
+            output_file = self.func_folder + self.name + '_get_prog_annot.cpp'
 
-        with open(output_file, 'w') as f:
-            f.write(get_json_prog)
+            with open(output_file, 'w') as f:
+                f.write(get_json_prog)
 
-        # compile the cpp file and run to generate annotations in json file
-        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
-            self.config, output_file, 'Generating program annotations')
+            # compile the cpp file and run to generate annotations in json file
+            tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+                self.config, output_file, 'Generating program annotations')
 
-        # Read the json file and return the annotations
-        with open(self.func_folder + self.name + '_program_annotations.json',
-                  'r') as f:
-            self.program_annotations = json.loads(f.read())
+            # Read the json file and return the annotations
+            with open(self.func_folder + self.name + '_program_annotations.json',
+                      'r') as f:
+                self.program_annotations = json.loads(f.read())
+
         return self.program_annotations
 
     def check_legality_of_schedule(
@@ -164,7 +174,7 @@ $buffers_init$
         optims_list,
         comps=None,
         first_comp=None
-    ): 
+    ):
         legality_check_lines = '''
     prepare_schedules_for_legality_checks();
     perform_full_dependency_analysis();
@@ -183,7 +193,7 @@ $buffers_init$
     is_legal &= loop_parallelization_is_legal(''' + str(
                     optim.params_list[0]) + ''', {&''' + first_comp + '''});
 '''
-                legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Tiling':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Fusion':
@@ -195,7 +205,7 @@ $buffers_init$
                         optim.params_list[comp]
                         [0]) + ''', {&''' + comp + '''});
     '''
-                    legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                    legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
     is_legal &= check_legality_of_function();
@@ -219,7 +229,7 @@ $buffers_init$
 
         return lc_result
 
-    def call_solver(self, comp, params):  
+    def call_solver(self, comp, params):
         lc_file = self.func_folder + self.name + '_legality_check.cpp'
         if os.path.isfile(lc_file):
             with open(lc_file, 'r') as f:
@@ -361,8 +371,7 @@ $buffers_init$
             return
         return self.read_measurements_file()
 
-    def write_wrapper_code(
-            self):  
+    def write_wrapper_code(self):
 
         buffers_init_lines = ''
         for i, buffer_name in enumerate(self.IO_buffer_names):
@@ -385,7 +394,8 @@ $buffers_init$
         with open(output_file, 'w') as f:
             f.write(wrapper_cpp_code)
 
-        wrapper_h_code = self.wrapper_h_template.replace('$func_name$', self.name)
+        wrapper_h_code = self.wrapper_h_template.replace(
+            '$func_name$', self.name)
         wrapper_h_code = wrapper_h_code.replace(
             '$func_params$', ','.join(
                 ['halide_buffer_t *' + name for name in self.IO_buffer_names]))
@@ -419,5 +429,3 @@ $buffers_init$
     def reset_solver_result_file(self):
         with open(self.func_folder + "solver_result.txt", 'w') as f:
             f.write('-1')
-
-
