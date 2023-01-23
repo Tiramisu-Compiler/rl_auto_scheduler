@@ -104,8 +104,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             try:
                 # Clean files of the previous function ran
                 if self.config.environment.clean_files and self.previous_cpp_file:
-                    tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
-                        self.dataset_path, self.previous_cpp_file)
+                    tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(self.previous_cpp_file)
                 # Choose a random program (function)
                 random_prog_index = random.randint(0, len(self.progs_list) - 1)
 
@@ -226,8 +225,9 @@ class TiramisuScheduleEnvironment(gym.Env):
                 speedup = self.schedule_controller.get_final_score()
             except:
                 speedup = 1.0
-            ray.get(self.shared_variable_actor.update_lc_data.remote(self.schedule_controller.get_legality_data()))
-            if "schedules_list" in self.progs_dict[self.prog.name]:
+            ray.get(self.shared_variable_actor.update_lc_data.remote(
+                self.schedule_controller.get_legality_data()))
+            if "schedule" in self.progs_dict[self.prog.name]:
                 self.schedule_object.schedule_dict["speedup"] = speedup
                 self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
                 self.progs_dict[self.prog.name]["schedules_list"].append(
