@@ -177,7 +177,7 @@ class CPP_File(object):
         Returns:
             str: The new copied function path.
         """
-        target_path = f"{dataset_path}{func_name}"
+        target_path = "{}/Dataset_copies/{}".format(".", func_name)
 
         if os.path.isdir(dataset_path) and os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
