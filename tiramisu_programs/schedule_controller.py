@@ -264,6 +264,16 @@ class ScheduleController:
 
                         self.schedule.append(optim4)
 
+                        tmp_sched_str = ScheduleUtils.optimlist_to_str(
+                            self.schedule)
+                        print(tmp_sched_str)
+
+                        # check if we can find the schedule in the dataset load the legality check
+                        if self.config.environment.use_dataset:
+                            for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
+                                if tmp_sched_str == sched_json['sched_str']:
+                                    saved_legality = 1 if sched_json['legality_check'] else None
+
                         start_time = time.time()
                         if self.schedule_object.is_unrolled:
                             lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -310,6 +320,7 @@ class ScheduleController:
                 self.schedule.append(optim5)
 
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
+                print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
                 if self.config.environment.use_dataset:
@@ -451,6 +462,7 @@ class ScheduleController:
             self.schedule_object.sched_str = ScheduleUtils.sched_str(
                 self.schedule_object.sched_str, action.id, action_params,
                 self.schedule_object.comp_indic_dict)
+            ray.util.pdb.set_trace()
             if not action.id in range(41, 44):
                 self.schedule_object.it_dict = ScheduleUtils.update_iterators(
                     action.id, self.schedule_object.it_dict, action_params,
