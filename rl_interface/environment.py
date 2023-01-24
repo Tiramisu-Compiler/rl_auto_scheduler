@@ -137,24 +137,24 @@ class TiramisuScheduleEnvironment(gym.Env):
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
-                if self.config.tiramisu.env_type == "cpu":
-                    if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
+                if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
+                    if self.config.tiramisu.env_type == "cpu":
                         print("Getting the initial exe time by execution")
                         self.prog.initial_execution_time = self.schedule_controller.measurement_env(
-                            [], 'initial_exec', self.nb_executions,
-                            self.prog.initial_execution_time)
-                        self.progs_dict[self.prog.name] = {}
-                        self.progs_dict[self.prog.name]["initial_execution_time"] = self.prog.initial_execution_time
-
-                    else:
-                        print("The initial execution time exists")
-                        self.prog.initial_execution_time = self.progs_dict[
-                            self.prog.name]["initial_execution_time"]
-                else:
-                    self.prog.initial_execution_time = 1.0
+                                [], 'initial_exec', self.nb_executions,
+                                self.prog.initial_execution_time)
+                    elif self.config.tiramisu.env_type == "model":
+                        self.prog.initial_execution_time = 1.0
                     self.progs_dict[self.prog.name] = {}
+                    self.progs_dict[self.prog.name]["program_annotation"] = self.schedule_object.annotations
                     self.progs_dict[self.prog.name]["initial_execution_time"] = self.prog.initial_execution_time
-                self.progs_dict[self.prog.name]["program_annotation"] = self.schedule_object.annotations
+
+                else:
+                    print("The initial execution time exists")
+                    if self.config.tiramisu.env_type == "cpu": # Add something about whether the execution time was created using RL
+                        self.prog.initial_execution_time = self.progs_dict[self.prog.name]["initial_execution_time"]
+                    elif self.config.tiramisu.env_type == "model":
+                        self.prog.initial_execution_time = 1.0
 
             except:
                 print("RESET_ERROR_STDERR",
@@ -227,7 +227,7 @@ class TiramisuScheduleEnvironment(gym.Env):
                 speedup = 1.0
             ray.get(self.shared_variable_actor.update_lc_data.remote(
                 self.schedule_controller.get_legality_data()))
-            if "schedule" in self.progs_dict[self.prog.name]:
+            if "schedules_list" in self.progs_dict[self.prog.name]:
                 self.schedule_object.schedule_dict["speedup"] = speedup
                 self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
                 self.progs_dict[self.prog.name]["schedules_list"].append(
