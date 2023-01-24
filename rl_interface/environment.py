@@ -87,7 +87,10 @@ class TiramisuScheduleEnvironment(gym.Env):
             gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 5)),
             # float representation of the padded string format of the program tree
             "prog_tree":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,))
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,)),
+            # Program embedding at a given timestamp
+            "prog_embedding":
+            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(180,))
         })
 
     def reset(self, file=None):
@@ -121,7 +124,7 @@ class TiramisuScheduleEnvironment(gym.Env):
 
                 print(f"Trying with program {self.prog.name}")
 
-                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog)
+                self.schedule_object = tiramisu_programs.schedule.Schedule(self.prog,self.config)
 
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
                     schedule=self.schedule_object,

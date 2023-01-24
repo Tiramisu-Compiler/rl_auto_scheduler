@@ -1,10 +1,13 @@
+import sys
+from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_Embeddings
+import torch
 import traceback
 
 import rl_interface
 
 from tiramisu_programs.schedule_utils import *
 from tiramisu_programs.surrogate_model_utils.json_to_tensor import (
-    get_sched_rep, get_tree_structure)
+    get_sched_rep, get_schedule_representation, get_tree_structure)
 
 global_dioph_sols_dict = dict()
 EPSILON = 1e-6
@@ -13,8 +16,9 @@ EPSILON = 1e-6
 class Schedule:
     MAX_DEPTH = 6
     MAX_COMPS = 5
+    
 
-    def __init__(self, program):
+    def __init__(self, program,config=None):
         self.depth = 0
         self.schedule_str = ""
         self.is_interchaged = False
@@ -27,6 +31,37 @@ class Schedule:
         self.comps = list(self.prog.comp_name)
         self.annotations = self.prog.get_program_annotations()
         self.repr = None
+        self.schedule_dict = dict()
+        self.templates = dict()
+        self.embedding_model = Model_Recursive_LSTM_Embeddings()
+        self.embedding_model.load_state_dict(
+                                            torch.load(config.tiramisu.model_checkpoint,
+                                                        map_location="cpu")
+                                            )
+
+
+    def get_schedule_embedding(self):
+        prog_embedding = None
+        try:
+            computations_tensor, loops_tensor = get_schedule_representation(
+                self.annotations,
+                self.schedule_dict,
+                self.templates["comps_repr_templates_list"],
+                self.templates["loops_repr_templates_list"],
+                self.templates["comps_placeholders_indices_dict"],
+                self.templates["loops_placeholders_indices_dict"],
+                max_depth=self.MAX_DEPTH - 1)
+            tree_tensors = (self.templates["prog_tree"],
+                            computations_tensor, loops_tensor)
+            with torch.no_grad():
+                prog_embedding = self.embedding_model(
+                    tree_tensors,
+                    num_matrices=self.MAX_DEPTH - 1)
+        except Exception:
+            print("ERROR_EMBEDDING_MODEL", traceback.format_exc())
+            print(sys.exc_info()[2])
+
+        return prog_embedding
 
     def get_representation(self):
         """
@@ -261,6 +296,8 @@ class Schedule:
         padded_string = string + (max_size - len(string)) * "_"
         self.repr["prog_tree"] = np.array(
             list(padded_string), "U1").view(np.float32)
+        embedding = self.get_schedule_embedding()
+        self.repr["prog_embedding"] = embedding.reshape(-1).numpy()
         return self.repr
 
     def apply_interchange(self, params):

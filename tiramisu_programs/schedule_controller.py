@@ -41,7 +41,6 @@ class ScheduleController:
             self.measurement_env = self.get_exec_time_by_model
         self.lc_total_time = 0
         self.lc_data = []
-        self.schedule_list_model = []
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
             torch.load(config.tiramisu.model_checkpoint, map_location="cpu"))
@@ -550,12 +549,6 @@ class ScheduleController:
 
     def get_exec_time_by_model(self, optims_list, cmd_type, nb_executions,
                                initial_exec_time):
-        self.schedule_list_model.append({
-            "schedule_str":
-            self.schedule_object.schedule_str,
-            "schedule_dict":
-            self.schedule_object.schedule_dict
-        })
         stat = dict()
         try:
             computations_tensor, loops_tensor = get_schedule_representation(

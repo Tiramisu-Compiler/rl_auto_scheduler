@@ -135,8 +135,9 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         
         #recursive loop embedding layer
         loops_tensor=input_dict["obs_flat"]["loops_representation"]
-        child_list=input_dict["obs_flat"]["child_list"][:][:][0][0]
-        has_comps=input_dict["obs_flat"]["has_comps"][0].tolist()
+        prog_embedding=input_dict["obs_flat"]["prog_embedding"]
+        
+        
         try:
             prog_tree_tensor = np.array(input_dict["obs_flat"]["prog_tree"])
             prog_tree_string = "".join(list(prog_tree_tensor[0].view('U1'))).strip("_")
@@ -145,16 +146,15 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         except:
             pass
         # prog_tree_string =  # FIX THIS  --> Compare tree footprint
-        computations_indices=input_dict["obs_flat"]["computations_indices"][:][:][0][0]
 
 
-        try:
-            loop_index=0
-            prog_embedding=self.get_hidden_state(prog_tree,comps_embeddings,loops_tensor)
-        except:
-            print("Actor Critic",traceback.format_exc())
-            prog_tree = {"child_list":[]}
-            prog_embedding = torch.zeros((loops_tensor.shape[0],180))
+
+        # try:
+        #     prog_embedding=self.get_hidden_state(prog_tree,comps_embeddings,loops_tensor)
+        # except:
+        #     print("Actor Critic",traceback.format_exc())
+        #     prog_tree = {"child_list":[]}
+        #     prog_embedding = torch.zeros((loops_tensor.shape[0],180))
         
         # prediction layer
         self._features=self._prediction_layers(prog_embedding.view(prog_embedding.shape[0],-1))
