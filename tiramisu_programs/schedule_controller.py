@@ -462,7 +462,7 @@ class ScheduleController:
             self.schedule_object.sched_str = ScheduleUtils.sched_str(
                 self.schedule_object.sched_str, action.id, action_params,
                 self.schedule_object.comp_indic_dict)
-            ray.util.pdb.set_trace()
+            # ray.util.pdb.set_trace()
             if not action.id in range(41, 44):
                 self.schedule_object.it_dict = ScheduleUtils.update_iterators(
                     action.id, self.schedule_object.it_dict, action_params,
