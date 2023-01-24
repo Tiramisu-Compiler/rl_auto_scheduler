@@ -61,7 +61,6 @@ class ScheduleController:
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(comp, self.schedule_object.prog)
-            ray.util.pdb.set_trace()
 
         if action.id in range(28):  # Interchange
             if not self.schedule_object.is_interchaged:
@@ -74,7 +73,7 @@ class ScheduleController:
                                              self.schedule_object.comps)
                 self.schedule.append(optim1)
 
-                tmp_sched_str = optimlist_to_str(self.schedule)
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
@@ -128,7 +127,7 @@ class ScheduleController:
 
                 self.schedule.append(optim2)
 
-                tmp_sched_str = optimlist_to_str(self.schedule)
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
@@ -191,7 +190,8 @@ class ScheduleController:
                                                  self.non_skewed_comps)
                     self.schedule.append(optim3)
 
-                    tmp_sched_str = optimlist_to_str(self.schedule)
+                    tmp_sched_str = ScheduleUtils.optimlist_to_str(
+                        self.schedule)
                     print(tmp_sched_str)
 
                     # check if we can find the schedule in the dataset load the legality check
@@ -309,7 +309,7 @@ class ScheduleController:
                                              self.schedule_object.comps)
                 self.schedule.append(optim5)
 
-                tmp_sched_str = optimlist_to_str(self.schedule)
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
 
                 # check if we can find the schedule in the dataset load the legality check
                 if self.config.environment.use_dataset:
@@ -354,16 +354,14 @@ class ScheduleController:
                                              self.schedule_object.comps)
                 self.schedule.append(optim6)
 
-                tmp_sched_str = optimlist_to_str(self.schedule)
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
-                ray.util.pdb.set_trace()
                 # check if we can find the schedule in the dataset load the legality check
                 if self.config.environment.use_dataset:
                     for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
                         if tmp_sched_str == sched_json['sched_str']:
                             saved_legality = 1 if sched_json['legality_check'] else None
 
-                ray.util.pdb.set_trace()
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -404,7 +402,7 @@ class ScheduleController:
 
                 self.schedule.append(optim7)
 
-                tmp_sched_str = optimlist_to_str(self.schedule)
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
