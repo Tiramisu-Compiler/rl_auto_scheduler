@@ -457,17 +457,18 @@ class ScheduleController:
             done = True
             exit = True
 
-        if (not exit and lc_check != 0) and not (action.id in range(
-                41, 44) and self.schedule_object.is_skewed):
-            self.schedule_object.sched_str = ScheduleUtils.sched_str(
-                self.schedule_object.sched_str, action.id, action_params,
-                self.schedule_object.comp_indic_dict)
-            # ray.util.pdb.set_trace()
-            if not action.id in range(41, 44):
-                self.schedule_object.it_dict = ScheduleUtils.update_iterators(
-                    action.id, self.schedule_object.it_dict, action_params,
-                    self.schedule_object.added_iterators,
-                    self.schedule_object.comp_indic_dict)
+        if (not exit and lc_check != 0):
+            # Changed the sched_str to be updated after all successfull application of actions
+            self.schedule_object.sched_str = tmp_sched_str
+            if not (action.id in range(41, 44) and self.schedule_object.is_skewed):
+                # self.schedule_object.sched_str = ScheduleUtils.sched_str(
+                #     self.schedule_object.sched_str, action.id, action_params,
+                #     self.schedule_object.comp_indic_dict)
+                if not action.id in range(41, 44):
+                    self.schedule_object.it_dict = ScheduleUtils.update_iterators(
+                        action.id, self.schedule_object.it_dict, action_params,
+                        self.schedule_object.added_iterators,
+                        self.schedule_object.comp_indic_dict)
 
             self.depth += 1
             return self.schedule_object.repr, 1.0, done, info
