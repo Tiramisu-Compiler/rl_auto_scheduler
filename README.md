@@ -22,8 +22,13 @@ To configure the repository first copy the template files into the same location
 ```bash  
 cp config.yaml.template config.yaml
 cp scripts/env.sh.template scripts/env.sh
+cp scripts/run_rllib_slurm.sh.template scripts/run_rllib_slurm.sh
 ```
- Then, change the fields to their approriate value based on the environment the code is running on. The most important fields in the `config.yml` file, that the code will not run without setting are:
+Then, change the fields to their approriate value based on the environment the code is running on.
+
+### RL system configuration
+
+All the configurations related to the RL system can be found in the file `config.yml`. The most important fields in this file, that the code will not run without setting are:
  * `ray.base_path`:  The absolute path to where the code is located on disk. 
 * `environment.dataset_path`: The path to the training dataset. 
 * `tiramisu.tiramisu_path`: The absolute path to the complete tiramisu installation, with the autoscheduler also installed.
@@ -31,7 +36,9 @@ cp scripts/env.sh.template scripts/env.sh
 
 The other flags can also be set for a desired purpose. For instance, you can change the policy model properties. You can also control whether or not you want to keep the dataset files after using them for an episode. 
 
-The file `scripts/env.sh` is used in order to train on SLURM. The most important fields in this file, that the code will not run without setting are:
+### SLURM configuration
+
+The file `scripts/env.sh` is used in order to configure the job that runs on SLURM. The most important fields in this file, that the code will not run without setting are:
 * `CONDA_DIR`: The path to the conda installation.
 * `CONDA_ENV`: The path to the specific conda environment.
 Other flags can be set in order to control the number of workers to use in training.  
@@ -45,9 +52,18 @@ which python
 Then, you only keep the parts before `bin/python` and you set it to the variable `CONDA_DIR` in the `scripts/env.sh` file. You can follow the same steps, by activating the desired working environment and get the path to it using the `which` command without the `bin/python` part. This value is the stored to the variable `CONDA_ENV`.
 
 
+The file `scripts/run_rllib_slurm.sh` can be configured to your needs in the file heading. The settings that needs to be configure are:  
+* The partition name on line 2.
+* Number of needed nodes on line 3.
+* The number of cpus per node on line 6, and
+* The time limit for excution on line 7
 
+When using SLURM, the `outputs` folder needs to be created:  
+```bash
+mkdir outputs
+```
 
-## Compilation commands
+### Compilation commands
 Depending on the c++ installation and the machine, the compilation command may differ. To change the compilation command, change the variables `compile_tiramisu_cmd` and `compile_wrapper_cmd` in the file `utils/rl_autoscheduler_config.py`. Examples of compilation commands:
 ```bash
 
@@ -71,17 +87,7 @@ ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I$
 
 ```
 
-## SLURM configuration
-The file `scripts/run_rllib_slurm.sh` can be configured to your needs in the file heading. The settings that needs to be configure are:  
-* The partition name on line 2.
-* Number of needed nodes on line 3.
-* The number of cpus per node on line 6, and
-* The time limit for excution on line 7
 
-When using SLURM, the `outputs` folder needs to be created:  
-```bash
-mkdir outputs
-```
 
 ## Running the script
 To run the script on one worker, you use the following command:
