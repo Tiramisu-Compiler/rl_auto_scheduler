@@ -3,7 +3,7 @@ import os
 import argparse
 import ray
 # from hydra.core.config_store import ConfigStore
-from ray import tune
+from ray import tune, air
 from ray.rllib.models.catalog import ModelCatalog
 from ray.tune.registry import register_env
 
@@ -18,6 +18,8 @@ from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-workers", default=-1, type=int)
+    parser.add_argument('--resume-training',
+                        action=argparse.BooleanOptionalAction)
     return parser.parse_args()
 
 
@@ -36,35 +38,60 @@ def main(config: RLAutoSchedulerConfig):
     )
     ModelCatalog.register_custom_model("tiramisu_model_v1",
                                        TiramisuModelMult)
-
-    analysis = tune.run(
-        "PPO",
-        local_dir=local_dir,
-        name=config.ray.name,
-        stop={"training_iteration": config.ray.training_iteration},
-        max_failures=0,
-        checkpoint_freq=config.ray.checkpoint_freq,
-        verbose=0,
-        config={
-            "env": "Tiramisu_env_v1",
-            "num_workers": config.ray.num_workers,
-            "placement_strategy": "SPREAD",
-            "batch_mode": "complete_episodes",
-            "train_batch_size": max(config.ray.num_workers * 200, config.training.train_batch_size),
-            "sgd_minibatch_size": config.training.sgd_minibatch_size,
-            "lr": config.training.lr,
-            "num_sgd_iter": config.training.num_sgd_iter,
-            "framework": "torch",
-            "_disable_preprocessor_api": True,
-            "model": {
-                "custom_model": "tiramisu_model_v1",
-                "custom_model_config": {
-                    "layer_sizes": list(config.model.layer_sizes),
-                    "drops": list(config.model.drops),
-                },
+    config_dict = {
+        "env": "Tiramisu_env_v1",
+        "num_workers": config.ray.num_workers,
+        "placement_strategy": "SPREAD",
+        "batch_mode": "complete_episodes",
+        "train_batch_size": max(config.ray.num_workers * 200, config.training.train_batch_size),
+        "sgd_minibatch_size": config.training.sgd_minibatch_size,
+        "lr": config.training.lr,
+        "num_sgd_iter": config.training.num_sgd_iter,
+        "framework": "torch",
+        "_disable_preprocessor_api": True,
+        "model": {
+            "custom_model": "tiramisu_model_v1",
+            "custom_model_config": {
+                "layer_sizes": list(config.model.layer_sizes),
+                "drops": list(config.model.drops),
             },
         },
-    )
+    }
+
+    if config.ray.resume_training:
+        print(f"Resuming training from: {local_dir}/{config.ray.name}")
+        tuner = tune.Tuner.restore(
+            path=f"{local_dir}/{config.ray.name}"
+        )
+    else:
+        tuner = tune.Tuner(
+            "PPO",
+            param_space=config_dict,
+            run_config=air.RunConfig(
+                local_dir=local_dir,
+                stop={"training_iteration": config.ray.training_iteration},
+                name=config.ray.name,
+                verbose=0,
+                failure_config=air.FailureConfig(
+                    max_failures=0
+                ),
+                checkpoint_config=air.CheckpointConfig(
+                    checkpoint_frequency=config.ray.checkpoint_freq,
+                )
+            ),
+        )
+    results = tuner.fit()
+
+    # analysis = tune.run(
+    #     "PPO",
+    #     local_dir=local_dir,
+    #     name=config.ray.name,
+    #     stop={"training_iteration": config.ray.training_iteration},
+    #     max_failures=0,
+    #     checkpoint_freq=config.ray.checkpoint_freq,
+    #     verbose=0,
+    #     config=config,
+    # )
 
 
 if __name__ == "__main__":
@@ -73,6 +100,8 @@ if __name__ == "__main__":
     args = get_arguments()
     if args.num_workers != -1:
         config.ray.num_workers = args.num_workers
+    if args.resume_training:
+        config.ray.resume_training = True
     if args.num_workers == 1:
         with ray.init():
             main(config)
