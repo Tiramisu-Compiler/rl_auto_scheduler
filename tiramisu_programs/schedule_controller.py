@@ -1,5 +1,4 @@
 import copy
-from socket import gethostname
 import sys
 import time
 import traceback
@@ -657,13 +656,12 @@ class ScheduleController:
         return stat["predicted_execution_time"]
 
     def get_exec_time(self):
-        hostname = gethostname()
         prog_name = self.schedule_object.prog.name
         execution_time = 0
 
         # Using dataset and the machine used to generate the data is the same as the current machine
-        validExecTimes = self.schedule_object.prog.json_representation and self.schedule_object.prog.json_representation['node_name'].startswith(
-            hostname[:2])
+        validExecTimes = self.schedule_object.prog.json_representation and ScheduleUtils.is_same_machine_as_dataset(
+            self.schedule_object.prog)
 
         if self.schedule_object.sched_str != "" and self.schedule != []:
             # Using dataset and the machine used to generate the data is the same as the current machine

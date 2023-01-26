@@ -2,7 +2,6 @@
 import copy
 import logging
 import random
-from socket import gethostname
 import sys
 import time
 import traceback
@@ -13,6 +12,7 @@ import ray
 import tiramisu_programs
 
 import rl_interface
+from tiramisu_programs.schedule_utils import ScheduleUtils
 from utils.environment_variables import configure_env_variables
 
 np.seterr(invalid="raise")
@@ -103,7 +103,6 @@ class TiramisuScheduleEnvironment(gym.Env):
 
         print("\n----------Resetting the environment-----------\n")
         self.episode_total_time = time.time()
-        self.hostname = gethostname()
         while True:
             try:
                 # Clean files of the previous function ran
@@ -144,8 +143,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
-                validInitTime = self.prog.json_representation and self.prog.json_representation['node_name'].startswith(
-                    self.hostname[:2])
+                validInitTime = self.prog.json_representation and ScheduleUtils.is_same_machine_as_dataset(
+                    self.prog)
 
                 if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys() or not validInitTime:
                     if self.config.tiramisu.env_type == "cpu":

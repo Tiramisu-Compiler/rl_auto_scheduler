@@ -1,5 +1,6 @@
 import json
 import re
+from socket import gethostname
 from typing import List
 
 import numpy as np
@@ -986,3 +987,8 @@ class ScheduleUtils:
                         str(unrolling_factor) + ")"
 
         return sched_str
+
+    @classmethod
+    def is_same_machine_as_dataset(cls, prog):
+        hostname = gethostname()
+        return prog.json_representation['node_name'].startswith(hostname[:2])
