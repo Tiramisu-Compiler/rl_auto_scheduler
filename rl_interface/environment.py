@@ -143,10 +143,11 @@ class TiramisuScheduleEnvironment(gym.Env):
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
+                # Check if the current machine is the one used to generate the data for this program
                 validInitTime = self.prog.json_representation and ScheduleUtils.is_same_machine_as_dataset(
                     self.prog)
 
-                if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys() or not validInitTime:
+                if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
                     if self.config.tiramisu.env_type == "cpu":
                         print("Getting the initial exe time by execution")
                         self.prog.initial_execution_time = self.schedule_controller.measurement_env(
@@ -166,6 +167,13 @@ class TiramisuScheduleEnvironment(gym.Env):
                             self.prog.name]["initial_execution_time"]
                     elif self.config.tiramisu.env_type == "model":
                         self.prog.initial_execution_time = 1.0
+
+                if self.config.environment.use_dataset and self.config.tiramisu.env_type == "cpu" and not validInitTime:
+                    print("Inittial execution time invalidated")
+                    print("\t -> Getting the initial exe time by execution")
+                    self.prog.initial_execution_time = self.schedule_controller.measurement_env(
+                        [], 'initial_exec', self.nb_executions,
+                        self.prog.initial_execution_time)
 
             except:
                 print("RESET_ERROR_STDERR",
