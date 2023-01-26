@@ -1,4 +1,5 @@
 import copy
+from socket import gethostname
 import sys
 import time
 import traceback
@@ -32,7 +33,6 @@ class ScheduleController:
         self.nb_executions = nb_executions
         self.speedup = 1.0
         self.steps = 0
-        self.new_scheds = {}
         self.search_time = time.time()
         self.config = config
         if self.config.tiramisu.env_type == "cpu":
@@ -590,12 +590,13 @@ class ScheduleController:
 
                     else:
                         self.schedule.remove(optim5)
-                        self.new_scheds[self.schedule_object.prog.name].pop(
-                            self.schedule_object.sched_str)
+
                         self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
                             parallelization_str, "")
+
                         self.schedule_object.schedule_dict[first_comp][
                             "parallelized_dim"] = None
+
                         print("X: Parallelization improves the performance")
 
             except:
@@ -656,54 +657,32 @@ class ScheduleController:
         return stat["predicted_execution_time"]
 
     def get_exec_time(self):
+        hostname = gethostname()
         prog_name = self.schedule_object.prog.name
         execution_time = 0
+
+        # Using dataset and the machine used to generate the data is the same as the current machine
+        validExecTimes = self.schedule_object.prog.json_representation and self.schedule_object.prog.json_representation['node_name'].startswith(
+            hostname[:2])
+
         if self.schedule_object.sched_str != "" and self.schedule != []:
-            if prog_name in self.scheds.keys():
-                if self.schedule_object.sched_str in self.scheds[prog_name]:
+            # Using dataset and the machine used to generate the data is the same as the current machine
+            if validExecTimes:
+                # Look for the schedule
+                for tmp_schedule in self.schedule_object.prog.json_representation['schedules_list']:
+                    if tmp_schedule['sched_str'] == self.schedule_object.sched_str:
+                        execution_time = min(tmp_schedule['execution_times'])
+                        break
+            # not using the dataset
+            else:
+                # if the program is in the list of programs ran and the schedule has been discovered
+                if prog_name in self.scheds.keys() and self.schedule_object.sched_str in self.scheds[prog_name]:
                     execution_time = self.scheds[prog_name][
                         self.schedule_object.sched_str][0]
                 else:
-                    if prog_name in self.new_scheds.keys(
-                    ) and self.schedule_object.sched_str in self.new_scheds[
-                            prog_name].keys():
-                        execution_time = self.new_scheds[prog_name][
-                            self.schedule_object.sched_str][1]
-                    else:
-                        curr_sched = copy.deepcopy(self.schedule)
-                        self.new_scheds[prog_name] = {}
-                        execution_time = self.measurement_env(
-                            self.schedule, 'sched_eval', self.nb_executions,
-                            self.schedule_object.prog.initial_execution_time)
-                        self.new_scheds[prog_name][
-                            self.schedule_object.sched_str] = (
-                                curr_sched, execution_time, 0)
-            else:
-                if prog_name in self.new_scheds.keys():
-                    if self.schedule_object.sched_str in self.new_scheds[
-                            prog_name].keys():
-                        execution_time = self.new_scheds[prog_name][
-                            self.schedule_object.sched_str][1]
-                    else:
-                        curr_sched = copy.deepcopy(self.schedule)
-                        execution_time = self.measurement_env(
-                            self.schedule, 'sched_eval', self.nb_executions,
-                            self.schedule_object.prog.initial_execution_time)
-                        self.new_scheds[prog_name][
-                            self.schedule_object.sched_str] = (
-                                curr_sched, execution_time, 0)
-                else:
-                    curr_sched = copy.deepcopy(self.schedule)
-                    self.new_scheds[prog_name] = {}
-                    start_time = time.time()
                     execution_time = self.measurement_env(
                         self.schedule, 'sched_eval', self.nb_executions,
                         self.schedule_object.prog.initial_execution_time)
-                    sched_time = time.time() - start_time
-                    self.new_scheds[prog_name][
-                        self.schedule_object.sched_str] = (curr_sched,
-                                                           execution_time,
-                                                           0)
         else:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time
