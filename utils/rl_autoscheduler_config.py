@@ -24,7 +24,8 @@ class EnvironmentConfig:
     clean_files: bool = True
     json_dataset: dict = field(default_factory=lambda: {
         "path": None,
-        "cpp_root": None
+        "cpp_root": None,
+        "path_to_save_sataset": None
     })
     use_dataset: bool = False
 

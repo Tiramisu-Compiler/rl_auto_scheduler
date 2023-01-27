@@ -82,14 +82,20 @@ class GlobalVarActor:
             json.dump(self.lc_data, f)
         return True
 
-    def update_progs_dict(self, v):
-        self.progs_dict.update(v)
+    def update_progs_dict(self, function_name, json_legality_annotations):
+        self.progs_dict[function_name] = json_legality_annotations
         return True
 
-    def write_progs_dict(self):
-        print("Saving progs_dict to disk")
-        with open(self.programs_file, "w") as f:
-            json.dump(self.progs_dict, f)
+    def write_progs_dict(self, format="pkl"):
+        logging.info("Saving the legality_annotations_dict to disk")
+
+        if format == "pkl":
+            with bz2.BZ2File(self.json_dataset['path_to_save_sataset'], 'wb') as f:
+                pickle.dump(self.progs_dict, f,
+                            protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            with open(self.programs_file, "w") as f:
+                json.dump(self.progs_dict, f)
         return True
 
     def get_progs_dict(self):
@@ -124,8 +130,8 @@ class Actor:
     def write_progs_dict(self):
         return ray.get(self.data_registry.write_progs_dict.remote())
 
-    def update_progs_dict(self, v):
-        return ray.get(self.data_registry.update_progs_dict.remote(v))
+    def update_progs_dict(self, function_name, json_legality_annotations):
+        return ray.get(self.data_registry.update_progs_dict.remote(function_name, json_legality_annotations))
 
     def increment(self):
         return ray.get(self.data_registry.increment.remote())

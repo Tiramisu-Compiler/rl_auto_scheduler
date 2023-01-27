@@ -1,4 +1,5 @@
 import copy
+import logging
 import sys
 import time
 import traceback
@@ -75,11 +76,14 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
+                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset:
-                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                        if tmp_sched_str == sched_json['sched_str']:
-                            saved_legality = 1 if sched_json['legality_check'] else None
+                if self.config.environment.use_dataset and is_schedule_saved:
+                    print(
+                        "Loading legality check from saved schedule")
+                    saved_legality = self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str]
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -129,11 +133,14 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
+                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset:
-                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                        if tmp_sched_str == sched_json['sched_str']:
-                            saved_legality = 1 if sched_json['legality_check'] else None
+                if self.config.environment.use_dataset and is_schedule_saved:
+                    print(
+                        "Loading legality check from saved schedule")
+                    saved_legality = self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str]
 
                 if self.schedule_object.is_unrolled:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
@@ -141,6 +148,12 @@ class ScheduleController:
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+
+                # Save legality check
+                if self.config.environment.use_dataset and saved_legality is None:
+                    self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+
                 if lc_check == -1:
                     print("X: This action produces an error")
                     self.pop_schedule(action=action)
@@ -193,17 +206,25 @@ class ScheduleController:
                         self.schedule)
                     print(tmp_sched_str)
 
+                    is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict']
                     # check if we can find the schedule in the dataset load the legality check
-                    if self.config.environment.use_dataset:
-                        for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                            if tmp_sched_str == sched_json['sched_str']:
-                                saved_legality = 1 if sched_json['legality_check'] else None
+                    if self.config.environment.use_dataset and is_schedule_saved:
+                        print(
+                            "Loading legality check from saved schedule")
+                        saved_legality = self.schedule_object.prog.json_representation[
+                            'schedules_legality_dict'][tmp_sched_str]
 
                     start_time = time.time()
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
                     l_time = time.time() - start_time
                     self.lc_total_time += l_time
+
+                    # Save legality check
+                    if self.config.environment.use_dataset and saved_legality is None:
+                        self.schedule_object.prog.json_representation[
+                            'schedules_legality_dict'][tmp_sched_str] = lc_check
 
                     if lc_check == -1:
                         print("X: This action produces an error")
@@ -267,11 +288,14 @@ class ScheduleController:
                             self.schedule)
                         print(tmp_sched_str)
 
+                        is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                            'schedules_legality_dict']
                         # check if we can find the schedule in the dataset load the legality check
-                        if self.config.environment.use_dataset:
-                            for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                                if tmp_sched_str == sched_json['sched_str']:
-                                    saved_legality = 1 if sched_json['legality_check'] else None
+                        if self.config.environment.use_dataset and is_schedule_saved:
+                            print(
+                                "Loading legality check from saved schedule")
+                            saved_legality = self.schedule_object.prog.json_representation[
+                                'schedules_legality_dict'][tmp_sched_str]
 
                         start_time = time.time()
                         if self.schedule_object.is_unrolled:
@@ -283,6 +307,11 @@ class ScheduleController:
                                 self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
                         l_time = time.time() - start_time
                         self.lc_total_time += l_time
+
+                        # Save legality check
+                        if self.config.environment.use_dataset and saved_legality is None:
+                            self.schedule_object.prog.json_representation[
+                                'schedules_legality_dict'][tmp_sched_str] = lc_check
 
                         if lc_check == -1:
                             print("X: This action produces an error")
@@ -321,11 +350,14 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
+                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset:
-                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                        if tmp_sched_str == sched_json['sched_str']:
-                            saved_legality = 1 if sched_json['legality_check'] else None
+                if self.config.environment.use_dataset and is_schedule_saved:
+                    print(
+                        "Loading legality check from saved schedule")
+                    saved_legality = self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str]
 
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
@@ -334,6 +366,11 @@ class ScheduleController:
                 else:
                     lc_check = self.schedule_object.prog.check_legality_of_schedule(
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+
+                # Save legality check
+                if self.config.environment.use_dataset and saved_legality is None:
+                    self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str] = lc_check
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -366,11 +403,15 @@ class ScheduleController:
 
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
+
+                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset:
-                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                        if tmp_sched_str == sched_json['sched_str']:
-                            saved_legality = 1 if sched_json['legality_check'] else None
+                if self.config.environment.use_dataset and is_schedule_saved:
+                    print(
+                        "Loading legality check from saved schedule")
+                    saved_legality = self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str]
 
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
@@ -381,6 +422,12 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
+
+                # Save legality check
+                if self.config.environment.use_dataset and saved_legality is None:
+                    self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+
                 if lc_check == -1:
                     print("X: This action produces am error")
                     self.pop_schedule(action=action)
@@ -415,11 +462,14 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
+                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.json_representation[
+                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset:
-                    for sched_json in self.schedule_object.prog.json_representation['schedules_list']:
-                        if tmp_sched_str == sched_json['sched_str']:
-                            saved_legality = 1 if sched_json['legality_check'] else None
+                if self.config.environment.use_dataset and is_schedule_saved:
+                    print(
+                        "Loading legality check from saved schedule")
+                    saved_legality = self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str]
 
                 start_time = time.time()
 
@@ -432,6 +482,11 @@ class ScheduleController:
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
+
+                # Save legality check
+                if self.config.environment.use_dataset and saved_legality is None:
+                    self.schedule_object.prog.json_representation[
+                        'schedules_legality_dict'][tmp_sched_str] = lc_check
 
                 if lc_check == -1:
                     print("X: This action produces an error")
@@ -659,28 +714,15 @@ class ScheduleController:
         prog_name = self.schedule_object.prog.name
         execution_time = 0
 
-        # Using dataset and the machine used to generate the data is the same as the current machine
-        validExecTimes = self.schedule_object.prog.json_representation and ScheduleUtils.is_same_machine_as_dataset(
-            self.schedule_object.prog)
-
         if self.schedule_object.sched_str != "" and self.schedule != []:
-            # Using dataset and the machine used to generate the data is the same as the current machine
-            if validExecTimes:
-                # Look for the schedule
-                for tmp_schedule in self.schedule_object.prog.json_representation['schedules_list']:
-                    if tmp_schedule['sched_str'] == self.schedule_object.sched_str:
-                        execution_time = min(tmp_schedule['execution_times'])
-                        break
-            # not using the dataset
+            # if the program is in the list of programs ran and the schedule has been discovered
+            if prog_name in self.scheds.keys() and self.schedule_object.sched_str in self.scheds[prog_name]:
+                execution_time = self.scheds[prog_name][
+                    self.schedule_object.sched_str][0]
             else:
-                # if the program is in the list of programs ran and the schedule has been discovered
-                if prog_name in self.scheds.keys() and self.schedule_object.sched_str in self.scheds[prog_name]:
-                    execution_time = self.scheds[prog_name][
-                        self.schedule_object.sched_str][0]
-                else:
-                    execution_time = self.measurement_env(
-                        self.schedule, 'sched_eval', self.nb_executions,
-                        self.schedule_object.prog.initial_execution_time)
+                execution_time = self.measurement_env(
+                    self.schedule, 'sched_eval', self.nb_executions,
+                    self.schedule_object.prog.initial_execution_time)
         else:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time

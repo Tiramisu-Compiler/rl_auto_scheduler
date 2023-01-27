@@ -75,11 +75,21 @@ if __name__ == "__main__":
     parsed_yaml_dict = parse_yaml_file(read_yaml_file("config.yaml"))
     config = dict_to_config(parsed_yaml_dict)
     args = get_arguments()
+
     if args.num_workers != -1:
         config.ray.num_workers = args.num_workers
+
     if args.use_dataset:
         config.environment.use_dataset = args.use_dataset
+
+        if config.tiramisu.env_type == 'cpu':
+            logging.warning(
+                "DATASET LEARNINING IS INCOMPATIBLE WITH CPU LEARNING. SWITCHING TO MODEL")
+        # Force model usage if using dataset
+        config.tiramisu.env_type = "model"
+
     logging.basicConfig(level=logging._nameToLevel[args.log_level])
+    logging.getLogger().setLevel(logging._nameToLevel[args.log_level])
     if args.num_workers == 1:
         with ray.init():
             main(config)

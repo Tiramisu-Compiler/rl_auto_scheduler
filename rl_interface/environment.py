@@ -143,10 +143,6 @@ class TiramisuScheduleEnvironment(gym.Env):
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
-                # Check if the current machine is the one used to generate the data for this program
-                validInitTime = self.prog.json_representation and ScheduleUtils.is_same_machine_as_dataset(
-                    self.prog)
-
                 if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
                     if self.config.tiramisu.env_type == "cpu":
                         print("Getting the initial exe time by execution")
@@ -167,13 +163,6 @@ class TiramisuScheduleEnvironment(gym.Env):
                             self.prog.name]["initial_execution_time"]
                     elif self.config.tiramisu.env_type == "model":
                         self.prog.initial_execution_time = 1.0
-
-                if self.config.environment.use_dataset and self.config.tiramisu.env_type == "cpu" and not validInitTime:
-                    print("Inittial execution time invalidated")
-                    print("\t -> Getting the initial exe time by execution")
-                    self.prog.initial_execution_time = self.schedule_controller.measurement_env(
-                        [], 'initial_exec', self.nb_executions,
-                        self.prog.initial_execution_time)
 
             except:
                 print("RESET_ERROR_STDERR",
@@ -245,25 +234,29 @@ class TiramisuScheduleEnvironment(gym.Env):
                 speedup = self.schedule_controller.get_final_score()
             except:
                 speedup = 1.0
-            ray.get(self.shared_variable_actor.update_lc_data.remote(
-                self.schedule_controller.get_legality_data()))
-            if "schedules_list" in self.progs_dict[self.prog.name]:
-                self.schedule_object.schedule_dict["speedup"] = speedup
-                self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
-                self.progs_dict[self.prog.name]["schedules_list"].append(
-                    self.schedule_object.schedule_dict)
-            else:
-                self.schedule_object.schedule_dict["speedup"] = speedup
-                self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
-                self.progs_dict[self.prog.name]["schedules_list"] = [
-                    self.schedule_object.schedule_dict]
+            # Update shared progs_dict with explored schedules' legality checks
+            ray.get(self.shared_variable_actor.update_progs_dict.remote(
+                self.prog.name, self.prog.json_representation))
+
+            if not self.config.environment.use_dataset:
+                if "schedules_list" in self.progs_dict[self.prog.name]:
+                    self.schedule_object.schedule_dict["speedup"] = speedup
+                    self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
+                    self.progs_dict[self.prog.name]["schedules_list"].append(
+                        self.schedule_object.schedule_dict)
+                else:
+                    self.schedule_object.schedule_dict["speedup"] = speedup
+                    self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
+                    self.progs_dict[self.prog.name]["schedules_list"] = [
+                        self.schedule_object.schedule_dict]
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         print(f"Received a reward: {reward}")
 
         # Saving data
         if self.total_steps % self.SAVING_FREQUENCY:
-            ray.get(self.shared_variable_actor.write_lc_data.remote())
-            rl_interface.utils.EnvironmentUtils.write_json_dataset(
-                f"worker_{self.id}.json", self.progs_dict)
+            ray.get(self.shared_variable_actor.write_progs_dict.remote())
+
+            # rl_interface.utils.EnvironmentUtils.write_json_dataset(
+            #     f"worker_{self.id}.json", self.progs_dict)
         return self.obs, reward, done, info
