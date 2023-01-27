@@ -276,7 +276,6 @@ $buffers_init$
             f.write(solver_code)
         self.reset_solver_result_file()
 
-        ray.util.pdb.set_trace()
         log_message = 'Solver results for: computation {}'.format(
             comp) + ' '.join([p for p in params])
         if tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
