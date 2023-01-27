@@ -231,8 +231,11 @@ $buffers_init$
 
             original_str = original_str.replace(
                 "is_legal &= check_legality_of_function()", "")
-            original_str = re.sub(r'is_legal &= loop_parallelization_is_legal.*\n', "", original_str)
-            original_str = re.sub(r'is_legal &= loop_unrolling_is_legal.*\n', "", original_str)
+            original_str = original_str.replace("bool is_legal=true;", "")
+            original_str = re.sub(
+                r'is_legal &= loop_parallelization_is_legal.*\n', "", original_str)
+            original_str = re.sub(
+                r'is_legal &= loop_unrolling_is_legal.*\n', "", original_str)
         else:
 
             original_str = self.original_str
