@@ -193,9 +193,8 @@ $buffers_init$
                     legality_check_lines += '''
     is_legal &= loop_unrolling_is_legal(''' + str(
                         optim.params_list[comp]
-                        [0]) + ''', {&''' + comp + '''});
-    '''
-                    legality_check_lines += optim.tiramisu_optim_str[comp] + '\n'
+                        [0]) + ''', {&''' + comp + '''});'''
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
     is_legal &= check_legality_of_function();
@@ -212,7 +211,7 @@ $buffers_init$
             f.write(LC_code)
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join(
-            [o.tiramisu_optim_str if o.type != "Unrolling" else "\n".join(o.tiramisu_optim_str.values()) for o in optims_list])
+            [o.tiramisu_optim_str for o in optims_list])
         tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
             self.config, output_file, log_message)
         lc_result = self.read_legality_check_result_file()
@@ -305,7 +304,7 @@ $buffers_init$
             elif optim.type == 'Tiling':
                 optim_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Unrolling':
-                optim_lines += "\n".join(optim.tiramisu_optim_str.values())
+                optim_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Reversal':
                 optim_lines += optim.tiramisu_optim_str + '\n'
 
@@ -317,7 +316,7 @@ $buffers_init$
         with open(output_file, 'w') as f:
             f.write(codegen_code)
         log_message = 'Applying schedule: ' + ' '.join(
-            [o.tiramisu_optim_str if o.type != "Unrolling" else "\n".join(o.tiramisu_optim_str.values()) for o in optims_list])
+            [o.tiramisu_optim_str for o in optims_list])
         start_time = time.time()
         if (tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, log_message)):

@@ -53,12 +53,12 @@ class OptimizationCommand:
                 optim_str += "\n\t{}".format(comp) + tiling_str
             return optim_str
         elif self.type == "Unrolling":
-            optim_str = {}
+            optim_str = ""
             for comp in self.comps:
                 unrolling_str = (
                     ".unroll(" +
                     ",".join([str(p) for p in self.params_list[comp]]) + ");")
-                optim_str[comp] = "\n\t{}".format(comp) + unrolling_str
+                optim_str += "\n\t{}".format(comp) + unrolling_str
             return optim_str
         elif self.type == "Reversal":
             assert len(self.params_list) == 1
