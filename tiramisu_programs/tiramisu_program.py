@@ -164,7 +164,7 @@ $buffers_init$
         optims_list,
         comps=None,
         first_comp=None
-    ): 
+    ):
         legality_check_lines = '''
     prepare_schedules_for_legality_checks();
     perform_full_dependency_analysis();
@@ -183,7 +183,7 @@ $buffers_init$
     is_legal &= loop_parallelization_is_legal(''' + str(
                     optim.params_list[0]) + ''', {&''' + first_comp + '''});
 '''
-                legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Tiling':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Fusion':
@@ -195,7 +195,7 @@ $buffers_init$
                         optim.params_list[comp]
                         [0]) + ''', {&''' + comp + '''});
     '''
-                    legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                    legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
     is_legal &= check_legality_of_function();
@@ -219,7 +219,7 @@ $buffers_init$
 
         return lc_result
 
-    def call_solver(self, comp, params):  
+    def call_solver(self, comp, params):
         lc_file = self.func_folder + self.name + '_legality_check.cpp'
         if os.path.isfile(lc_file):
             with open(lc_file, 'r') as f:
@@ -228,6 +228,14 @@ $buffers_init$
             to_replace = re.findall(r'(std::ofstream out(?s:.)+)return',
                                     original_str)[0]
             header = "function * fct = tiramisu::global::get_implicit_function();\n"
+
+            original_str = original_str.replace(
+                "is_legal &= check_legality_of_function()", "")
+            original_str = original_str.replace("bool is_legal=true;", "")
+            original_str = re.sub(
+                r'is_legal &= loop_parallelization_is_legal.*\n', "", original_str)
+            original_str = re.sub(
+                r'is_legal &= loop_unrolling_is_legal.*\n', "", original_str)
         else:
 
             original_str = self.original_str
@@ -362,7 +370,7 @@ $buffers_init$
         return self.read_measurements_file()
 
     def write_wrapper_code(
-            self):  
+            self):
 
         buffers_init_lines = ''
         for i, buffer_name in enumerate(self.IO_buffer_names):
@@ -385,7 +393,8 @@ $buffers_init$
         with open(output_file, 'w') as f:
             f.write(wrapper_cpp_code)
 
-        wrapper_h_code = self.wrapper_h_template.replace('$func_name$', self.name)
+        wrapper_h_code = self.wrapper_h_template.replace(
+            '$func_name$', self.name)
         wrapper_h_code = wrapper_h_code.replace(
             '$func_params$', ','.join(
                 ['halide_buffer_t *' + name for name in self.IO_buffer_names]))
@@ -419,5 +428,3 @@ $buffers_init$
     def reset_solver_result_file(self):
         with open(self.func_folder + "solver_result.txt", 'w') as f:
             f.write('-1')
-
-
