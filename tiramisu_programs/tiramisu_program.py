@@ -189,11 +189,10 @@ $buffers_init$
             elif optim.type == 'Fusion':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Unrolling':
-                for comp in comps:
-                    legality_check_lines += '''
+                legality_check_lines += '''
     is_legal &= loop_unrolling_is_legal(''' + str(
-                        optim.params_list[comp]
-                        [0]) + ''', {&''' + comp + '''});'''
+                    optim.params_list[comps[0]]
+                    [0]) + ''', {''' + ", ".join([f"&{comp}" for comp in comps]) + '''});'''
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
