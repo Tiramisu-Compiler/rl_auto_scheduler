@@ -4,6 +4,7 @@ import os
 import pickle
 import random
 import numpy as np
+import ray
 
 SAVING_FREQUENCY = 10
 
