@@ -156,7 +156,6 @@ class TiramisuScheduleEnvironment(gym.Env):
         speedup = 1.0
         self.steps += 1
         self.total_steps += 1
-        print(f"step:{self.total_steps}")
 
         try:
             action = rl_interface.Action(raw_action,
@@ -207,9 +206,4 @@ class TiramisuScheduleEnvironment(gym.Env):
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         print(f"Received a reward: {reward}")
-
-        # Saving data
-        if not self.total_steps % self.SAVING_FREQUENCY:
-            self.dataset_actor.save_dataset_to_disk.remote(
-                self.config.environment.json_dataset['path_to_save_dataset'], format="pkl")
         return self.obs, reward, done, info

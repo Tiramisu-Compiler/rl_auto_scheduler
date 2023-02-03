@@ -32,7 +32,7 @@ def main(config: RLAutoSchedulerConfig):
     dataset_path = config.environment.json_dataset[
         'path'] if config.environment.use_dataset else config.environment.dataset_path
     dataset_actor = DatasetAgent.remote(
-        dataset_path=dataset_path, use_dataset=config.environment.use_dataset)
+        dataset_path=dataset_path, use_dataset=config.environment.use_dataset, path_to_save_dataset=config.environment.json_dataset['path_to_save_dataset'], dataset_format=config.environment.json_dataset['dataset_format'])
 
     register_env(
         "Tiramisu_env_v1",

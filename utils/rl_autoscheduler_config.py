@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Literal
 
 import yaml
 
+from utils.dataset_utilities import DataSetFormat
+
 USE_WANDB = False
 
 
@@ -25,7 +27,8 @@ class EnvironmentConfig:
     json_dataset: dict = field(default_factory=lambda: {
         "path": None,
         "cpps_path": None,
-        "path_to_save_sataset": None
+        "path_to_save_sataset": None,
+        "dataset_format": DataSetFormat.PICKLE
     })
     use_dataset: bool = False
 
