@@ -10,7 +10,7 @@ from ray.tune.registry import register_env
 
 from rl_interface.environment import TiramisuScheduleEnvironment
 from rl_interface.model import TiramisuModelMult
-from utils.global_ray_variables import Actor, GlobalVarActor
+from utils.dataset_utilities import DatasetAgent
 from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
                                            dict_to_config, parse_yaml_file,
                                            read_yaml_file)
@@ -28,15 +28,15 @@ def get_arguments():
 # @hydra.main(config_path="config", config_name="config")
 def main(config: RLAutoSchedulerConfig):
     local_dir = os.path.join(config.ray.base_path, config.ray.log_directory)
-    progs_list_registery = GlobalVarActor.remote(
-        config.environment.programs_file,
-        config.environment.dataset_path,
-        num_workers=config.ray.num_workers, use_dataset=config.environment.use_dataset, json_dataset=config.environment.json_dataset)
-    shared_variable_actor = Actor.remote(progs_list_registery)
+
+    dataset_path = config.environment.json_dataset[
+        'path'] if config.environment.use_dataset else config.environment.dataset_path
+    dataset_actor = DatasetAgent.remote(
+        dataset_path=dataset_path, use_dataset=config.environment.use_dataset)
 
     register_env(
         "Tiramisu_env_v1",
-        lambda a: TiramisuScheduleEnvironment(config, shared_variable_actor),
+        lambda a: TiramisuScheduleEnvironment(config, dataset_actor),
     )
     ModelCatalog.register_custom_model("tiramisu_model_v1",
                                        TiramisuModelMult)
@@ -53,6 +53,7 @@ def main(config: RLAutoSchedulerConfig):
             "env": "Tiramisu_env_v1",
             "num_workers": config.ray.num_workers,
             "placement_strategy": "SPREAD",
+            # "log_level": logging.INFO,
             "batch_mode": "complete_episodes",
             "train_batch_size": max(config.ray.num_workers * 200, config.training.train_batch_size),
             "sgd_minibatch_size": config.training.sgd_minibatch_size,
@@ -89,10 +90,10 @@ if __name__ == "__main__":
         config.tiramisu.env_type = "model"
 
     logging.basicConfig(level=logging._nameToLevel[args.log_level])
-    logging.getLogger().setLevel(logging._nameToLevel[args.log_level])
-    if args.num_workers == 1:
-        with ray.init():
-            main(config)
-    else:
-        with ray.init(address="auto"):
-            main(config)
+    # logging.getLogger().setLevel(logging._nameToLevel[args.log_level])
+    # if args.num_workers == 1:
+    with ray.init():
+        main(config)
+    # else:
+    #     with ray.init(address="auto"):
+    #         main(config)

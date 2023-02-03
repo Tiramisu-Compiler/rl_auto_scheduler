@@ -991,4 +991,4 @@ class ScheduleUtils:
     @classmethod
     def is_same_machine_as_dataset(cls, prog):
         hostname = gethostname()
-        return prog.json_representation['node_name'].startswith(hostname[:2])
+        return prog.function_dict['node_name'].startswith(hostname[:2])

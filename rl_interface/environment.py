@@ -22,9 +22,9 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     The reinforcement learning environment used by the GYM. 
     '''
-    SAVING_FREQUENCY = 500
+    SAVING_FREQUENCY = 50
 
-    def __init__(self, config, shared_variable_actor):
+    def __init__(self, config, dataset_actor):
         print("Configuring the environment variables")
         configure_env_variables(config)
 
@@ -38,34 +38,17 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.progs_annot = {}
         self.programs_file = config.environment.programs_file
         self.measurement_env = None
-        self.dataset_path = config.environment.dataset_path
+        self.cpps_path = config.environment.dataset_path
         self.depth = 0
         self.nb_executions = 5
         self.episode_total_time = 0
         self.prog_ind = 0
         self.steps = 0
         self.previous_cpp_file = None
-        self.shared_variable_actor = shared_variable_actor
+        self.dataset_actor = dataset_actor
 
         if config.environment.use_dataset:
-            self.dataset_path = config.environment.json_dataset['cpp_root']
-
-        self.id = ray.get(self.shared_variable_actor.increment.remote())
-
-        logging.info("worker getting its list of programs")
-        # List of function names
-        self.progs_list = ray.get(
-            self.shared_variable_actor.get_progs_list.remote(self.id))
-
-        # Dict of programs with their annotations, schedules, exectution times and traces
-        self.progs_dict = ray.get(
-            self.shared_variable_actor.get_progs_dict.remote())
-        logging.info("Loaded the dataset!")
-
-        # Dict of function with a Dict containing schedules in STR format and their execution time TODO is this used?
-        self.scheds = tiramisu_programs.schedule_utils.ScheduleUtils.get_schedules_str(
-            list(self.progs_dict.keys()),
-            self.progs_dict)  # to use it to get the execution time
+            self.cpps_path = config.environment.json_dataset['cpps_path']
 
         self.action_space = gym.spaces.Discrete(62)
 
@@ -108,20 +91,22 @@ class TiramisuScheduleEnvironment(gym.Env):
                 # Clean files of the previous function ran
                 if self.config.environment.clean_files and self.previous_cpp_file:
                     tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
-                        self.dataset_path, self.previous_cpp_file)
-                # Choose a random program (function)
-                function_name = random.choice(self.progs_list)
+                        self.cpps_path, self.previous_cpp_file)
+
+                # get the next function
+                (function_name, function_dict) = ray.get(
+                    self.dataset_actor.get_next_function.remote())
 
                 # Copy the function's files to the dataset copy created
                 file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
-                    self.dataset_path, function_name)
+                    self.cpps_path, function_name)
 
                 # Set up the function files to be deleted on the next iteration
                 self.previous_cpp_file = function_name
 
                 # Load the tiramisu program from the file
                 self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
-                    self.config, file, progs_dict=self.progs_dict)
+                    self.config, file, function_dict)
 
                 print(f"Trying with program {self.prog.name}")
 
@@ -131,38 +116,18 @@ class TiramisuScheduleEnvironment(gym.Env):
                 self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
                     schedule=self.schedule_object,
                     nb_executions=self.nb_executions,
-                    scheds=self.scheds,
                     config=self.config)
-
-                # Load the legality check list. Starts empty
-                lc_data = ray.get(
-                    self.shared_variable_actor.get_lc_data.remote())
-
-                self.schedule_controller.load_legality_data(lc_data)
 
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
-                if self.progs_dict == {} or self.prog.name not in self.progs_dict.keys():
-                    if self.config.tiramisu.env_type == "cpu":
-                        print("Getting the initial exe time by execution")
-                        self.prog.initial_execution_time = self.schedule_controller.measurement_env(
-                            [], 'initial_exec', self.nb_executions,
-                            self.prog.initial_execution_time)
-                    elif self.config.tiramisu.env_type == "model":
-                        self.prog.initial_execution_time = 1.0
-                    self.progs_dict[self.prog.name] = {}
-                    self.progs_dict[self.prog.name]["program_annotation"] = self.schedule_object.annotations
-                    self.progs_dict[self.prog.name]["initial_execution_time"] = self.prog.initial_execution_time
-
-                else:
-                    print("The initial execution time exists")
-                    # Add something about whether the execution time was created using RL
-                    if self.config.tiramisu.env_type == "cpu":
-                        self.prog.initial_execution_time = self.progs_dict[
-                            self.prog.name]["initial_execution_time"]
-                    elif self.config.tiramisu.env_type == "model":
-                        self.prog.initial_execution_time = 1.0
+                if self.config.tiramisu.env_type == "cpu":
+                    print("Getting the initial exe time by execution")
+                    self.prog.initial_execution_time = self.schedule_controller.measurement_env(
+                        [], 'initial_exec', self.nb_executions,
+                        self.prog.initial_execution_time)
+                elif self.config.tiramisu.env_type == "model":
+                    self.prog.initial_execution_time = 1.0
 
             except:
                 print("RESET_ERROR_STDERR",
@@ -191,6 +156,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         speedup = 1.0
         self.steps += 1
         self.total_steps += 1
+        print(f"step:{self.total_steps}")
 
         try:
             action = rl_interface.Action(raw_action,
@@ -234,29 +200,16 @@ class TiramisuScheduleEnvironment(gym.Env):
                 speedup = self.schedule_controller.get_final_score()
             except:
                 speedup = 1.0
-            # Update shared progs_dict with explored schedules' legality checks
-            ray.get(self.shared_variable_actor.update_progs_dict.remote(
-                self.prog.name, self.prog.json_representation))
+            # Update dataset with explored legality checks
+            self.dataset_actor.update_dataset.remote(
+                self.prog.name, self.prog.function_dict)
 
-            if not self.config.environment.use_dataset:
-                if "schedules_list" in self.progs_dict[self.prog.name]:
-                    self.schedule_object.schedule_dict["speedup"] = speedup
-                    self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
-                    self.progs_dict[self.prog.name]["schedules_list"].append(
-                        self.schedule_object.schedule_dict)
-                else:
-                    self.schedule_object.schedule_dict["speedup"] = speedup
-                    self.schedule_object.schedule_dict["sched_str"] = self.schedule_object.sched_str
-                    self.progs_dict[self.prog.name]["schedules_list"] = [
-                        self.schedule_object.schedule_dict]
         reward_object = rl_interface.Reward(speedup)
         reward = reward_object.reward
         print(f"Received a reward: {reward}")
 
         # Saving data
-        if self.total_steps % self.SAVING_FREQUENCY:
-            ray.get(self.shared_variable_actor.write_progs_dict.remote())
-
-            # rl_interface.utils.EnvironmentUtils.write_json_dataset(
-            #     f"worker_{self.id}.json", self.progs_dict)
+        if not self.total_steps % self.SAVING_FREQUENCY:
+            self.dataset_actor.save_dataset_to_disk.remote(
+                self.config.environment.json_dataset['path_to_save_dataset'], format="pkl")
         return self.obs, reward, done, info

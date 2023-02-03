@@ -96,7 +96,7 @@ $buffers_init$
     return 0;
 }'''
 
-    def __init__(self, config, file_path, progs_dict=None):
+    def __init__(self, config, file_path, function_dict=None):
         self.config = config
         self.file_path = file_path
         with open(file_path, 'r') as f:
@@ -132,16 +132,14 @@ $buffers_init$
         self.program_annotations = None
         self.wrapper_is_compiled = False
         self.initial_execution_time = 1.0
-        self.json_representation = None
-        if config.environment.use_dataset:
-            self.json_representation = progs_dict[self.name]
+        self.function_dict = function_dict
 
     def get_program_annotations(self):
         if self.program_annotations is not None:
             return self.program_annotations
 
-        if self.config.environment.use_dataset:
-            self.program_annotations = self.json_representation['program_annotation']
+        if self.function_dict:
+            self.program_annotations = self.function_dict['program_annotation']
         else:
             # create a cpp file to get the annotations
             get_json_lines = '''
