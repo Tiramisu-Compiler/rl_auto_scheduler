@@ -22,7 +22,7 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     The reinforcement learning environment used by the GYM. 
     '''
-    SAVING_FREQUENCY = 50
+    SAVING_FREQUENCY = 500
 
     def __init__(self, config, dataset_actor):
         print("Configuring the environment variables")
