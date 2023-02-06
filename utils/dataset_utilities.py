@@ -6,7 +6,7 @@ import random
 import numpy as np
 import ray
 
-SAVING_FREQUENCY = 10
+SAVING_FREQUENCY = 100
 
 
 class DataSetFormat():
@@ -57,7 +57,10 @@ class DatasetAgent:
 
     def get_next_function(self):
         function_name = np.random.choice(self.function_names)
-        return function_name, self.dataset[function_name]
+        if self.use_dataset:
+            return function_name, self.dataset[function_name]
+        else:
+            return function_name, None
 
     def update_dataset(self, function_name, function_dict):
         self.dataset[function_name] = function_dict

@@ -1,16 +1,14 @@
-import copy
-import logging
+
 import sys
 import time
 import traceback
-from typing import List
 
 import torch
 from rl_interface.action import Action
 
 from tiramisu_programs.optimization import OptimizationCommand
 from tiramisu_programs.schedule import Schedule
-from tiramisu_programs.schedule_utils import *
+from tiramisu_programs.schedule_utils import ScheduleUtils, IsInterchangedException, IsParallelizedException, IsReversedException, IsSkewedException, IsTiledException, IsUnrolledException, SkewParamsException, SkewUnrollException, LCException
 from tiramisu_programs.surrogate_model_utils.json_to_tensor import \
     get_schedule_representation
 from tiramisu_programs.surrogate_model_utils.modeling import \
@@ -57,7 +55,8 @@ class ScheduleController:
             action_params = action.parameter()
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
-            action_params = action.parameter(comp, self.schedule_object.prog)
+            action_params = action.parameter(
+                comp, self.schedule_object.prog, self.schedule)
 
         if action.id in range(28):  # Interchange
             if not self.schedule_object.is_interchaged:
@@ -73,10 +72,9 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
-                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and is_schedule_saved:
+                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                        'schedules_legality_dict']:
                     print(
                         "Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
@@ -135,10 +133,9 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
-                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and is_schedule_saved:
+                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                        'schedules_legality_dict']:
                     print(
                         "Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
@@ -208,10 +205,9 @@ class ScheduleController:
                         self.schedule)
                     print(tmp_sched_str)
 
-                    is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']
                     # check if we can find the schedule in the dataset load the legality check
-                    if self.config.environment.use_dataset and is_schedule_saved:
+                    if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                            'schedules_legality_dict']:
                         print(
                             "Loading legality check from saved schedule")
                         saved_legality = self.schedule_object.prog.function_dict[
@@ -290,10 +286,9 @@ class ScheduleController:
                             self.schedule)
                         print(tmp_sched_str)
 
-                        is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                            'schedules_legality_dict']
                         # check if we can find the schedule in the dataset load the legality check
-                        if self.config.environment.use_dataset and is_schedule_saved:
+                        if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                                'schedules_legality_dict']:
                             print(
                                 "Loading legality check from saved schedule")
                             saved_legality = self.schedule_object.prog.function_dict[
@@ -352,10 +347,9 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
-                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and is_schedule_saved:
+                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                        'schedules_legality_dict']:
                     print(
                         "Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
@@ -406,10 +400,9 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
-                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and is_schedule_saved:
+                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                        'schedules_legality_dict']:
                     print(
                         "Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
@@ -464,10 +457,9 @@ class ScheduleController:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
-                is_schedule_saved = tmp_sched_str in self.schedule_object.prog.function_dict[
-                    'schedules_legality_dict']
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and is_schedule_saved:
+                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
+                        'schedules_legality_dict']:
                     print(
                         "Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[

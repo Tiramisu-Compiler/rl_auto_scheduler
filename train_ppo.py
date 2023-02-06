@@ -90,10 +90,9 @@ if __name__ == "__main__":
         config.tiramisu.env_type = "model"
 
     logging.basicConfig(level=logging._nameToLevel[args.log_level])
-    # logging.getLogger().setLevel(logging._nameToLevel[args.log_level])
-    # if args.num_workers == 1:
-    with ray.init():
-        main(config)
-    # else:
-    #     with ray.init(address="auto"):
-    #         main(config)
+    if args.num_workers == 1:
+        with ray.init():
+            main(config)
+    else:
+        with ray.init(address="auto"):
+            main(config)

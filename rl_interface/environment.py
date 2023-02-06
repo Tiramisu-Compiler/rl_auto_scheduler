@@ -9,11 +9,14 @@ import traceback
 import gym
 import numpy as np
 import ray
-import tiramisu_programs
-
-import rl_interface
-from tiramisu_programs.schedule_utils import ScheduleUtils
+from rl_interface.action import Action
+from rl_interface.reward import Reward
+from tiramisu_programs.cpp_file import CPP_File
+from tiramisu_programs.tiramisu_program import TiramisuProgram
+from tiramisu_programs.schedule import Schedule
+from tiramisu_programs.schedule_controller import ScheduleController
 from utils.environment_variables import configure_env_variables
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
 
 np.seterr(invalid="raise")
 
@@ -24,7 +27,7 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     SAVING_FREQUENCY = 500
 
-    def __init__(self, config, dataset_actor):
+    def __init__(self, config: RLAutoSchedulerConfig, dataset_actor):
         print("Configuring the environment variables")
         configure_env_variables(config)
 
@@ -90,7 +93,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             try:
                 # Clean files of the previous function ran
                 if self.config.environment.clean_files and self.previous_cpp_file:
-                    tiramisu_programs.cpp_file.CPP_File.clean_cpp_file(
+                    CPP_File.clean_cpp_file(
                         self.cpps_path, self.previous_cpp_file)
 
                 # get the next function
@@ -98,22 +101,22 @@ class TiramisuScheduleEnvironment(gym.Env):
                     self.dataset_actor.get_next_function.remote())
 
                 # Copy the function's files to the dataset copy created
-                file = tiramisu_programs.cpp_file.CPP_File.get_cpp_file(
+                file = CPP_File.get_cpp_file(
                     self.cpps_path, function_name)
 
                 # Set up the function files to be deleted on the next iteration
                 self.previous_cpp_file = function_name
 
                 # Load the tiramisu program from the file
-                self.prog = tiramisu_programs.tiramisu_program.TiramisuProgram(
+                self.prog = TiramisuProgram(
                     self.config, file, function_dict)
 
                 print(f"Trying with program {self.prog.name}")
 
-                self.schedule_object = tiramisu_programs.schedule.Schedule(
+                self.schedule_object = Schedule(
                     self.prog)
 
-                self.schedule_controller = tiramisu_programs.schedule_controller.ScheduleController(
+                self.schedule_controller = ScheduleController(
                     schedule=self.schedule_object,
                     nb_executions=self.nb_executions,
                     config=self.config)
@@ -147,7 +150,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         Apply a transformation on a program. If the action raw_action is legal, it is applied. If not, it is ignored and not added to the schedule.
         Returns: The current state after eventually applying the transformation, and the reward that the agent received for taking the action.
         """
-        action_name = rl_interface.Action.ACTIONS_ARRAY[raw_action]
+        action_name = Action.ACTIONS_ARRAY[raw_action]
         print("\n ----> {} [ {} ] \n".format(
             action_name, self.schedule_object.sched_str))
         info = {}
@@ -158,7 +161,7 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.total_steps += 1
 
         try:
-            action = rl_interface.Action(raw_action,
+            action = Action(raw_action,
                                          self.schedule_object.it_dict,
                                          self.schedule_object.common_it)
             _, speedup, done, info = self.schedule_controller.apply_action(
@@ -203,7 +206,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             self.dataset_actor.update_dataset.remote(
                 self.prog.name, self.prog.function_dict)
 
-        reward_object = rl_interface.Reward(speedup)
+        reward_object = Reward(speedup)
         reward = reward_object.reward
         print(f"Received a reward: {reward}")
         return self.obs, reward, done, info

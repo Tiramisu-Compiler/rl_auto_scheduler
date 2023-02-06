@@ -7,7 +7,9 @@ from pathlib import Path
 
 import ray
 
-import tiramisu_programs
+from .cpp_file import CPP_File
+from .schedule import TimeOutException
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
 
 
 class InternalExecException(Exception):
@@ -96,7 +98,7 @@ $buffers_init$
     return 0;
 }'''
 
-    def __init__(self, config, file_path, function_dict=None):
+    def __init__(self, config: RLAutoSchedulerConfig, file_path, function_dict=None):
         self.config = config
         self.file_path = file_path
         with open(file_path, 'r') as f:
@@ -157,7 +159,7 @@ $buffers_init$
                 f.write(get_json_prog)
 
             # compile the cpp file and run to generate annotations in json file
-            tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+            CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, 'Generating program annotations')
 
             # Read the json file and return the annotations
@@ -221,7 +223,7 @@ $buffers_init$
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join(
             [o.tiramisu_optim_str for o in optims_list])
-        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        CPP_File.compile_and_run_tiramisu_code(
             self.config, output_file, log_message)
         lc_result = self.read_legality_check_result_file()
 
@@ -278,7 +280,7 @@ $buffers_init$
 
         log_message = 'Solver results for: computation {}'.format(
             comp) + ' '.join([p for p in params])
-        if tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        if CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, log_message):
             solver_result = self.read_solver_result_file()
             if len(solver_result) == 0:
@@ -319,7 +321,7 @@ $buffers_init$
         log_message = 'Applying schedule: ' + ' '.join(
             [o.tiramisu_optim_str for o in optims_list])
         start_time = time.time()
-        if (tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        if (CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, log_message)):
             try:
                 execution_times = self.get_measurements(
@@ -328,7 +330,7 @@ $buffers_init$
                     return min(execution_times)
                 else:
                     return 0
-            except tiramisu_programs.schedule.TimeOutException:
+            except TimeOutException:
                 print("time out exception")
                 return 10 * nb_executions * (initial_exec_time
                                              if initial_exec_time else 1.0)
@@ -344,8 +346,8 @@ $buffers_init$
         if not self.wrapper_is_compiled:
             self.write_wrapper_code()
             log_message_cmd = 'printf "Compiling wrapper\n">> ${FUNC_DIR}log.txt'
-            tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
-            failed = tiramisu_programs.CPP_File.launch_cmd(
+            CPP_File.launch_cmd(log_message_cmd, '')
+            failed = CPP_File.launch_cmd(
                 self.config.tiramisu.compile_wrapper_cmd, self.file_path)
             if failed:
                 print('Failed compiling wrapper')
@@ -357,12 +359,12 @@ $buffers_init$
         run_wrapper_cmd = 'cd ${FUNC_DIR};\
         ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
         ./${FUNC_NAME}_wrapper ' + str(nb_executions)
-        tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
+        CPP_File.launch_cmd(log_message_cmd, '')
         s_time = time.time()
-        failed = tiramisu_programs.CPP_File.launch_cmd(run_wrapper_cmd,
-                                                       self.file_path,
-                                                       cmd_type, nb_executions,
-                                                       initial_exec_time)
+        failed = CPP_File.launch_cmd(run_wrapper_cmd,
+                                     self.file_path,
+                                     cmd_type, nb_executions,
+                                     initial_exec_time)
 
         if failed:
             print('Failed running wrapper')
