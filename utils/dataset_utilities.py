@@ -6,7 +6,7 @@ import random
 import numpy as np
 import ray
 
-SAVING_FREQUENCY = 100
+SAVING_FREQUENCY = 1000
 
 
 class DataSetFormat():
