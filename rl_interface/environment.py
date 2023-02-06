@@ -1,7 +1,5 @@
 # np.set_printoptions(threshold=sys.maxsize)
 import copy
-import logging
-import random
 import sys
 import time
 import traceback
@@ -162,8 +160,8 @@ class TiramisuScheduleEnvironment(gym.Env):
 
         try:
             action = Action(raw_action,
-                                         self.schedule_object.it_dict,
-                                         self.schedule_object.common_it)
+                            self.schedule_object.it_dict,
+                            self.schedule_object.common_it)
             _, speedup, done, info = self.schedule_controller.apply_action(
                 action)
             print("Obtained speedup: ", speedup)

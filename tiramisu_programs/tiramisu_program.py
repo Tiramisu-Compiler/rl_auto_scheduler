@@ -4,9 +4,6 @@ import random
 import re
 import time
 from pathlib import Path
-
-import ray
-
 from .cpp_file import CPP_File
 from .schedule import TimeOutException
 from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
@@ -199,13 +196,11 @@ $buffers_init$
             elif optim.type == 'Fusion':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Unrolling':
-                for comp in comps:
-                    legality_check_lines += '''
-        is_legal &= loop_unrolling_is_legal(''' + str(
-                        optim.params_list[comp]
-                        [0]) + ''', {&''' + comp + '''});
-    '''
-                    legality_check_lines += optim.tiramisu_optim_str + '\n'
+                legality_check_lines += '''
+    is_legal &= loop_unrolling_is_legal(''' + str(
+                    optim.params_list[comps[0]]
+                    [0]) + ''', {''' + ", ".join([f"&{comp}" for comp in comps]) + '''});'''
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
     is_legal &= check_legality_of_function();
@@ -238,6 +233,14 @@ $buffers_init$
             to_replace = re.findall(r'(std::ofstream out(?s:.)+)return',
                                     original_str)[0]
             header = "function * fct = tiramisu::global::get_implicit_function();\n"
+
+            original_str = original_str.replace(
+                "is_legal &= check_legality_of_function()", "")
+            original_str = original_str.replace("bool is_legal=true;", "")
+            original_str = re.sub(
+                r'is_legal &= loop_parallelization_is_legal.*\n', "", original_str)
+            original_str = re.sub(
+                r'is_legal &= loop_unrolling_is_legal.*\n', "", original_str)
         else:
 
             original_str = self.original_str

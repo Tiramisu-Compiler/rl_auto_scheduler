@@ -1,14 +1,8 @@
-from dataclasses import dataclass
-import numpy as np
-import re
 import sys
 import os
 import subprocess
 from pathlib import Path
 from datetime import datetime
-import re
-import torch
-import ray
 
 from tiramisu_programs.schedule_utils import TimeOutException
 
@@ -176,7 +170,7 @@ class CPP_File(object):
         return target_path + "/" + file_name
 
     @classmethod
-    def clean_cpp_file(cls, dataset_path, func_name):
+    def clean_cpp_file(cls,  func_name):
         """Clean the files of the function to run from the existing dataset copy.
 
         Args:
@@ -188,7 +182,7 @@ class CPP_File(object):
         """
         target_path = "{}/Dataset_copies/{}".format(".", func_name)
 
-        if os.path.isdir("./Dataset_copies") and os.path.isdir(target_path):
+        if os.path.isdir("Dataset_copies") and os.path.isdir(target_path):
             os.system("rm -r {}".format(target_path))
             return True
         else:

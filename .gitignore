@@ -11,6 +11,7 @@ __pycache__/
 *.log
 *.yaml
 *.yml
+scripts/run_rllib_slurm.sh
 scripts/env.sh
 Dataset*
 .vscode
