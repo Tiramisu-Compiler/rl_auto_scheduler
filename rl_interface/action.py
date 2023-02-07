@@ -1,4 +1,7 @@
-import random
+from tiramisu_programs.optimization import OptimizationCommand
+from tiramisu_programs.schedule_utils import ScheduleUtils
+from tiramisu_programs.tiramisu_program import TiramisuProgram
+import ray
 
 
 class Action:
@@ -104,7 +107,7 @@ class Action:
         self.it_dict = it_dict
         self.common_it = common_it
 
-    def parameter(self, comp=None, prog=None):
+    def parameter(self, comp=None, prog: TiramisuProgram = None, schedule: list[OptimizationCommand] = None):
         """"
         Property method to return the parameter related to the action selected.
         Returns:
@@ -212,8 +215,8 @@ class Action:
                     first_it = 6
                     second_it = 7
 
-                first_fact = 32 #random.choice([32, 64, 128])
-                second_fact = 32 #random.choice([32, 64, 128])
+                first_fact = 32  # random.choice([32, 64, 128])
+                second_fact = 32  # random.choice([32, 64, 128])
                 # #print("after choosing first and second params and factors")
 
                 # calculate the loop extent to see if we should create new iterators or not
@@ -222,7 +225,7 @@ class Action:
                     self.it_dict[first_comp][first_it]["upper_bound"] -
                     self.it_dict[first_comp][first_it]["lower_bound"])
                 # #print("\n first loop extent is ", loop_extent_1)
-                #print("first factor is", first_fact)
+                # print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
                     print("Tiling flag 1 false, loopextent == factor")
@@ -235,10 +238,10 @@ class Action:
                     self.it_dict[first_comp][second_it]["upper_bound"] -
                     self.it_dict[first_comp][second_it]["lower_bound"])
                 # print("\n second loop extent is ", loop_extent_2)
-                #print("second factor is", second_fact)
+                # print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
                     tiling_flag_2 = False
-                    #print("tiling flag 2 false, loopextent == factor")
+                    # print("tiling flag 2 false, loopextent == factor")
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
@@ -283,15 +286,15 @@ class Action:
                     second_it = 6
                     third_it = 7
 
-                first_fact = 32 #random.choice([32, 64, 128])
-                second_fact = 32 #random.choice([32, 64, 128])
-                third_fact = 32 #random.choice([32, 64, 128])
+                first_fact = 32  # random.choice([32, 64, 128])
+                second_fact = 32  # random.choice([32, 64, 128])
+                third_fact = 32  # random.choice([32, 64, 128])
                 # calculate the loop extent to see if we should create new iterators or not
                 loop_extent_1 = abs(
                     self.it_dict[first_comp][first_it]["upper_bound"] -
                     self.it_dict[first_comp][first_it]["lower_bound"])
                 # #print("\n first loop extent is ", loop_extent_1)
-                #print("first factor is", first_fact)
+                # print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
                     tiling_flag_1 = False
                     print("tiling flag 1 false, loopextent == factor")
@@ -304,7 +307,7 @@ class Action:
                     self.it_dict[first_comp][second_it]["upper_bound"] -
                     self.it_dict[first_comp][second_it]["lower_bound"])
                 # print("\n second loop extent is ", loop_extent_2)
-                #print("second factor is", second_fact)
+                # print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
                     tiling_flag_2 = False
                     print("tiling flag 2 false, loopextent == factor")
@@ -317,7 +320,7 @@ class Action:
                     self.it_dict[first_comp][third_it]["upper_bound"] -
                     self.it_dict[first_comp][third_it]["lower_bound"])
                 # print("\n third loop extent is ", loop_extent_3)
-                #print("third factor is", third_fact)
+                # print("third factor is", third_fact)
                 if loop_extent_3 == third_fact:
                     tiling_flag_3 = False
                     print("tiling flag 3 false, loopextent == factor")
@@ -376,6 +379,7 @@ class Action:
             return params
 
         elif self.id == 44:  # SKEWING01
+            solver_res = None
             first_it = 0
             second_it = 1
 
@@ -384,10 +388,25 @@ class Action:
                 "second_dim_index": second_it
             }
 
-            # print("before calling solver")
+            # Load saved results if they exist
+            if prog.config.environment.use_dataset:
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
 
-            solver_res = prog.call_solver(comp, skew_params)
-            # print("afetr calling solver")
+                # Check if schedule is saved
+                if tmp_sched_str in prog.function_dict[
+                        'schedules_solver_results_dict']:
+                    print(
+                        f"Loading solver results from saved schedule: {tmp_sched_str}")
+                    solver_res = prog.function_dict[
+                        'schedules_solver_results_dict'][tmp_sched_str]
+
+            if solver_res is None:
+                solver_res = prog.call_solver(comp, skew_params)
+
+                # Save the new solver results
+                if prog.config.environment.use_dataset:
+                    prog.function_dict[
+                        'schedules_solver_results_dict'][tmp_sched_str] = solver_res
 
             if solver_res == None or solver_res == "-1":
                 return {
@@ -406,6 +425,7 @@ class Action:
                 }
 
         elif self.id == 45:  # SKEWING12
+            solver_res = None
             first_it = 1
             second_it = 2
 
@@ -414,10 +434,24 @@ class Action:
                 "second_dim_index": second_it
             }
 
-            # print("before calling solver")
+            # Load saved results if they exist
+            if prog.config.environment.use_dataset:
+                tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
 
-            solver_res = prog.call_solver(comp, skew_params)
-            # print("afetr calling solver")
+                # Check if schedule is saved
+                if tmp_sched_str in prog.function_dict[
+                        'schedules_solver_results_dict']:
+                    print(
+                        f"Loading solver results from saved schedule: {tmp_sched_str}")
+                    solver_res = prog.function_dict[
+                        'schedules_solver_results_dict'][tmp_sched_str]
+
+            if solver_res is None:
+                solver_res = prog.call_solver(comp, skew_params)
+
+                # Save the new solver results
+                if prog.config.environment.use_dataset:
+                    prog.function_dict['schedules_solver_results_dict'][tmp_sched_str] = solver_res
 
             if solver_res == None or solver_res == "-1":
                 return {

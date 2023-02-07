@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Literal
 
 import yaml
 
+from utils.dataset_utilities import DataSetFormat
+
 USE_WANDB = False
 
 
@@ -23,6 +25,13 @@ class EnvironmentConfig:
     dataset_path: str = "../../Dataset_multi/"
     programs_file: str = "./multicomp.json"
     clean_files: bool = True
+    json_dataset: dict = field(default_factory=lambda: {
+        "path": None,
+        "cpps_path": None,
+        "path_to_save_sataset": None,
+        "dataset_format": DataSetFormat.PICKLE
+    })
+    use_dataset: bool = False
 
 
 @dataclass

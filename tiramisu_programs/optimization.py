@@ -1,6 +1,7 @@
 class OptimizationCommand:
     """Represents a Tirtamisu transformation and maps to Tiramisu code.
     """
+
     def __init__(self, optim_type, params_list, comps):
         assert optim_type in [
             "Interchange",
@@ -16,6 +17,12 @@ class OptimizationCommand:
         self.comps = comps
         self.tiramisu_optim_str = self.get_tiramisu_optim_str()
 
+    def __str__(self) -> str:
+        return f"{self.type} of {self.params_list}"
+
+    def __repr__(self):
+        return f'OptimizationCommand(type={self.type}, params_list={self.params_list}, comps={self.comps})'
+
     def get_tiramisu_optim_str(self):
         """Convert the optimization command into Tiramisu code.
 
@@ -29,7 +36,7 @@ class OptimizationCommand:
                                          for p in self.params_list]) + ");")
             optim_str = ""
             for comp in self.comps:
-                optim_str += "\n\t {}".format(comp) + interchange_str
+                optim_str += "\n\t{}".format(comp) + interchange_str
             return optim_str
         elif self.type == "Skewing":
             assert len(self.params_list) == 4
@@ -37,7 +44,7 @@ class OptimizationCommand:
                 [str(p) for p in self.params_list]) + ");"
             optim_str = ""
             for comp in self.comps:
-                optim_str += "\n\t {}".format(comp) + skewing_str
+                optim_str += "\n\t{}".format(comp) + skewing_str
             return optim_str
         elif self.type == "Parallelization":
             assert len(self.params_list) == 1
@@ -49,7 +56,7 @@ class OptimizationCommand:
                 [str(p) for p in self.params_list]) + ");"
             optim_str = ""
             for comp in self.comps:
-                optim_str += "\n\t {}".format(comp) + tiling_str
+                optim_str += "\n\t{}".format(comp) + tiling_str
             return optim_str
         elif self.type == "Unrolling":
             optim_str = ""
@@ -57,20 +64,20 @@ class OptimizationCommand:
                 unrolling_str = (
                     ".unroll(" +
                     ",".join([str(p) for p in self.params_list[comp]]) + ");")
-                optim_str += "\n\t {}".format(comp) + unrolling_str
+                optim_str += "\n\t{}".format(comp) + unrolling_str
             return optim_str
         elif self.type == "Reversal":
             assert len(self.params_list) == 1
             reversal_str = ".loop_reversal(" + str(self.params_list[0]) + ");"
             optim_str = ""
             for comp in self.comps:
-                optim_str += "\n\t {}".format(comp) + reversal_str
+                optim_str += "\n\t{}".format(comp) + reversal_str
             return optim_str
         elif self.type == "Fusion":
             optim_str = ""
             prev_comp = self.comps[0]
             for comp in self.comps[1:]:
-                optim_str += ("\n\t {}".format(prev_comp) + ".then(" +
+                optim_str += ("\n\t{}".format(prev_comp) + ".then(" +
                               str(comp) + "," + str(self.params_list[0]) +
                               ");")
                 prev_comp = comp

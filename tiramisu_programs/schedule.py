@@ -15,8 +15,8 @@ class Schedule:
     MAX_COMPS = 5
 
     def __init__(self, program):
-        self.depth = 0
-        self.schedule_str = ""
+        # self.depth = 0
+        self.sched_str = ""
         self.is_interchaged = False
         self.is_tiled = False
         self.is_unrolled = False

@@ -4,10 +4,9 @@ import random
 import re
 import time
 from pathlib import Path
-
-import ray
-
-import tiramisu_programs
+from .cpp_file import CPP_File
+from .schedule import TimeOutException
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
 
 
 class InternalExecException(Exception):
@@ -96,7 +95,7 @@ $buffers_init$
     return 0;
 }'''
 
-    def __init__(self, config, file_path):
+    def __init__(self, config: RLAutoSchedulerConfig, file_path, function_dict=None):
         self.config = config
         self.file_path = file_path
         with open(file_path, 'r') as f:
@@ -110,6 +109,9 @@ $buffers_init$
 
         self.name = re.findall(r'tiramisu::init\(\"(\w+)\"\);',
                                self.original_str)[0]
+
+        self.original_str = self.original_str.replace(
+            f'#include "{self.name}_wrapper.h"', '')
 
         self.comp_name = re.findall(r'computation (\w+)\(', self.original_str)
 
@@ -126,37 +128,42 @@ $buffers_init$
                                     self.original_str)[0]
             self.buffer_sizes.append(re.findall(r'\d+', sizes_vect))
 
-        self.program_annotations = ''
+        self.program_annotations = None
         self.wrapper_is_compiled = False
         self.initial_execution_time = 1.0
+        self.function_dict = function_dict
 
     def get_program_annotations(self):
-        if not self.program_annotations == '':
+        if self.program_annotations is not None:
             return self.program_annotations
 
-        # create a cpp file to get the annotations
-        get_json_lines = '''
-    auto ast = tiramisu::auto_scheduler::syntax_tree(tiramisu::global::get_implicit_function());
-    std::string program_json = tiramisu::auto_scheduler::evaluate_by_learning_model::get_program_json(ast);
-    std::ofstream out("''' + self.func_folder + self.name + '''_program_annotations.json");
-    out << program_json;
-    out.close();
-    '''
-        get_json_prog = self.original_str.replace(self.code_gen_line,
-                                                  get_json_lines)
-        output_file = self.func_folder + self.name + '_get_prog_annot.cpp'
+        if self.function_dict:
+            self.program_annotations = self.function_dict['program_annotation']
+        else:
+            # create a cpp file to get the annotations
+            get_json_lines = '''
+        auto ast = tiramisu::auto_scheduler::syntax_tree(tiramisu::global::get_implicit_function());
+        std::string program_json = tiramisu::auto_scheduler::evaluate_by_learning_model::get_program_json(ast);
+        std::ofstream out("''' + self.func_folder + self.name + '''_program_annotations.json");
+        out << program_json;
+        out.close();
+        '''
+            get_json_prog = self.original_str.replace(self.code_gen_line,
+                                                      get_json_lines)
+            output_file = self.func_folder + self.name + '_get_prog_annot.cpp'
 
-        with open(output_file, 'w') as f:
-            f.write(get_json_prog)
+            with open(output_file, 'w') as f:
+                f.write(get_json_prog)
 
-        # compile the cpp file and run to generate annotations in json file
-        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
-            self.config, output_file, 'Generating program annotations')
+            # compile the cpp file and run to generate annotations in json file
+            CPP_File.compile_and_run_tiramisu_code(
+                self.config, output_file, 'Generating program annotations')
 
-        # Read the json file and return the annotations
-        with open(self.func_folder + self.name + '_program_annotations.json',
-                  'r') as f:
-            self.program_annotations = json.loads(f.read())
+            # Read the json file and return the annotations
+            with open(self.func_folder + self.name + '_program_annotations.json',
+                      'r') as f:
+                self.program_annotations = json.loads(f.read())
+
         return self.program_annotations
 
     def check_legality_of_schedule(
@@ -164,7 +171,7 @@ $buffers_init$
         optims_list,
         comps=None,
         first_comp=None
-    ): 
+    ):
         legality_check_lines = '''
     prepare_schedules_for_legality_checks();
     perform_full_dependency_analysis();
@@ -183,19 +190,17 @@ $buffers_init$
     is_legal &= loop_parallelization_is_legal(''' + str(
                     optim.params_list[0]) + ''', {&''' + first_comp + '''});
 '''
-                legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Tiling':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Fusion':
                 legality_check_lines += optim.tiramisu_optim_str + '\n'
             elif optim.type == 'Unrolling':
-                for comp in comps:
-                    legality_check_lines += '''
-        is_legal &= loop_unrolling_is_legal(''' + str(
-                        optim.params_list[comp]
-                        [0]) + ''', {&''' + comp + '''});
-    '''
-                    legality_check_lines += optim.tiramisu_optim_str + '\n'  
+                legality_check_lines += '''
+    is_legal &= loop_unrolling_is_legal(''' + str(
+                    optim.params_list[comps[0]]
+                    [0]) + ''', {''' + ", ".join([f"&{comp}" for comp in comps]) + '''});'''
+                legality_check_lines += optim.tiramisu_optim_str + '\n'
 
         legality_check_lines += '''
     is_legal &= check_legality_of_function();
@@ -213,13 +218,13 @@ $buffers_init$
         self.reset_legality_check_result_file()
         log_message = 'Checking legality for: ' + ' '.join(
             [o.tiramisu_optim_str for o in optims_list])
-        tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        CPP_File.compile_and_run_tiramisu_code(
             self.config, output_file, log_message)
         lc_result = self.read_legality_check_result_file()
 
         return lc_result
 
-    def call_solver(self, comp, params):  
+    def call_solver(self, comp, params):
         lc_file = self.func_folder + self.name + '_legality_check.cpp'
         if os.path.isfile(lc_file):
             with open(lc_file, 'r') as f:
@@ -228,6 +233,14 @@ $buffers_init$
             to_replace = re.findall(r'(std::ofstream out(?s:.)+)return',
                                     original_str)[0]
             header = "function * fct = tiramisu::global::get_implicit_function();\n"
+
+            original_str = original_str.replace(
+                "is_legal &= check_legality_of_function()", "")
+            original_str = original_str.replace("bool is_legal=true;", "")
+            original_str = re.sub(
+                r'is_legal &= loop_parallelization_is_legal.*\n', "", original_str)
+            original_str = re.sub(
+                r'is_legal &= loop_unrolling_is_legal.*\n', "", original_str)
         else:
 
             original_str = self.original_str
@@ -270,7 +283,7 @@ $buffers_init$
 
         log_message = 'Solver results for: computation {}'.format(
             comp) + ' '.join([p for p in params])
-        if tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        if CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, log_message):
             solver_result = self.read_solver_result_file()
             if len(solver_result) == 0:
@@ -311,7 +324,7 @@ $buffers_init$
         log_message = 'Applying schedule: ' + ' '.join(
             [o.tiramisu_optim_str for o in optims_list])
         start_time = time.time()
-        if (tiramisu_programs.CPP_File.compile_and_run_tiramisu_code(
+        if (CPP_File.compile_and_run_tiramisu_code(
                 self.config, output_file, log_message)):
             try:
                 execution_times = self.get_measurements(
@@ -320,7 +333,7 @@ $buffers_init$
                     return min(execution_times)
                 else:
                     return 0
-            except tiramisu_programs.schedule.TimeOutException:
+            except TimeOutException:
                 print("time out exception")
                 return 10 * nb_executions * (initial_exec_time
                                              if initial_exec_time else 1.0)
@@ -336,8 +349,8 @@ $buffers_init$
         if not self.wrapper_is_compiled:
             self.write_wrapper_code()
             log_message_cmd = 'printf "Compiling wrapper\n">> ${FUNC_DIR}log.txt'
-            tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
-            failed = tiramisu_programs.CPP_File.launch_cmd(
+            CPP_File.launch_cmd(log_message_cmd, '')
+            failed = CPP_File.launch_cmd(
                 self.config.tiramisu.compile_wrapper_cmd, self.file_path)
             if failed:
                 print('Failed compiling wrapper')
@@ -349,20 +362,19 @@ $buffers_init$
         run_wrapper_cmd = 'cd ${FUNC_DIR};\
         ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
         ./${FUNC_NAME}_wrapper ' + str(nb_executions)
-        tiramisu_programs.CPP_File.launch_cmd(log_message_cmd, '')
+        CPP_File.launch_cmd(log_message_cmd, '')
         s_time = time.time()
-        failed = tiramisu_programs.CPP_File.launch_cmd(run_wrapper_cmd,
-                                                       self.file_path,
-                                                       cmd_type, nb_executions,
-                                                       initial_exec_time)
+        failed = CPP_File.launch_cmd(run_wrapper_cmd,
+                                     self.file_path,
+                                     cmd_type, nb_executions,
+                                     initial_exec_time)
 
         if failed:
             print('Failed running wrapper')
             return
         return self.read_measurements_file()
 
-    def write_wrapper_code(
-            self):  
+    def write_wrapper_code(self):
 
         buffers_init_lines = ''
         for i, buffer_name in enumerate(self.IO_buffer_names):
@@ -385,7 +397,8 @@ $buffers_init$
         with open(output_file, 'w') as f:
             f.write(wrapper_cpp_code)
 
-        wrapper_h_code = self.wrapper_h_template.replace('$func_name$', self.name)
+        wrapper_h_code = self.wrapper_h_template.replace(
+            '$func_name$', self.name)
         wrapper_h_code = wrapper_h_code.replace(
             '$func_params$', ','.join(
                 ['halide_buffer_t *' + name for name in self.IO_buffer_names]))
@@ -419,5 +432,3 @@ $buffers_init$
     def reset_solver_result_file(self):
         with open(self.func_folder + "solver_result.txt", 'w') as f:
             f.write('-1')
-
-
