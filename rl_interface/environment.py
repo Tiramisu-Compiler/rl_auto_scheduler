@@ -91,8 +91,7 @@ class TiramisuScheduleEnvironment(gym.Env):
             try:
                 # Clean files of the previous function ran
                 if self.config.environment.clean_files and self.previous_cpp_file:
-                    CPP_File.clean_cpp_file(
-                        self.cpps_path, self.previous_cpp_file)
+                    CPP_File.clean_cpp_file(self.previous_cpp_file)
 
                 # get the next function
                 (function_name, function_dict) = ray.get(
