@@ -88,7 +88,7 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
 
                 # Save legality check
-                if self.config.environment.use_dataset and saved_legality is None:
+                if saved_legality is None:
                     self.schedule_object.prog.function_dict[
                         'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -149,7 +149,7 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
 
                 # Save legality check
-                if self.config.environment.use_dataset and saved_legality is None:
+                if saved_legality is None:
                     self.schedule_object.prog.function_dict[
                         'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -220,7 +220,7 @@ class ScheduleController:
                     self.lc_total_time += l_time
 
                     # Save legality check
-                    if self.config.environment.use_dataset and saved_legality is None:
+                    if saved_legality is None:
                         self.schedule_object.prog.function_dict[
                             'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -306,7 +306,7 @@ class ScheduleController:
                         self.lc_total_time += l_time
 
                         # Save legality check
-                        if self.config.environment.use_dataset and saved_legality is None:
+                        if saved_legality is None:
                             self.schedule_object.prog.function_dict[
                                 'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -364,7 +364,7 @@ class ScheduleController:
                         self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
 
                 # Save legality check
-                if self.config.environment.use_dataset and saved_legality is None:
+                if saved_legality is None:
                     self.schedule_object.prog.function_dict[
                         'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -419,7 +419,7 @@ class ScheduleController:
                 self.lc_total_time += l_time
 
                 # Save legality check
-                if self.config.environment.use_dataset and saved_legality is None:
+                if saved_legality is None:
                     self.schedule_object.prog.function_dict[
                         'schedules_legality_dict'][tmp_sched_str] = lc_check
 
@@ -478,7 +478,7 @@ class ScheduleController:
                 self.lc_total_time += l_time
 
                 # Save legality check
-                if self.config.environment.use_dataset and saved_legality is None:
+                if saved_legality is None:
                     self.schedule_object.prog.function_dict[
                         'schedules_legality_dict'][tmp_sched_str] = lc_check
 

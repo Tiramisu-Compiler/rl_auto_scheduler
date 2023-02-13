@@ -388,10 +388,11 @@ class Action:
                 "second_dim_index": second_it
             }
 
+            # Get schedule id
+            tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
+
             # Load saved results if they exist
             if prog.config.environment.use_dataset:
-                tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
-
                 # Check if schedule is saved
                 if tmp_sched_str in prog.function_dict[
                         'schedules_solver_results_dict']:
@@ -404,9 +405,8 @@ class Action:
                 solver_res = prog.call_solver(comp, skew_params)
 
                 # Save the new solver results
-                if prog.config.environment.use_dataset:
-                    prog.function_dict[
-                        'schedules_solver_results_dict'][tmp_sched_str] = solver_res
+                prog.function_dict[
+                    'schedules_solver_results_dict'][tmp_sched_str] = solver_res
 
             if solver_res == None or solver_res == "-1":
                 return {

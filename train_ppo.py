@@ -1,29 +1,36 @@
-import logging
-import os
 # import hydra
 import argparse
+import logging
+import os
+
 import ray
+
 # from hydra.core.config_store import ConfigStore
-from ray import tune, air
+from ray import air, tune
 from ray.rllib.models.catalog import ModelCatalog
 from ray.tune.registry import register_env
 
 from rl_interface.environment import TiramisuScheduleEnvironment
 from rl_interface.model import TiramisuModelMult
 from utils.dataset_utilities import DatasetAgent
-from utils.rl_autoscheduler_config import (RLAutoSchedulerConfig,
-                                           dict_to_config, parse_yaml_file,
-                                           read_yaml_file)
+from utils.rl_autoscheduler_config import (
+    RLAutoSchedulerConfig,
+    dict_to_config,
+    parse_yaml_file,
+    read_yaml_file,
+)
 
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-workers", default=-1, type=int)
+    parser.add_argument("--num-workers", default=-1, type=int,
+                        help="Number of workers to use for training")
     parser.add_argument('--resume-training',
-                        action=argparse.BooleanOptionalAction)
-    parser.add_argument("--use-dataset", action=argparse.BooleanOptionalAction)
+                        action=argparse.BooleanOptionalAction, help="Resume training from a saved checkpoint")
+    parser.add_argument("--use-dataset", action=argparse.BooleanOptionalAction,
+                        help="Use the dataset (path specified in config) to train")
     parser.add_argument("--log-level", default="INFO",  # TODO change back to WARN
-                        type=str, choices=list(logging._nameToLevel.keys()))
+                        type=str, choices=list(logging._nameToLevel.keys()), help="Log levels")
     return parser.parse_args()
 
 
@@ -94,8 +101,12 @@ if __name__ == "__main__":
 
     if args.num_workers != -1:
         config.ray.num_workers = args.num_workers
+
     if args.resume_training:
         config.ray.resume_training = True
+
+    if args.log_level:
+        config.ray.log_level = args.log_level
 
     if args.use_dataset:
         config.environment.use_dataset = args.use_dataset
@@ -106,10 +117,10 @@ if __name__ == "__main__":
         # Force model usage if using dataset
         config.tiramisu.env_type = "model"
 
-    logging.basicConfig(level=logging._nameToLevel[args.log_level])
-    if args.num_workers == 1:
-        with ray.init():
-            main(config)
-    else:
-        with ray.init(address="auto"):
-            main(config)
+    logging.basicConfig(level=args.log_level)
+    # if args.num_workers == 1:
+    with ray.init():
+        main(config)
+    # else:
+    #     with ray.init(address="auto"):
+    #         main(config)

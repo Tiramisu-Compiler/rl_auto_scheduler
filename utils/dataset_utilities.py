@@ -48,8 +48,7 @@ class DatasetAgent:
                 f"[Done] reading dataset from json at:{dataset_path}")
 
         else:
-            os.getcwd()
-            print(f"reading data from ls at: {os.getcwd()}")
+            print(f"reading data from ls at: {dataset_path}")
             self.function_names = os.listdir(dataset_path)
 
         if self.shuffle:
@@ -60,7 +59,11 @@ class DatasetAgent:
         if self.use_dataset:
             return function_name, self.dataset[function_name]
         else:
-            return function_name, None
+            return function_name, {
+                'program_annotation': None,
+                'schedules_legality_dict': {},
+                'schedules_solver_results_dict': {}
+            }
 
     def update_dataset(self, function_name, function_dict):
         self.dataset[function_name] = function_dict

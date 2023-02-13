@@ -137,7 +137,7 @@ $buffers_init$
         if self.program_annotations is not None:
             return self.program_annotations
 
-        if self.function_dict:
+        if self.function_dict['program_annotation'] is not None:
             self.program_annotations = self.function_dict['program_annotation']
         else:
             # create a cpp file to get the annotations
@@ -163,6 +163,8 @@ $buffers_init$
             with open(self.func_folder + self.name + '_program_annotations.json',
                       'r') as f:
                 self.program_annotations = json.loads(f.read())
+
+            self.function_dict['program_annotation'] = self.program_annotations
 
         return self.program_annotations
 

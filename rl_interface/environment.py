@@ -1,5 +1,6 @@
 # np.set_printoptions(threshold=sys.maxsize)
 import copy
+import logging
 import sys
 import time
 import traceback
@@ -26,6 +27,8 @@ class TiramisuScheduleEnvironment(gym.Env):
     SAVING_FREQUENCY = 500
 
     def __init__(self, config: RLAutoSchedulerConfig, dataset_actor):
+        logging.basicConfig(level=config.ray.log_level)
+
         print("Configuring the environment variables")
         configure_env_variables(config)
 

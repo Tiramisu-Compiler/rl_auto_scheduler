@@ -18,6 +18,7 @@ class RayConfig:
     name: str = "Training_multi_enhanced"
     log_directory: str = "ray_results"
     resume_training: bool = False
+    log_level: str = "WARN"
 
 
 @dataclass
