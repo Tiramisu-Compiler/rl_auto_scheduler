@@ -40,6 +40,7 @@ class ScheduleController:
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
             torch.load(config.tiramisu.model_checkpoint, map_location="cpu"))
+        self.model.eval()
 
     def apply_action(self, action):
 
@@ -688,6 +689,7 @@ class ScheduleController:
                 max_depth=self.schedule_object.MAX_DEPTH - 1)
             tree_tensors = (self.schedule_object.templates["prog_tree"],
                             computations_tensor, loops_tensor)
+            
             with torch.no_grad():
                 predicted_speedup = self.model(
                     tree_tensors,

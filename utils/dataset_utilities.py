@@ -26,6 +26,7 @@ class DatasetAgent:
         self.dataset = {}
         self.function_names = []
         self.nbr_updates = 0
+        self.dataset_name = dataset_path.split('/')[-1].split('.')[0]
 
         if use_dataset:
             print(f"reading dataset from json at:{dataset_path}")
@@ -70,21 +71,25 @@ class DatasetAgent:
         self.nbr_updates += 1
         print(f"# updates: {self.nbr_updates}")
         if self.nbr_updates % SAVING_FREQUENCY == 0:
-            self.save_dataset_to_disk()
+            if self.nbr_updates % (2*SAVING_FREQUENCY):
+                self.save_dataset_to_disk(version=2)
+            else:
+                self.save_dataset_to_disk(version=1)
 
-    def save_dataset_to_disk(self):
+    def save_dataset_to_disk(self, version=1):
         print("[Start] Save the legality_annotations_dict to disk")
 
+        updated_dataset_name = f"{self.path_to_save_dataset}/{self.dataset_name}_updated_{version}"
         match self.dataset_format:
             case DataSetFormat.PICKLE:
-                with open(f"{self.path_to_save_dataset}.pkl", "wb") as f:
+                with open(f"{updated_dataset_name}.pkl", "wb") as f:
                     pickle.dump(self.dataset, f,
                                 protocol=pickle.HIGHEST_PROTOCOL)
             case DataSetFormat.JSON:
-                with open(f"{self.path_to_save_dataset}.json", "w") as f:
+                with open(f"{updated_dataset_name}.json", "w") as f:
                     json.dump(self.dataset, f)
             case DataSetFormat.BZ2:
-                with bz2.BZ2File(f"{self.path_to_save_dataset}.bz2.pkl", 'wb') as f:
+                with bz2.BZ2File(f"{updated_dataset_name}.bz2.pkl", 'wb') as f:
                     pickle.dump(self.dataset, f,
                                 protocol=pickle.HIGHEST_PROTOCOL)
             case _:

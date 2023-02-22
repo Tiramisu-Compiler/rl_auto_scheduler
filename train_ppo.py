@@ -36,6 +36,7 @@ def get_arguments():
 
 # @hydra.main(config_path="config", config_name="config")
 def main(config: RLAutoSchedulerConfig):
+    logging.basicConfig(level=config.ray.log_level)
     local_dir = os.path.join(config.ray.base_path, config.ray.log_directory)
 
     dataset_path = config.environment.json_dataset[
@@ -49,6 +50,11 @@ def main(config: RLAutoSchedulerConfig):
     )
     ModelCatalog.register_custom_model("tiramisu_model_v1",
                                        TiramisuModelMult)
+
+    # Use all available CPUs as workers (-1 for the head)
+    if config.ray.num_workers == -1:
+        config.ray.num_workers = int(ray.available_resources()['CPU'])-1
+        logging.INFO(f"{'='*20} # Used CPU:{config.ray.num_workers}")
     config_dict = {
         "env": "Tiramisu_env_v1",
         "num_workers": config.ray.num_workers,
@@ -99,8 +105,7 @@ if __name__ == "__main__":
     config = dict_to_config(parsed_yaml_dict)
     args = get_arguments()
 
-    if args.num_workers != -1:
-        config.ray.num_workers = args.num_workers
+    config.ray.num_workers = args.num_workers
 
     if args.resume_training:
         config.ray.resume_training = True
