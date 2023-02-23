@@ -54,7 +54,7 @@ def main(config: RLAutoSchedulerConfig):
     # Use all available CPUs as workers (-1 for the head)
     if config.ray.num_workers == -1:
         config.ray.num_workers = int(ray.available_resources()['CPU'])-1
-        logging.INFO(f"{'='*20} # Used CPU:{config.ray.num_workers}")
+        logging.info(f"==================== # Used CPU:{config.ray.num_workers}")
     config_dict = {
         "env": "Tiramisu_env_v1",
         "num_workers": config.ray.num_workers,
