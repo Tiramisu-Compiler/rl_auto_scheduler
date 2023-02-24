@@ -1,13 +1,8 @@
-from dataclasses import dataclass
-import numpy as np
-import re
 import sys
 import os
 import subprocess
 from pathlib import Path
 from datetime import datetime
-import re
-import torch
 
 from tiramisu_programs.schedule_utils import TimeOutException
 
@@ -162,8 +157,16 @@ class CPP_File(object):
             os.system("rm -r {}".format(target_path))
             # print("directory removed")
 
+        with open(original_path, 'r') as f:
+            original_str = f.read()
+
+        original_str = original_str.replace(
+            f'#include "{func_name}_wrapper.h"', '')
+
         os.mkdir(target_path)
-        os.system("cp -r {} {}".format(original_path, target_path))
+        with open(f"{target_path}/{file_name}", 'w') as f:
+            f.write(original_str)
+        # os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
 
     @classmethod

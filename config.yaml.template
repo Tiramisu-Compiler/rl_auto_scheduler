@@ -10,6 +10,15 @@ environment:
     dataset_path: "./Dataset_multi/"
     programs_file: "./multicomp.json"
     clean_files: True
+    json_dataset: 
+        # Path to the dataset file
+        path: "./Dataset_pickle/full_legality_annotations_solver.pkl"
+        # Path to the dataset cpp files
+        cpps_path: "./Dataset_multi"
+        # Path where to save the updated dataset (without the extension, it will be inferred by the dataset format)
+        path_to_save_dataset: "./Dataset_pickle/full_legality_annotations_solver_updated"
+        # Supported formats are available int he dataset_utilities module
+        dataset_format: "PICKLE"
 
 
 tiramisu:

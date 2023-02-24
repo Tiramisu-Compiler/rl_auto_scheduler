@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Literal
 
 import yaml
 
+from utils.dataset_utilities import DataSetFormat
+
 USE_WANDB = False
 
 
@@ -15,6 +17,8 @@ class RayConfig:
     base_path: str = "/data/scratch/hbenyamina/github/rl_autoscheduler"
     name: str = "Training_multi_enhanced"
     log_directory: str = "ray_results"
+    resume_training: bool = False
+    log_level: str = "WARN"
 
 
 @dataclass
@@ -22,6 +26,13 @@ class EnvironmentConfig:
     dataset_path: str = "../../Dataset_multi/"
     programs_file: str = "./multicomp.json"
     clean_files: bool = True
+    json_dataset: dict = field(default_factory=lambda: {
+        "path": None,
+        "cpps_path": None,
+        "path_to_save_sataset": None,
+        "dataset_format": DataSetFormat.PICKLE
+    })
+    use_dataset: bool = False
 
 
 @dataclass

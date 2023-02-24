@@ -27,7 +27,8 @@ def get_arguments():
 
 # @hydra.main(config_path="config", config_name="config")
 def main(config: RLAutoSchedulerConfig, checkpoint=None):
-    if checkpoint is None: return
+    if checkpoint is None:
+        return
     configure_env_variables(config)
     best_checkpoint = os.path.join(config.ray.base_path, checkpoint)
     with ray.init(num_cpus=config.ray.ray_num_cpus):
@@ -87,7 +88,7 @@ def main(config: RLAutoSchedulerConfig, checkpoint=None):
                 except:
                     print("error", action, observation, reward, done)
                     continue
-            result["schedule_str"] = env.schedule_object.schedule_str
+            result["sched_str"] = env.schedule_object.sched_str
             result["speedup"] = env.schedule_controller.speedup
             results.append(result)
             with open("results.json", "w+") as file:

@@ -17,6 +17,12 @@ class OptimizationCommand:
         self.comps = comps
         self.tiramisu_optim_str = self.get_tiramisu_optim_str()
 
+    def __str__(self) -> str:
+        return f"{self.type} of {self.params_list}"
+
+    def __repr__(self):
+        return f'OptimizationCommand(type={self.type}, params_list={self.params_list}, comps={self.comps})'
+
     def get_tiramisu_optim_str(self):
         """Convert the optimization command into Tiramisu code.
 
