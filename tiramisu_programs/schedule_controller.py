@@ -4,6 +4,7 @@ import time
 import traceback
 
 import torch
+
 from rl_interface.action import Action
 from tiramisu_programs.optimization import OptimizationCommand
 from tiramisu_programs.schedule import Schedule
@@ -23,6 +24,7 @@ from tiramisu_programs.surrogate_model_utils.json_to_tensor import (
     get_schedule_representation,
 )
 from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
 
 global_dioph_sols_dict = dict()
 
@@ -32,7 +34,7 @@ class ScheduleController:
     def __init__(self,
                  schedule: Schedule = None,
                  nb_executions=5,
-                 config=None):
+                 config: RLAutoSchedulerConfig=None):
         self.depth = 0
         self.schedule = []
         self.schedule_object = schedule
@@ -530,7 +532,10 @@ class ScheduleController:
                         self.schedule_object.comp_indic_dict)
 
             self.depth += 1
-            speedup = self.predict_speedup()
+            speedup = 1.0
+            # Get the speedup by model if we are doing immediate rewards
+            if self.config.environment.immediate:
+                speedup = self.get_speedup()
             return self.schedule_object.repr, speedup, done, info
         elif exit:
             return self.schedule_object.repr, 1.0, done, info
@@ -718,6 +723,22 @@ class ScheduleController:
         return stat["predicted_execution_time"]
 
 
+    def get_speedup(self) -> float:
+        speedup = 1.0
+        if self.config.tiramisu.env_type == "cpu":
+            exec_time = self.measurement_env(
+                self.schedule, 'sched_eval', self.nb_executions,
+                self.schedule_object.prog.initial_execution_time)
+            
+            if exec_time != 0:
+                speedup = (self.schedule_object.prog.initial_execution_time /
+                        exec_time)
+            else:
+                raise ValueError('Exec time is 0')
+        else:
+            speedup = self.predict_speedup()
+        return speedup
+            
     def predict_speedup(self):
         self.schedule_list_model.append({
             "sched_str":

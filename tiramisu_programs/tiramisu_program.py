@@ -4,9 +4,11 @@ import random
 import re
 import time
 from pathlib import Path
+
+from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
+
 from .cpp_file import CPP_File
 from .schedule import TimeOutException
-from utils.rl_autoscheduler_config import RLAutoSchedulerConfig
 
 
 class InternalExecException(Exception):
