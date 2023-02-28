@@ -5,14 +5,24 @@ import traceback
 
 import torch
 from rl_interface.action import Action
-
 from tiramisu_programs.optimization import OptimizationCommand
 from tiramisu_programs.schedule import Schedule
-from tiramisu_programs.schedule_utils import ScheduleUtils, IsInterchangedException, IsParallelizedException, IsReversedException, IsSkewedException, IsTiledException, IsUnrolledException, SkewParamsException, SkewUnrollException, LCException
-from tiramisu_programs.surrogate_model_utils.json_to_tensor import \
-    get_schedule_representation
-from tiramisu_programs.surrogate_model_utils.modeling import \
-    Model_Recursive_LSTM_v2
+from tiramisu_programs.schedule_utils import (
+    IsInterchangedException,
+    IsParallelizedException,
+    IsReversedException,
+    IsSkewedException,
+    IsTiledException,
+    IsUnrolledException,
+    LCException,
+    ScheduleUtils,
+    SkewParamsException,
+    SkewUnrollException,
+)
+from tiramisu_programs.surrogate_model_utils.json_to_tensor import (
+    get_schedule_representation,
+)
+from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
 
 global_dioph_sols_dict = dict()
 
@@ -520,7 +530,8 @@ class ScheduleController:
                         self.schedule_object.comp_indic_dict)
 
             self.depth += 1
-            return self.schedule_object.repr, 1.0, done, info
+            speedup = self.predict_speedup()
+            return self.schedule_object.repr, speedup, done, info
         elif exit:
             return self.schedule_object.repr, 1.0, done, info
         elif lc_check == 0:
@@ -706,6 +717,41 @@ class ScheduleController:
 
         return stat["predicted_execution_time"]
 
+
+    def predict_speedup(self):
+        self.schedule_list_model.append({
+            "sched_str":
+            self.schedule_object.sched_str,
+            "schedule_dict":
+            self.schedule_object.schedule_dict
+        })
+        try:
+            computations_tensor, loops_tensor = get_schedule_representation(
+                self.schedule_object.annotations,
+                self.schedule_object.schedule_dict,
+                self.schedule_object.templates["comps_repr_templates_list"],
+                self.schedule_object.templates["loops_repr_templates_list"],
+                self.schedule_object.
+                templates["comps_placeholders_indices_dict"],
+                self.schedule_object.
+                templates["loops_placeholders_indices_dict"],
+                max_depth=self.schedule_object.MAX_DEPTH - 1)
+            tree_tensors = (self.schedule_object.templates["prog_tree"],
+                            computations_tensor, loops_tensor)
+            
+            with torch.no_grad():
+                predicted_speedup = self.model(
+                    tree_tensors,
+                    num_matrices=self.schedule_object.MAX_DEPTH - 1).item()
+                
+                print(f"The predicted speedup is {predicted_speedup}")
+                
+        except Exception:
+            print("ERROR_MODEL", traceback.format_exc())
+            print(sys.exc_info()[2])
+
+        return predicted_speedup
+        
     def get_exec_time(self):
         execution_time = 0
 
