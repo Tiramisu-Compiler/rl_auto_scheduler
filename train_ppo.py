@@ -23,14 +23,29 @@ from utils.rl_autoscheduler_config import (
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-workers", default=-1, type=int,
-                        help="Number of workers to use for training")
-    parser.add_argument('--resume-training',
-                        action=argparse.BooleanOptionalAction, help="Resume training from a saved checkpoint")
-    parser.add_argument("--use-dataset", action=argparse.BooleanOptionalAction,
-                        help="Use the dataset (path specified in config) to train")
-    parser.add_argument("--log-level", default="INFO",  # TODO change back to WARN
-                        type=str, choices=list(logging._nameToLevel.keys()), help="Log levels")
+    parser.add_argument(
+        "--num-workers",
+        default=-1,
+        type=int,
+        help="Number of workers to use for training",
+    )
+    parser.add_argument(
+        "--resume-training",
+        action=argparse.BooleanOptionalAction,
+        help="Resume training from a saved checkpoint",
+    )
+    parser.add_argument(
+        "--use-dataset",
+        action=argparse.BooleanOptionalAction,
+        help="Use the dataset (path specified in config) to train",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",  # TODO change back to WARN
+        type=str,
+        choices=list(logging._nameToLevel.keys()),
+        help="Log levels",
+    )
     return parser.parse_args()
 
 
@@ -39,28 +54,36 @@ def main(config: RLAutoSchedulerConfig):
     logging.basicConfig(level=config.ray.log_level)
     local_dir = os.path.join(config.ray.base_path, config.ray.log_directory)
 
-    dataset_path = config.environment.json_dataset[
-        'path'] if config.environment.use_dataset else config.environment.dataset_path
+    dataset_path = (
+        config.environment.json_dataset["path"]
+        if config.environment.use_dataset
+        else config.environment.dataset_path
+    )
     dataset_actor = DatasetAgent.remote(
-        dataset_path=dataset_path, use_dataset=config.environment.use_dataset, path_to_save_dataset=config.environment.json_dataset['path_to_save_dataset'], dataset_format=config.environment.json_dataset['dataset_format'])
+        dataset_path=dataset_path,
+        use_dataset=config.environment.use_dataset,
+        path_to_save_dataset=config.environment.json_dataset["path_to_save_dataset"],
+        dataset_format=config.environment.json_dataset["dataset_format"],
+    )
 
     register_env(
         "Tiramisu_env_v1",
         lambda a: TiramisuScheduleEnvironment(config, dataset_actor),
     )
-    ModelCatalog.register_custom_model("tiramisu_model_v1",
-                                       TiramisuModelMult)
+    ModelCatalog.register_custom_model("tiramisu_model_v1", TiramisuModelMult)
 
     # Use all available CPUs as workers (-1 for the head)
     if config.ray.num_workers == -1:
-        config.ray.num_workers = int(ray.available_resources()['CPU'])-1
+        config.ray.num_workers = int(ray.available_resources()["CPU"]) - 1
         logging.info(f"==================== # Used CPU:{config.ray.num_workers}")
     config_dict = {
         "env": "Tiramisu_env_v1",
         "num_workers": config.ray.num_workers,
         "placement_strategy": "SPREAD",
         "batch_mode": "complete_episodes",
-        "train_batch_size": max(config.ray.num_workers * 200, config.training.train_batch_size),
+        "train_batch_size": max(
+            config.ray.num_workers * 200, config.training.train_batch_size
+        ),
         "sgd_minibatch_size": config.training.sgd_minibatch_size,
         "lr": config.training.lr,
         "num_sgd_iter": config.training.num_sgd_iter,
@@ -77,9 +100,7 @@ def main(config: RLAutoSchedulerConfig):
 
     if config.ray.resume_training:
         print(f"Resuming training from: {local_dir}/{config.ray.name}")
-        tuner = tune.Tuner.restore(
-            path=f"{local_dir}/{config.ray.name}"
-        )
+        tuner = tune.Tuner.restore(path=f"{local_dir}/{config.ray.name}")
     else:
         tuner = tune.Tuner(
             "PPO",
@@ -89,12 +110,10 @@ def main(config: RLAutoSchedulerConfig):
                 stop={"training_iteration": config.ray.training_iteration},
                 name=config.ray.name,
                 verbose=0,
-                failure_config=air.FailureConfig(
-                    max_failures=0
-                ),
+                failure_config=air.FailureConfig(max_failures=0),
                 checkpoint_config=air.CheckpointConfig(
                     checkpoint_frequency=config.ray.checkpoint_freq,
-                )
+                ),
             ),
         )
     results = tuner.fit()
@@ -116,9 +135,10 @@ if __name__ == "__main__":
     if args.use_dataset:
         config.environment.use_dataset = args.use_dataset
 
-        if config.tiramisu.env_type == 'cpu':
+        if config.tiramisu.env_type == "cpu":
             logging.warning(
-                "DATASET LEARNINING IS INCOMPATIBLE WITH CPU LEARNING. SWITCHING TO MODEL")
+                "DATASET LEARNINING IS INCOMPATIBLE WITH CPU LEARNING. SWITCHING TO MODEL"
+            )
         # Force model usage if using dataset
         config.tiramisu.env_type = "model"
 

@@ -21,9 +21,10 @@ np.seterr(invalid="raise")
 
 
 class TiramisuScheduleEnvironment(gym.Env):
-    '''
-    The reinforcement learning environment used by the GYM. 
-    '''
+    """
+    The reinforcement learning environment used by the GYM.
+    """
+
     SAVING_FREQUENCY = 500
 
     def __init__(self, config: RLAutoSchedulerConfig, dataset_actor):
@@ -52,33 +53,34 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.dataset_actor = dataset_actor
 
         if config.environment.use_dataset:
-            self.cpps_path = config.environment.json_dataset['cpps_path']
+            self.cpps_path = config.environment.json_dataset["cpps_path"]
 
         self.action_space = gym.spaces.Discrete(62)
 
-        self.observation_space = gym.spaces.Dict({
-            # Computation representation (5 is the MAX computations)
-            "representation":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5, 1052)),
-            # Mask to hide actions from being taken 62 masks for 62 actions
-            "action_mask":
-            gym.spaces.Box(low=0, high=1, shape=(62, )),
-            # Representation of loops
-            "loops_representation":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15, 26)),
-            # Loop indices of loops instead in loop i
-            "child_list":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 11)),
-            # Whether loop i has computations or not
-            "has_comps":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, )),
-            # Computation indices of all computations inside of a loop (12 loops,5 max computations)
-            "computations_indices":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 5)),
-            # float representation of the padded string format of the program tree
-            "prog_tree":
-            gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,))
-        })
+        self.observation_space = gym.spaces.Dict(
+            {
+                # Computation representation (5 is the MAX computations)
+                "representation": gym.spaces.Box(
+                    low=-np.inf, high=np.inf, shape=(5, 1052)
+                ),
+                # Mask to hide actions from being taken 62 masks for 62 actions
+                "action_mask": gym.spaces.Box(low=0, high=1, shape=(62,)),
+                # Representation of loops
+                "loops_representation": gym.spaces.Box(
+                    low=-np.inf, high=np.inf, shape=(15, 26)
+                ),
+                # Loop indices of loops instead in loop i
+                "child_list": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12, 11)),
+                # Whether loop i has computations or not
+                "has_comps": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(12,)),
+                # Computation indices of all computations inside of a loop (12 loops,5 max computations)
+                "computations_indices": gym.spaces.Box(
+                    low=-np.inf, high=np.inf, shape=(12, 5)
+                ),
+                # float representation of the padded string format of the program tree
+                "prog_tree": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(5000,)),
+            }
+        )
 
     def reset(self, file=None):
         """
@@ -98,45 +100,47 @@ class TiramisuScheduleEnvironment(gym.Env):
 
                 # get the next function
                 (function_name, function_dict) = ray.get(
-                    self.dataset_actor.get_next_function.remote())
+                    self.dataset_actor.get_next_function.remote()
+                )
 
                 # Copy the function's files to the dataset copy created
-                file = CPP_File.get_cpp_file(
-                    self.cpps_path, function_name)
+                file = CPP_File.get_cpp_file(self.cpps_path, function_name)
 
                 # Set up the function files to be deleted on the next iteration
                 self.previous_cpp_file = function_name
 
                 # Load the tiramisu program from the file
-                self.prog = TiramisuProgram(
-                    self.config, file, function_dict)
+                self.prog = TiramisuProgram(self.config, file, function_dict)
 
                 print(f"Trying with program {self.prog.name}")
 
-                self.schedule_object = Schedule(
-                    self.prog)
+                self.schedule_object = Schedule(self.prog)
 
                 self.schedule_controller = ScheduleController(
                     schedule=self.schedule_object,
                     nb_executions=self.nb_executions,
-                    config=self.config)
+                    config=self.config,
+                )
 
                 # Get the gym representation from the annotations
                 self.obs = self.schedule_object.get_representation()
 
                 if self.config.tiramisu.env_type == "cpu":
                     print("Getting the initial exe time by execution")
-                    self.prog.initial_execution_time = self.schedule_controller.measurement_env(
-                        [], 'initial_exec', self.nb_executions,
-                        self.prog.initial_execution_time)
+                    self.prog.initial_execution_time = (
+                        self.schedule_controller.measurement_env(
+                            [],
+                            "initial_exec",
+                            self.nb_executions,
+                            self.prog.initial_execution_time,
+                        )
+                    )
                 elif self.config.tiramisu.env_type == "model":
                     self.prog.initial_execution_time = 1.0
 
             except:
-                print("RESET_ERROR_STDERR",
-                      traceback.format_exc(), file=sys.stderr)
-                print("RESET_ERROR_STDOUT",
-                      traceback.format_exc(), file=sys.stdout)
+                print("RESET_ERROR_STDERR", traceback.format_exc(), file=sys.stderr)
+                print("RESET_ERROR_STDOUT", traceback.format_exc(), file=sys.stdout)
                 continue
 
             self.steps = 0
@@ -151,8 +155,9 @@ class TiramisuScheduleEnvironment(gym.Env):
         Returns: The current state after eventually applying the transformation, and the reward that the agent received for taking the action.
         """
         action_name = Action.ACTIONS_ARRAY[raw_action]
-        print("\n ----> {} [ {} ] \n".format(
-            action_name, self.schedule_object.sched_str))
+        print(
+            "\n ----> {} [ {} ] \n".format(action_name, self.schedule_object.sched_str)
+        )
         info = {}
         applied_exception = False
         reward = 0.0
@@ -161,23 +166,20 @@ class TiramisuScheduleEnvironment(gym.Env):
         self.total_steps += 1
 
         try:
-            action = Action(raw_action,
-                            self.schedule_object.it_dict,
-                            self.schedule_object.common_it)
-            _, speedup, done, info = self.schedule_controller.apply_action(
-                action)
+            action = Action(
+                raw_action, self.schedule_object.it_dict, self.schedule_object.common_it
+            )
+            _, speedup, done, info = self.schedule_controller.apply_action(action)
             print("Obtained speedup: ", speedup)
 
         except Exception as e:
             self.schedule_object.repr["action_mask"][action.id] = 0
-            print("STEP_ERROR_STDERR: ",
-                  traceback.format_exc(),
-                  file=sys.stderr,
-                  end=" ")
-            print("STEP_ERROR_STDOUT: ",
-                  traceback.format_exc(),
-                  file=sys.stdout,
-                  end=" ")
+            print(
+                "STEP_ERROR_STDERR: ", traceback.format_exc(), file=sys.stderr, end=" "
+            )
+            print(
+                "STEP_ERROR_STDOUT: ", traceback.format_exc(), file=sys.stdout, end=" "
+            )
             if applied_exception:
                 print("Already Applied exception")
                 info = {"more than one time": True}
@@ -193,8 +195,9 @@ class TiramisuScheduleEnvironment(gym.Env):
                 }
 
         self.obs = copy.deepcopy(self.schedule_object.get_representation())
-        if (self.schedule_controller.depth
-                == self.schedule_object.MAX_DEPTH) or (self.steps >= 20):
+        if (self.schedule_controller.depth == self.schedule_object.MAX_DEPTH) or (
+            self.steps >= 20
+        ):
             done = True
         if done:
             print("\n ************** End of an episode ************")
@@ -204,7 +207,8 @@ class TiramisuScheduleEnvironment(gym.Env):
                 speedup = 1.0
             # Update dataset with explored legality checks
             self.dataset_actor.update_dataset.remote(
-                self.prog.name, self.prog.function_dict)
+                self.prog.name, self.prog.function_dict
+            )
 
         reward_object = Reward(speedup)
         reward = reward_object.reward

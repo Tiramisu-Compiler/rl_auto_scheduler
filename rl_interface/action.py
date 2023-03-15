@@ -8,6 +8,7 @@ class Action:
     """ "
     Action class to store and standardize the action for the environment.
     """
+
     INTERCHANGE01 = 0
     INTERCHANGE02 = 1
     INTERCHANGE03 = 2
@@ -78,21 +79,68 @@ class Action:
 
     EXIT = 61
     ACTIONS_ARRAY = [
-        'INTERCHANGE01', 'INTERCHANGE02', 'INTERCHANGE03', 'INTERCHANGE04',
-        'INTERCHANGE05', 'INTERCHANGE06', 'INTERCHANGE07', 'INTERCHANGE12',
-        'INTERCHANGE13', 'INTERCHANGE14', 'INTERCHANGE15', 'INTERCHANGE16',
-        'INTERCHANGE17', 'INTERCHANGE23', 'INTERCHANGE24', 'INTERCHANGE25',
-        'INTERCHANGE26', 'INTERCHANGE27', 'INTERCHANGE34', 'INTERCHANGE35',
-        'INTERCHANGE36', 'INTERCHANGE37', 'INTERCHANGE45', 'INTERCHANGE46',
-        'INTERCHANGE47', 'INTERCHANGE56', 'INTERCHANGE57', 'INTERCHANGE67',
-        'TILING2D01', 'TILING2D12', 'TILING2D23', 'TILING2D34', 'TILING2D45',
-        'TILING2D56', 'TILING2D67', 'TILING3D012', 'TILING3D123',
-        'TILING3D234', 'TILING3D345', 'TILING3D456', 'TILING3D567',
-        'UNROLLING4', 'UNROLLING8', 'UNROLLING16', 'SKEWING01', 'SKEWING01',
-        'PARALLELIZATION0', 'PARALLELIZATION1', 'REVERSAL0', 'REVERSAL1',
-        'REVERSAL2', 'REVERSAL3', 'REVERSAL4', 'REVERSAL5', 'REVERSAL6',
-        'REVERSAL7', 'FUSION0', 'FUSION1', 'FUSION2', 'FUSION3', 'FUSION4',
-        'EXIT'
+        "INTERCHANGE01",
+        "INTERCHANGE02",
+        "INTERCHANGE03",
+        "INTERCHANGE04",
+        "INTERCHANGE05",
+        "INTERCHANGE06",
+        "INTERCHANGE07",
+        "INTERCHANGE12",
+        "INTERCHANGE13",
+        "INTERCHANGE14",
+        "INTERCHANGE15",
+        "INTERCHANGE16",
+        "INTERCHANGE17",
+        "INTERCHANGE23",
+        "INTERCHANGE24",
+        "INTERCHANGE25",
+        "INTERCHANGE26",
+        "INTERCHANGE27",
+        "INTERCHANGE34",
+        "INTERCHANGE35",
+        "INTERCHANGE36",
+        "INTERCHANGE37",
+        "INTERCHANGE45",
+        "INTERCHANGE46",
+        "INTERCHANGE47",
+        "INTERCHANGE56",
+        "INTERCHANGE57",
+        "INTERCHANGE67",
+        "TILING2D01",
+        "TILING2D12",
+        "TILING2D23",
+        "TILING2D34",
+        "TILING2D45",
+        "TILING2D56",
+        "TILING2D67",
+        "TILING3D012",
+        "TILING3D123",
+        "TILING3D234",
+        "TILING3D345",
+        "TILING3D456",
+        "TILING3D567",
+        "UNROLLING4",
+        "UNROLLING8",
+        "UNROLLING16",
+        "SKEWING01",
+        "SKEWING01",
+        "PARALLELIZATION0",
+        "PARALLELIZATION1",
+        "REVERSAL0",
+        "REVERSAL1",
+        "REVERSAL2",
+        "REVERSAL3",
+        "REVERSAL4",
+        "REVERSAL5",
+        "REVERSAL6",
+        "REVERSAL7",
+        "FUSION0",
+        "FUSION1",
+        "FUSION2",
+        "FUSION3",
+        "FUSION4",
+        "EXIT",
     ]
 
     def __init__(self, id_, it_dict, common_it):
@@ -107,8 +155,13 @@ class Action:
         self.it_dict = it_dict
         self.common_it = common_it
 
-    def parameter(self, comp=None, prog: TiramisuProgram = None, schedule: list[OptimizationCommand] = None):
-        """"
+    def parameter(
+        self,
+        comp=None,
+        prog: TiramisuProgram = None,
+        schedule: list[OptimizationCommand] = None,
+    ):
+        """ "
         Property method to return the parameter related to the action selected.
         Returns:
             The parameter related to this action_id
@@ -222,8 +275,9 @@ class Action:
                 # calculate the loop extent to see if we should create new iterators or not
                 # since it's applicable on the common on the common iterators, we retrieve the information from the first computation
                 loop_extent_1 = abs(
-                    self.it_dict[first_comp][first_it]["upper_bound"] -
-                    self.it_dict[first_comp][first_it]["lower_bound"])
+                    self.it_dict[first_comp][first_it]["upper_bound"]
+                    - self.it_dict[first_comp][first_it]["lower_bound"]
+                )
                 # #print("\n first loop extent is ", loop_extent_1)
                 # print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
@@ -232,11 +286,13 @@ class Action:
                 elif loop_extent_1 < first_fact:
                     print("Exception, loop extent 1 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
+
                     raise LoopExtentException
 
                 loop_extent_2 = abs(
-                    self.it_dict[first_comp][second_it]["upper_bound"] -
-                    self.it_dict[first_comp][second_it]["lower_bound"])
+                    self.it_dict[first_comp][second_it]["upper_bound"]
+                    - self.it_dict[first_comp][second_it]["lower_bound"]
+                )
                 # print("\n second loop extent is ", loop_extent_2)
                 # print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
@@ -245,6 +301,7 @@ class Action:
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
+
                     raise LoopExtentException
 
                 return {
@@ -291,8 +348,9 @@ class Action:
                 third_fact = 32  # random.choice([32, 64, 128])
                 # calculate the loop extent to see if we should create new iterators or not
                 loop_extent_1 = abs(
-                    self.it_dict[first_comp][first_it]["upper_bound"] -
-                    self.it_dict[first_comp][first_it]["lower_bound"])
+                    self.it_dict[first_comp][first_it]["upper_bound"]
+                    - self.it_dict[first_comp][first_it]["lower_bound"]
+                )
                 # #print("\n first loop extent is ", loop_extent_1)
                 # print("first factor is", first_fact)
                 if loop_extent_1 == first_fact:
@@ -301,11 +359,13 @@ class Action:
                 elif loop_extent_1 < first_fact:
                     print("exceeeption, loop extent 1 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
+
                     raise LoopExtentException
 
                 loop_extent_2 = abs(
-                    self.it_dict[first_comp][second_it]["upper_bound"] -
-                    self.it_dict[first_comp][second_it]["lower_bound"])
+                    self.it_dict[first_comp][second_it]["upper_bound"]
+                    - self.it_dict[first_comp][second_it]["lower_bound"]
+                )
                 # print("\n second loop extent is ", loop_extent_2)
                 # print("second factor is", second_fact)
                 if loop_extent_2 == second_fact:
@@ -314,11 +374,13 @@ class Action:
                 elif loop_extent_2 < second_fact:
                     print("exceeeption, loop extent 2 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
+
                     raise LoopExtentException
 
                 loop_extent_3 = abs(
-                    self.it_dict[first_comp][third_it]["upper_bound"] -
-                    self.it_dict[first_comp][third_it]["lower_bound"])
+                    self.it_dict[first_comp][third_it]["upper_bound"]
+                    - self.it_dict[first_comp][third_it]["lower_bound"]
+                )
                 # print("\n third loop extent is ", loop_extent_3)
                 # print("third factor is", third_fact)
                 if loop_extent_3 == third_fact:
@@ -327,6 +389,7 @@ class Action:
                 elif loop_extent_3 < third_fact:
                     print("exceeeption, loop extent 3 smaller than factor")
                     from tiramisu_programs.schedule import LoopExtentException
+
                     raise LoopExtentException
 
                 return {
@@ -347,10 +410,7 @@ class Action:
             for comp in self.it_dict:
                 it = len(self.it_dict[comp].keys()) - 1
                 unrolling_fact = 4
-                params[comp] = {
-                    "dim_index": it,
-                    "unrolling_factor": unrolling_fact
-                }
+                params[comp] = {"dim_index": it, "unrolling_factor": unrolling_fact}
 
             return params
 
@@ -359,10 +419,7 @@ class Action:
             for comp in self.it_dict:
                 it = len(self.it_dict[comp].keys()) - 1
                 unrolling_fact = 8
-                params[comp] = {
-                    "dim_index": it,
-                    "unrolling_factor": unrolling_fact
-                }
+                params[comp] = {"dim_index": it, "unrolling_factor": unrolling_fact}
 
             return params
 
@@ -371,10 +428,7 @@ class Action:
             for comp in self.it_dict:
                 it = len(self.it_dict[comp].keys()) - 1
                 unrolling_fact = 16
-                params[comp] = {
-                    "dim_index": it,
-                    "unrolling_factor": unrolling_fact
-                }
+                params[comp] = {"dim_index": it, "unrolling_factor": unrolling_fact}
 
             return params
 
@@ -383,10 +437,7 @@ class Action:
             first_it = 0
             second_it = 1
 
-            skew_params = {
-                "first_dim_index": first_it,
-                "second_dim_index": second_it
-            }
+            skew_params = {"first_dim_index": first_it, "second_dim_index": second_it}
 
             # Get schedule id
             tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
@@ -394,19 +445,21 @@ class Action:
             # Load saved results if they exist
             if prog.config.environment.use_dataset:
                 # Check if schedule is saved
-                if tmp_sched_str in prog.function_dict[
-                        'schedules_solver_results_dict']:
+                if tmp_sched_str in prog.function_dict["schedules_solver_results_dict"]:
                     print(
-                        f"Loading solver results from saved schedule: {tmp_sched_str}")
-                    solver_res = prog.function_dict[
-                        'schedules_solver_results_dict'][tmp_sched_str]
+                        f"Loading solver results from saved schedule: {tmp_sched_str}"
+                    )
+                    solver_res = prog.function_dict["schedules_solver_results_dict"][
+                        tmp_sched_str
+                    ]
 
             if solver_res is None:
                 solver_res = prog.call_solver(comp, skew_params)
 
                 # Save the new solver results
-                prog.function_dict[
-                    'schedules_solver_results_dict'][tmp_sched_str] = solver_res
+                prog.function_dict["schedules_solver_results_dict"][
+                    tmp_sched_str
+                ] = solver_res
 
             if solver_res == None or solver_res == "-1":
                 return {
@@ -429,29 +482,29 @@ class Action:
             first_it = 1
             second_it = 2
 
-            skew_params = {
-                "first_dim_index": first_it,
-                "second_dim_index": second_it
-            }
+            skew_params = {"first_dim_index": first_it, "second_dim_index": second_it}
 
             # Load saved results if they exist
             if prog.config.environment.use_dataset:
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(schedule)
 
                 # Check if schedule is saved
-                if tmp_sched_str in prog.function_dict[
-                        'schedules_solver_results_dict']:
+                if tmp_sched_str in prog.function_dict["schedules_solver_results_dict"]:
                     print(
-                        f"Loading solver results from saved schedule: {tmp_sched_str}")
-                    solver_res = prog.function_dict[
-                        'schedules_solver_results_dict'][tmp_sched_str]
+                        f"Loading solver results from saved schedule: {tmp_sched_str}"
+                    )
+                    solver_res = prog.function_dict["schedules_solver_results_dict"][
+                        tmp_sched_str
+                    ]
 
             if solver_res is None:
                 solver_res = prog.call_solver(comp, skew_params)
 
                 # Save the new solver results
                 if prog.config.environment.use_dataset:
-                    prog.function_dict['schedules_solver_results_dict'][tmp_sched_str] = solver_res
+                    prog.function_dict["schedules_solver_results_dict"][
+                        tmp_sched_str
+                    ] = solver_res
 
             if solver_res == None or solver_res == "-1":
                 return {
@@ -508,22 +561,14 @@ class Action:
                 fuse_comps = list(self.it_dict.keys())
             if self.id == 57:  # FUSION1
                 level = 1
-                fuse_comps = [
-                    comp for comp in self.it_dict if 1 in self.it_dict[comp]
-                ]
+                fuse_comps = [comp for comp in self.it_dict if 1 in self.it_dict[comp]]
             if self.id == 58:  # FUSION2
                 level = 2
-                fuse_comps = [
-                    comp for comp in self.it_dict if 2 in self.it_dict[comp]
-                ]
+                fuse_comps = [comp for comp in self.it_dict if 2 in self.it_dict[comp]]
             if self.id == 59:  # FUSION3
                 level = 3
-                fuse_comps = [
-                    comp for comp in self.it_dict if 3 in self.it_dict[comp]
-                ]
+                fuse_comps = [comp for comp in self.it_dict if 3 in self.it_dict[comp]]
             if self.id == 60:  # FUSION4
                 level = 4
-                fuse_comps = [
-                    comp for comp in self.it_dict if 4 in self.it_dict[comp]
-                ]
+                fuse_comps = [comp for comp in self.it_dict if 4 in self.it_dict[comp]]
             return {"dim_index": level, "fuse_comps": fuse_comps}
