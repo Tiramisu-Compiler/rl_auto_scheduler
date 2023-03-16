@@ -34,6 +34,8 @@ class DatasetAgent:
         self.function_names = []
         self.nbr_updates = 0
         self.dataset_name = dataset_path.split("/")[-1].split(".")[0]
+        self.current_function = 0
+        self.dataset_size = 0
 
         if use_dataset:
             print(f"reading dataset from json at:{dataset_path}")
@@ -61,8 +63,22 @@ class DatasetAgent:
         if self.shuffle:
             random.shuffle(self.function_names)
 
-    def get_next_function(self):
-        function_name = np.random.choice(self.function_names)
+        self.dataset_size = len(self.function_names)
+
+    def get_next_function(self, random=False):
+        if random:
+            function_name = np.random.choice(self.function_names)
+        else:
+            function_name = self.function_names[
+                self.current_function % self.dataset_size
+            ]
+            self.current_function += 1
+
+        print(
+            f"Selected function with index: {self.current_function}, name: {function_name}"
+        )
+        print(self.function_names[:10])
+
         if self.use_dataset:
             return function_name, self.dataset[function_name]
         else:
