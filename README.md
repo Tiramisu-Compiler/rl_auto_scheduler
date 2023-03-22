@@ -1,16 +1,15 @@
 # RL for performance optimization
-
-The following sections represent the steps in order to successfully train the RL agent.
+The sections that follow outline the steps required to successfully train the RL agent.
 
 
 ## Generate the dataset
-To generate the dataset, you use the script `tiramisu_maker.py` from the submodule `RandomTiramisu` at `utils`. Here are the options to pass the script and their default values:
+To create the dataset, run the script `tiramisu maker.py` from the submodule `RandomTiramisu` located under the `utils` directory. Below are the script options and their default values:
 ```
   -h, --help            show this help message and exit
   --output-path OUTPUT_PATH [Default = "Dataset_multi"]
                         The location where to save the dataset.
   --first-seed FIRST_SEED  [Default = 105100]
-                        The first seed to start generating the programs from. Every seed produces a program,and two different seeds produce two different programs.
+                        The first seed from which the programs will be generated. Every seed yields a program, and two separate seeds make two different programs.
   --nb-programs NB_PROGRAMS  [Default = 20000]
                         The number of programs to generate.
 
@@ -18,23 +17,23 @@ To generate the dataset, you use the script `tiramisu_maker.py` from the submodu
 
 
 ## Configuring the repository
-To configure the repository first copy the template files into the same location without the `.template` extension, like follows:
+To set up the repository, first copy the template files to the same place but without the `.template` extension, as seen below:
 ```bash  
 cp config.yaml.template config.yaml
 cp scripts/env.sh.template scripts/env.sh
 cp scripts/run_rllib_slurm.sh.template scripts/run_rllib_slurm.sh
 ```
-Then, change the fields to their approriate value based on the environment the code is running on.
+Then, depending on the context in which the code is running, modify the fields to the appropriate value.
 
 ### RL system configuration
 
-All the configurations related to the RL system can be found in the file `config.yml`. The most important fields in this file, that the code will not run without setting are:
- * `ray.base_path`:  The absolute path to where the code is located on disk. 
+The file `config.yml` contains all configurations for the RL system. The most critical fields in this file, without which the code would not run, are:  
+* `ray.base_path`:  The absolute path to where the code is located on disk. 
 * `environment.dataset_path`: The path to the training dataset. 
 * `tiramisu.tiramisu_path`: The absolute path to the complete tiramisu installation, with the autoscheduler also installed.
 * `tiramisu.model_checkpoint`: The path to the surrogate model used for prediction. A model chackpoint is provided under `weights/surrogate_model`.
 
-The other flags can also be set for a desired purpose. For instance, you can change the policy model properties. You can also control whether or not you want to keep the dataset files after using them for an episode. 
+The other flags can also be set for a specific purpose. You can, for example, modify the policy model's characteristics. You may also choose whether or not to preserve the dataset files after utilizing them for an episode. 
 
 ### SLURM configuration
 
@@ -64,7 +63,7 @@ mkdir outputs
 ```
 
 ### Compilation commands
-Depending on the c++ installation and the machine, the compilation command may differ. To change the compilation command, change the variables `compile_tiramisu_cmd` and `compile_wrapper_cmd` in the file `utils/rl_autoscheduler_config.py`. Examples of compilation commands:
+The compilation command may change depending on the c++ installation and the machine. To alter the compilation command, modify the variables `compile_tiramisu_cmd` and `compile_wrapper_cmd` in the file `utils/rl_autoscheduler_config.py`. Examples of compilation commands:
 ```bash
 
 # Command for compiling the Tiramisu autoschedule code when -lz is supported

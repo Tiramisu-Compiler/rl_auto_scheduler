@@ -20,7 +20,7 @@ class TiramisuScheduleEnvironment(gym.Env):
     '''
     The reinforcement learning environment used by the GYM. 
     '''
-    SAVING_FREQUENCY = 500
+    SAVING_FREQUENCY = 50000
 
     def __init__(self, config, shared_variable_actor):
         print("Configuring the environment variables")
@@ -232,11 +232,13 @@ class TiramisuScheduleEnvironment(gym.Env):
                 self.schedule_controller.get_legality_data()))
             if "schedules_list" in self.progs_dict[self.prog.name]:
                 self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["timestamp"] = self.total_steps
                 self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
                 self.progs_dict[self.prog.name]["schedules_list"].append(
                     self.schedule_object.schedule_dict)
             else:
                 self.schedule_object.schedule_dict["speedup"] = speedup
+                self.schedule_object.schedule_dict["timestamp"] = self.total_steps
                 self.schedule_object.schedule_dict["schedule_str"] = self.schedule_object.schedule_str
                 self.progs_dict[self.prog.name]["schedules_list"] = [
                     self.schedule_object.schedule_dict]

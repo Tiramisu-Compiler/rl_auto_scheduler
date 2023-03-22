@@ -53,6 +53,7 @@ class Schedule:
                 max_depth=self.MAX_DEPTH - 1)
             tree_tensors = (self.templates["prog_tree"],
                             computations_tensor, loops_tensor)
+            # self.embedding_model.eval()
             with torch.no_grad():
                 prog_embedding = self.embedding_model(
                     tree_tensors,

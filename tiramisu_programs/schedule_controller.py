@@ -54,7 +54,8 @@ class ScheduleController:
         self.steps += 1
         first_comp = self.schedule_object.comps[0]
         saved_legality = self.get_legality(action=action)
-
+        # self.schedule_object.repr["action_mask"][action.id] = 0
+        
         if not action.id in range(44, 46):  # If the action is skewing
             action_params = action.parameter()
         else:
@@ -563,6 +564,7 @@ class ScheduleController:
                 max_depth=self.schedule_object.MAX_DEPTH - 1)
             tree_tensors = (self.schedule_object.templates["prog_tree"],
                             computations_tensor, loops_tensor)
+            # self.model.eval()
             with torch.no_grad():
                 predicted_speedup = self.model(
                     tree_tensors,

@@ -12,6 +12,7 @@ from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models.torch.misc import SlimFC, normc_initializer
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.framework import try_import_torch
+from rl_interface.action import Action
 from tiramisu_programs.surrogate_model_utils.json_to_tensor import get_tree_footprint
 
 train_device_name = 'cpu'  # choose training/storing device, either 'cuda:X' or 'cpu'
@@ -160,7 +161,6 @@ class TiramisuModelMult(TorchModelV2, nn.Module):
         self._features=self._prediction_layers(prog_embedding.view(prog_embedding.shape[0],-1))
         logits = self._logits(self._features)
         logits=logits-BIG_NUMBER*(1-input_dict["obs_flat"]["action_mask"])
-
 
         self._value = self._value_branch(self._features)
 
