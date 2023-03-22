@@ -1,4 +1,3 @@
-
 import sys
 import time
 import traceback
@@ -8,21 +7,28 @@ from rl_interface.action import Action
 
 from tiramisu_programs.optimization import OptimizationCommand
 from tiramisu_programs.schedule import Schedule
-from tiramisu_programs.schedule_utils import ScheduleUtils, IsInterchangedException, IsParallelizedException, IsReversedException, IsSkewedException, IsTiledException, IsUnrolledException, SkewParamsException, SkewUnrollException, LCException
-from tiramisu_programs.surrogate_model_utils.json_to_tensor import \
-    get_schedule_representation
-from tiramisu_programs.surrogate_model_utils.modeling import \
-    Model_Recursive_LSTM_v2
+from tiramisu_programs.schedule_utils import (
+    ScheduleUtils,
+    IsInterchangedException,
+    IsParallelizedException,
+    IsReversedException,
+    IsSkewedException,
+    IsTiledException,
+    IsUnrolledException,
+    SkewParamsException,
+    SkewUnrollException,
+    LCException,
+)
+from tiramisu_programs.surrogate_model_utils.json_to_tensor import (
+    get_schedule_representation,
+)
+from tiramisu_programs.surrogate_model_utils.modeling import Model_Recursive_LSTM_v2
 
 global_dioph_sols_dict = dict()
 
 
 class ScheduleController:
-
-    def __init__(self,
-                 schedule: Schedule = None,
-                 nb_executions=5,
-                 config=None):
+    def __init__(self, schedule: Schedule = None, nb_executions=5, config=None):
         self.depth = 0
         self.schedule = []
         self.schedule_object = schedule
@@ -39,7 +45,8 @@ class ScheduleController:
         self.schedule_list_model = []
         self.model = Model_Recursive_LSTM_v2()
         self.model.load_state_dict(
-            torch.load(config.tiramisu.model_checkpoint, map_location="cpu"))
+            torch.load(config.tiramisu.model_checkpoint, map_location="cpu")
+        )
         self.model.eval()
 
     def apply_action(self, action):
@@ -57,41 +64,59 @@ class ScheduleController:
         else:
             comp = list(self.schedule_object.it_dict.keys())[0]
             action_params = action.parameter(
-                comp, self.schedule_object.prog, self.schedule)
+                comp, self.schedule_object.prog, self.schedule
+            )
 
         if action.id in range(28):  # Interchange
             if not self.schedule_object.is_interchaged:
                 params = [
                     int(action_params["first_dim_index"]),
-                    int(action_params["second_dim_index"])
+                    int(action_params["second_dim_index"]),
                 ]
 
-                optim1 = OptimizationCommand("Interchange", params,
-                                             self.schedule_object.comps)
+                optim1 = OptimizationCommand(
+                    "Interchange", params, self.schedule_object.comps
+                )
                 self.schedule.append(optim1)
 
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']:
-                    print(
-                        "Loading legality check from saved schedule")
+                if (
+                    self.config.environment.use_dataset
+                    and tmp_sched_str
+                    in self.schedule_object.prog.function_dict[
+                        "schedules_legality_dict"
+                    ]
+                ):
+                    print("Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str]
+                        "schedules_legality_dict"
+                    ][tmp_sched_str]
 
                 if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
 
                 # Save legality check
                 if saved_legality is None:
-                    self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+                    self.schedule_object.prog.function_dict["schedules_legality_dict"][
+                        tmp_sched_str
+                    ] = lc_check
 
                 if lc_check == -1:
                     print("X: The action produced an error.")
@@ -117,7 +142,7 @@ class ScheduleController:
             if not self.schedule_object.is_tiled:
                 params = [
                     int(action_params["first_dim_index"]),
-                    int(action_params["second_dim_index"])
+                    int(action_params["second_dim_index"]),
                 ]
                 params.append(action_params["first_factor"])
                 params.append(action_params["second_factor"])
@@ -126,8 +151,9 @@ class ScheduleController:
                     params.insert(2, action_params["third_dim_index"])
                     params.append(action_params["third_factor"])
 
-                optim2 = OptimizationCommand("Tiling", params,
-                                             self.schedule_object.comps)
+                optim2 = OptimizationCommand(
+                    "Tiling", params, self.schedule_object.comps
+                )
 
                 self.schedule.append(optim2)
 
@@ -135,24 +161,40 @@ class ScheduleController:
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']:
-                    print(
-                        "Loading legality check from saved schedule")
+                if (
+                    self.config.environment.use_dataset
+                    and tmp_sched_str
+                    in self.schedule_object.prog.function_dict[
+                        "schedules_legality_dict"
+                    ]
+                ):
+                    print("Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str]
+                        "schedules_legality_dict"
+                    ][tmp_sched_str]
 
                 if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
 
                 # Save legality check
                 if saved_legality is None:
-                    self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+                    self.schedule_object.prog.function_dict["schedules_legality_dict"][
+                        tmp_sched_str
+                    ] = lc_check
 
                 if lc_check == -1:
                     print("X: This action produces an error")
@@ -173,8 +215,11 @@ class ScheduleController:
                 done = True
                 exit = True
                 self.schedule_object.sched_str = ScheduleUtils.sched_str(
-                    self.schedule_object.sched_str, action.id,
-                    action_params, self.schedule_object.comp_indic_dict)
+                    self.schedule_object.sched_str,
+                    action.id,
+                    action_params,
+                    self.schedule_object.comp_indic_dict,
+                )
             else:
                 print("X: Tiling already applied exception")
                 raise IsTiledException
@@ -184,46 +229,63 @@ class ScheduleController:
             if not self.schedule_object.is_unrolled:
                 self.non_skewed_comps = []
                 for comp in self.schedule_object.comps:
-                    it_skewed = "L" + self.schedule_object.it_dict[comp][
-                        action_params[comp]
-                        ["dim_index"]]["iterator"] + "Skewed"
-                    if self.schedule_object.repr["representation"][
-                            self.schedule_object.comp_indic_dict[comp]][
-                                self.schedule_object.placeholders[comp]
-                                [it_skewed]] != 1:
+                    it_skewed = (
+                        "L"
+                        + self.schedule_object.it_dict[comp][
+                            action_params[comp]["dim_index"]
+                        ]["iterator"]
+                        + "Skewed"
+                    )
+                    if (
+                        self.schedule_object.repr["representation"][
+                            self.schedule_object.comp_indic_dict[comp]
+                        ][self.schedule_object.placeholders[comp][it_skewed]]
+                        != 1
+                    ):
                         self.non_skewed_comps.append(comp)
                 for comp in self.non_skewed_comps:
                     params[comp] = [
                         int(action_params[comp]["dim_index"]),
-                        int(action_params[comp]["unrolling_factor"])
+                        int(action_params[comp]["unrolling_factor"]),
                     ]
                 if self.non_skewed_comps != []:
-                    optim3 = OptimizationCommand("Unrolling", params,
-                                                 self.non_skewed_comps)
+                    optim3 = OptimizationCommand(
+                        "Unrolling", params, self.non_skewed_comps
+                    )
                     self.schedule.append(optim3)
 
-                    tmp_sched_str = ScheduleUtils.optimlist_to_str(
-                        self.schedule)
+                    tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                     print(tmp_sched_str)
 
                     # check if we can find the schedule in the dataset load the legality check
-                    if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                            'schedules_legality_dict']:
-                        print(
-                            "Loading legality check from saved schedule")
+                    if (
+                        self.config.environment.use_dataset
+                        and tmp_sched_str
+                        in self.schedule_object.prog.function_dict[
+                            "schedules_legality_dict"
+                        ]
+                    ):
+                        print("Loading legality check from saved schedule")
                         saved_legality = self.schedule_object.prog.function_dict[
-                            'schedules_legality_dict'][tmp_sched_str]
+                            "schedules_legality_dict"
+                        ][tmp_sched_str]
 
                     start_time = time.time()
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                     l_time = time.time() - start_time
                     self.lc_total_time += l_time
 
                     # Save legality check
                     if saved_legality is None:
                         self.schedule_object.prog.function_dict[
-                            'schedules_legality_dict'][tmp_sched_str] = lc_check
+                            "schedules_legality_dict"
+                        ][tmp_sched_str] = lc_check
 
                     if lc_check == -1:
                         print("X: This action produces an error")
@@ -243,7 +305,8 @@ class ScheduleController:
                 else:
                     lc_check = 0
                     info[
-                        'error'] = "trying to apply unrolling after skewing in one of the computations"
+                        "error"
+                    ] = "trying to apply unrolling after skewing in one of the computations"
 
             else:
                 print("X: Unrolling is already applied")
@@ -253,63 +316,82 @@ class ScheduleController:
 
             if not self.schedule_object.is_skewed:
 
-                if (action_params["first_factor"] != None
-                        and action_params["second_factor"] != None):
+                if (
+                    action_params["first_factor"] != None
+                    and action_params["second_factor"] != None
+                ):
                     non_inner_comps = []
                     for comp in self.schedule_object.comps:
-                        if (action_params["first_dim_index"] !=
-                                len(self.schedule_object.it_dict[comp]) - 1
-                                and action_params["second_dim_index"] !=
-                                len(self.schedule_object.it_dict[comp]) - 1
-                            ) or (
-                                (action_params["first_dim_index"]
-                                 == len(self.schedule_object.it_dict[comp]) - 1
-                                 or action_params["second_dim_index"]
-                                 == len(self.schedule_object.it_dict[comp]) - 1
-                                 and not self.schedule_object.is_unrolled)):
+                        if (
+                            action_params["first_dim_index"]
+                            != len(self.schedule_object.it_dict[comp]) - 1
+                            and action_params["second_dim_index"]
+                            != len(self.schedule_object.it_dict[comp]) - 1
+                        ) or (
+                            (
+                                action_params["first_dim_index"]
+                                == len(self.schedule_object.it_dict[comp]) - 1
+                                or action_params["second_dim_index"]
+                                == len(self.schedule_object.it_dict[comp]) - 1
+                                and not self.schedule_object.is_unrolled
+                            )
+                        ):
                             non_inner_comps.append(comp)
 
                     if non_inner_comps != []:
 
                         params = [
                             int(action_params["first_dim_index"]),
-                            int(action_params["second_dim_index"])
+                            int(action_params["second_dim_index"]),
                         ]
                         params.append(action_params["first_factor"])
                         params.append(action_params["second_factor"])
 
-                        optim4 = OptimizationCommand("Skewing", params,
-                                                     non_inner_comps)
+                        optim4 = OptimizationCommand("Skewing", params, non_inner_comps)
 
                         self.schedule.append(optim4)
 
-                        tmp_sched_str = ScheduleUtils.optimlist_to_str(
-                            self.schedule)
+                        tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                         print(tmp_sched_str)
 
                         # check if we can find the schedule in the dataset load the legality check
-                        if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                                'schedules_legality_dict']:
-                            print(
-                                "Loading legality check from saved schedule")
+                        if (
+                            self.config.environment.use_dataset
+                            and tmp_sched_str
+                            in self.schedule_object.prog.function_dict[
+                                "schedules_legality_dict"
+                            ]
+                        ):
+                            print("Loading legality check from saved schedule")
                             saved_legality = self.schedule_object.prog.function_dict[
-                                'schedules_legality_dict'][tmp_sched_str]
+                                "schedules_legality_dict"
+                            ][tmp_sched_str]
 
                         start_time = time.time()
                         if self.schedule_object.is_unrolled:
-                            lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, self.non_skewed_comps,
-                                first_comp) if saved_legality is None else saved_legality
+                            lc_check = (
+                                self.schedule_object.prog.check_legality_of_schedule(
+                                    self.schedule, self.non_skewed_comps, first_comp
+                                )
+                                if saved_legality is None
+                                else saved_legality
+                            )
                         else:
-                            lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                                self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                            lc_check = (
+                                self.schedule_object.prog.check_legality_of_schedule(
+                                    self.schedule, first_comp=first_comp
+                                )
+                                if saved_legality is None
+                                else saved_legality
+                            )
                         l_time = time.time() - start_time
                         self.lc_total_time += l_time
 
                         # Save legality check
                         if saved_legality is None:
                             self.schedule_object.prog.function_dict[
-                                'schedules_legality_dict'][tmp_sched_str] = lc_check
+                                "schedules_legality_dict"
+                            ][tmp_sched_str] = lc_check
 
                         if lc_check == -1:
                             print("X: This action produces an error")
@@ -341,33 +423,50 @@ class ScheduleController:
             if not self.schedule_object.is_parallelized:
                 params = [int(action_params["dim_index"])]
 
-                optim5 = OptimizationCommand("Parallelization", params,
-                                             self.schedule_object.comps)
+                optim5 = OptimizationCommand(
+                    "Parallelization", params, self.schedule_object.comps
+                )
                 self.schedule.append(optim5)
 
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']:
-                    print(
-                        "Loading legality check from saved schedule")
+                if (
+                    self.config.environment.use_dataset
+                    and tmp_sched_str
+                    in self.schedule_object.prog.function_dict[
+                        "schedules_legality_dict"
+                    ]
+                ):
+                    print("Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str]
+                        "schedules_legality_dict"
+                    ][tmp_sched_str]
 
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
 
                 # Save legality check
                 if saved_legality is None:
-                    self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+                    self.schedule_object.prog.function_dict["schedules_legality_dict"][
+                        tmp_sched_str
+                    ] = lc_check
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
@@ -394,35 +493,52 @@ class ScheduleController:
 
             if not self.schedule_object.is_reversed:
                 params = [int(action_params["dim_index"])]
-                optim6 = OptimizationCommand("Reversal", params,
-                                             self.schedule_object.comps)
+                optim6 = OptimizationCommand(
+                    "Reversal", params, self.schedule_object.comps
+                )
                 self.schedule.append(optim6)
 
                 tmp_sched_str = ScheduleUtils.optimlist_to_str(self.schedule)
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']:
-                    print(
-                        "Loading legality check from saved schedule")
+                if (
+                    self.config.environment.use_dataset
+                    and tmp_sched_str
+                    in self.schedule_object.prog.function_dict[
+                        "schedules_legality_dict"
+                    ]
+                ):
+                    print("Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str]
+                        "schedules_legality_dict"
+                    ][tmp_sched_str]
 
                 start_time = time.time()
                 if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
 
                 # Save legality check
                 if saved_legality is None:
-                    self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+                    self.schedule_object.prog.function_dict["schedules_legality_dict"][
+                        tmp_sched_str
+                    ] = lc_check
 
                 if lc_check == -1:
                     print("X: This action produces am error")
@@ -444,14 +560,15 @@ class ScheduleController:
                 raise IsReversedException
 
         if action.id in range(56, 61):  # Fusion
-            params = [
-                int(action_params["dim_index"]), action_params["fuse_comps"]
-            ]
-            if action_params["fuse_comps"] != [] and len(
-                    action_params["fuse_comps"]) != 1:
+            params = [int(action_params["dim_index"]), action_params["fuse_comps"]]
+            if (
+                action_params["fuse_comps"] != []
+                and len(action_params["fuse_comps"]) != 1
+            ):
 
-                optim7 = OptimizationCommand("Fusion", params,
-                                             action_params["fuse_comps"])
+                optim7 = OptimizationCommand(
+                    "Fusion", params, action_params["fuse_comps"]
+                )
 
                 self.schedule.append(optim7)
 
@@ -459,29 +576,45 @@ class ScheduleController:
                 print(tmp_sched_str)
 
                 # check if we can find the schedule in the dataset load the legality check
-                if self.config.environment.use_dataset and tmp_sched_str in self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict']:
-                    print(
-                        "Loading legality check from saved schedule")
+                if (
+                    self.config.environment.use_dataset
+                    and tmp_sched_str
+                    in self.schedule_object.prog.function_dict[
+                        "schedules_legality_dict"
+                    ]
+                ):
+                    print("Loading legality check from saved schedule")
                     saved_legality = self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str]
+                        "schedules_legality_dict"
+                    ][tmp_sched_str]
 
                 start_time = time.time()
 
                 if self.schedule_object.is_unrolled:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, self.non_skewed_comps, first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, self.non_skewed_comps, first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
                 else:
-                    lc_check = self.schedule_object.prog.check_legality_of_schedule(
-                        self.schedule, first_comp=first_comp) if saved_legality is None else saved_legality
+                    lc_check = (
+                        self.schedule_object.prog.check_legality_of_schedule(
+                            self.schedule, first_comp=first_comp
+                        )
+                        if saved_legality is None
+                        else saved_legality
+                    )
 
                 l_time = time.time() - start_time
                 self.lc_total_time += l_time
 
                 # Save legality check
                 if saved_legality is None:
-                    self.schedule_object.prog.function_dict[
-                        'schedules_legality_dict'][tmp_sched_str] = lc_check
+                    self.schedule_object.prog.function_dict["schedules_legality_dict"][
+                        tmp_sched_str
+                    ] = lc_check
 
                 if lc_check == -1:
                     print("X: This action produces an error")
@@ -506,7 +639,7 @@ class ScheduleController:
             done = True
             exit = True
 
-        if (not exit and lc_check != 0):
+        if not exit and lc_check != 0:
             # Changed the sched_str to be updated after all successfull application of actions
             self.schedule_object.sched_str = tmp_sched_str
             if not (action.id in range(41, 44) and self.schedule_object.is_skewed):
@@ -515,9 +648,12 @@ class ScheduleController:
                 #     self.schedule_object.comp_indic_dict)
                 if not action.id in range(41, 44):
                     self.schedule_object.it_dict = ScheduleUtils.update_iterators(
-                        action.id, self.schedule_object.it_dict, action_params,
+                        action.id,
+                        self.schedule_object.it_dict,
+                        action_params,
                         self.schedule_object.added_iterators,
-                        self.schedule_object.comp_indic_dict)
+                        self.schedule_object.comp_indic_dict,
+                    )
 
             self.depth += 1
             return self.schedule_object.repr, 1.0, done, info
@@ -537,15 +673,15 @@ class ScheduleController:
         exec_time = self.get_exec_time()
         speedup = 1.0
         if exec_time != 0:
-            speedup = (self.schedule_object.prog.initial_execution_time /
-                       exec_time)
+            speedup = self.schedule_object.prog.initial_execution_time / exec_time
         return speedup
 
     def test_additional_actions(self, training=True):
         info = dict()
         if training:
             print(
-                "This operation alters the training and, therefore, it won't be executed")
+                "This operation alters the training and, therefore, it won't be executed"
+            )
             try:
                 exec_time = 0
                 exec_time = self.get_exec_time()
@@ -563,30 +699,43 @@ class ScheduleController:
                     unroll_factor = unroll_optimisation.params_list[comp][1]
                     new_unrolling_params[comp] = {
                         "dim_index": len(self.schedule_object.it_dict[comp]) - 1,
-                        "unrolling_factor": unroll_factor
+                        "unrolling_factor": unroll_factor,
                     }
                     new_unrolling_optim_params[comp] = [
-                        len(self.schedule_object.it_dict[comp]
-                            ) - 1, unroll_factor
+                        len(self.schedule_object.it_dict[comp]) - 1,
+                        unroll_factor,
                     ]
 
                 new_unrolling_optim = OptimizationCommand(
-                    "Unrolling", new_unrolling_optim_params, self.non_skewed_comps)
+                    "Unrolling", new_unrolling_optim_params, self.non_skewed_comps
+                )
                 new_unrolling_str = ""
                 unrolling_str = ""
 
                 for comp in self.non_skewed_comps:
                     unroll_factor = unroll_optimisation.params_list[comp][1]
-                    new_unrolling_str += "U(L" + str(
-                        len(self.schedule_object.it_dict[comp]) -
-                        1) + "," + str(unroll_factor) + ",C" + str(
-                            self.schedule_object.comp_indic_dict[comp]) + ")"
-                    unrolling_str += "U(L" + str(
-                        unroll_optimisation.params_list[comp][0]) + "," + str(
-                            unroll_factor) + ",C" + str(
-                                self.schedule_object.comp_indic_dict[comp]) + ")"
-                self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
-                    unrolling_str, "") + new_unrolling_str
+                    new_unrolling_str += (
+                        "U(L"
+                        + str(len(self.schedule_object.it_dict[comp]) - 1)
+                        + ","
+                        + str(unroll_factor)
+                        + ",C"
+                        + str(self.schedule_object.comp_indic_dict[comp])
+                        + ")"
+                    )
+                    unrolling_str += (
+                        "U(L"
+                        + str(unroll_optimisation.params_list[comp][0])
+                        + ","
+                        + str(unroll_factor)
+                        + ",C"
+                        + str(self.schedule_object.comp_indic_dict[comp])
+                        + ")"
+                    )
+                self.schedule_object.sched_str = (
+                    self.schedule_object.sched_str.replace(unrolling_str, "")
+                    + new_unrolling_str
+                )
                 self.schedule.remove(unroll_optimisation)
                 self.schedule.append(new_unrolling_optim)
                 self.schedule_object.apply_unrolling(new_unrolling_params)
@@ -599,82 +748,97 @@ class ScheduleController:
 
                 if not self.schedule_object.is_parallelized:
                     print("Testing if parallelization improves the performance...")
-                    action = Action(Action.PARALLELIZATION0,
-                                    self.schedule_object.it_dict,
-                                    self.schedule_object.common_it)
+                    action = Action(
+                        Action.PARALLELIZATION0,
+                        self.schedule_object.it_dict,
+                        self.schedule_object.common_it,
+                    )
                     action_params = action.parameter()
 
                     params = [int(action_params["dim_index"])]
 
-                    optim5 = OptimizationCommand("Parallelization", params,
-                                                 self.schedule_object.comps)
+                    optim5 = OptimizationCommand(
+                        "Parallelization", params, self.schedule_object.comps
+                    )
                     first_comp = list(self.schedule_object.it_dict.keys())[0]
                     iterator = self.schedule_object.it_dict[first_comp][
-                        action_params["dim_index"]]['iterator']
+                        action_params["dim_index"]
+                    ]["iterator"]
                     self.schedule_object.schedule_dict[first_comp][
-                        "parallelized_dim"] = iterator
+                        "parallelized_dim"
+                    ] = iterator
 
                     self.schedule.append(optim5)
 
                     try:
 
                         self.schedule_object.sched_str = ScheduleUtils.sched_str(
-                            self.schedule_object.sched_str, action.id,
-                            action_params, self.schedule_object.comp_indic_dict)
+                            self.schedule_object.sched_str,
+                            action.id,
+                            action_params,
+                            self.schedule_object.comp_indic_dict,
+                        )
                         parallelized_exec_time = self.get_exec_time()
-                        parallelization_str = 'P(L' + str(
-                            action_params["dim_index"]) + ')'
+                        parallelization_str = (
+                            "P(L" + str(action_params["dim_index"]) + ")"
+                        )
                     except:
                         print("X: Illegal action")
                         self.schedule.remove(optim5)
-                        self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
-                            parallelization_str, "")
+                        self.schedule_object.sched_str = (
+                            self.schedule_object.sched_str.replace(
+                                parallelization_str, ""
+                            )
+                        )
 
-                    if parallelized_exec_time < exec_time and parallelized_exec_time != 0:
+                    if (
+                        parallelized_exec_time < exec_time
+                        and parallelized_exec_time != 0
+                    ):
                         exec_time = parallelized_exec_time
 
-                        self.schedule_object.apply_parallelization(
-                            action_params)
+                        self.schedule_object.apply_parallelization(action_params)
                         print("O: Parallelization improves the performance.")
 
                     else:
                         self.schedule.remove(optim5)
 
-                        self.schedule_object.sched_str = self.schedule_object.sched_str.replace(
-                            parallelization_str, "")
+                        self.schedule_object.sched_str = (
+                            self.schedule_object.sched_str.replace(
+                                parallelization_str, ""
+                            )
+                        )
 
                         self.schedule_object.schedule_dict[first_comp][
-                            "parallelized_dim"] = None
+                            "parallelized_dim"
+                        ] = None
 
                         print("X: Parallelization improves the performance")
 
             except:
 
                 print("X: Error while measuring performance")
-                print(f"failed to save schedule",
-                      traceback.format_exc(),
-                      flush=True)
+                print(f"failed to save schedule", traceback.format_exc(), flush=True)
                 info = {"Internal execution error": True}
                 return self.schedule_object.repr, self.speedup, True, info
 
         if exec_time != 0:
-            print("\nThe final schedule is ",
-                  self.schedule_object.sched_str)
-            self.speedup = (
-                self.schedule_object.prog.initial_execution_time / exec_time)
+            print("\nThe final schedule is ", self.schedule_object.sched_str)
+            self.speedup = self.schedule_object.prog.initial_execution_time / exec_time
             print("The speedup is: ", self.speedup)
             start_time = time.time()
         info["depth"] = self.depth
         return self.schedule_object.repr, self.speedup, True, info
 
-    def get_exec_time_by_model(self, optims_list, cmd_type, nb_executions,
-                               initial_exec_time):
-        self.schedule_list_model.append({
-            "sched_str":
-            self.schedule_object.sched_str,
-            "schedule_dict":
-            self.schedule_object.schedule_dict
-        })
+    def get_exec_time_by_model(
+        self, optims_list, cmd_type, nb_executions, initial_exec_time
+    ):
+        self.schedule_list_model.append(
+            {
+                "sched_str": self.schedule_object.sched_str,
+                "schedule_dict": self.schedule_object.schedule_dict,
+            }
+        )
         stat = dict()
         try:
             computations_tensor, loops_tensor = get_schedule_representation(
@@ -682,24 +846,28 @@ class ScheduleController:
                 self.schedule_object.schedule_dict,
                 self.schedule_object.templates["comps_repr_templates_list"],
                 self.schedule_object.templates["loops_repr_templates_list"],
-                self.schedule_object.
-                templates["comps_placeholders_indices_dict"],
-                self.schedule_object.
-                templates["loops_placeholders_indices_dict"],
-                max_depth=self.schedule_object.MAX_DEPTH - 1)
-            tree_tensors = (self.schedule_object.templates["prog_tree"],
-                            computations_tensor, loops_tensor)
-            
+                self.schedule_object.templates["comps_placeholders_indices_dict"],
+                self.schedule_object.templates["loops_placeholders_indices_dict"],
+                max_depth=self.schedule_object.MAX_DEPTH - 1,
+            )
+            tree_tensors = (
+                self.schedule_object.templates["prog_tree"],
+                computations_tensor,
+                loops_tensor,
+            )
+
             with torch.no_grad():
                 predicted_speedup = self.model(
-                    tree_tensors,
-                    num_matrices=self.schedule_object.MAX_DEPTH - 1).item()
+                    tree_tensors, num_matrices=self.schedule_object.MAX_DEPTH - 1
+                ).item()
                 stat[
-                    "initial_execution_time"] = self.schedule_object.prog.initial_execution_time
+                    "initial_execution_time"
+                ] = self.schedule_object.prog.initial_execution_time
                 stat["predicted_speedup"] = predicted_speedup
                 print(f"The predicted speedup is {predicted_speedup}")
-                stat[
-                    "predicted_execution_time"] = self.schedule_object.prog.initial_execution_time / predicted_speedup
+                stat["predicted_execution_time"] = (
+                    self.schedule_object.prog.initial_execution_time / predicted_speedup
+                )
         except Exception:
             print("ERROR_MODEL", traceback.format_exc())
             print(sys.exc_info()[2])
@@ -711,8 +879,11 @@ class ScheduleController:
 
         if self.schedule_object.sched_str != "" and self.schedule != []:
             execution_time = self.measurement_env(
-                self.schedule, 'sched_eval', self.nb_executions,
-                self.schedule_object.prog.initial_execution_time)
+                self.schedule,
+                "sched_eval",
+                self.nb_executions,
+                self.schedule_object.prog.initial_execution_time,
+            )
         else:
             execution_time = self.schedule_object.prog.initial_execution_time
         return execution_time
