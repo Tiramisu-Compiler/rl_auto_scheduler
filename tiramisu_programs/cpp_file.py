@@ -1,24 +1,15 @@
-from dataclasses import dataclass
-import numpy as np
-import re
 import sys
 import os
 import subprocess
 from pathlib import Path
 from datetime import datetime
-import re
-import torch
 
 from tiramisu_programs.schedule_utils import TimeOutException
 
 
 class CPP_File(object):
-
     @classmethod
-    def compile_and_run_tiramisu_code(cls,
-                                      config,
-                                      file_path,
-                                      log_message="No message"):
+    def compile_and_run_tiramisu_code(cls, config, file_path, log_message="No message"):
         """Compiles and runs a C++ file.
 
         Args:
@@ -32,13 +23,15 @@ class CPP_File(object):
         # print("inside compile and run")
 
         # Format the path to the cpp file to compile.
-        os.environ["FUNC_DIR"] = ("/".join(Path(file_path).parts[:-1]) if len(
-            Path(file_path).parts) > 1 else ".") + "/"
+        os.environ["FUNC_DIR"] = (
+            "/".join(Path(file_path).parts[:-1])
+            if len(Path(file_path).parts) > 1
+            else "."
+        ) + "/"
         os.environ["FILE_PATH"] = file_path
 
         # Compile the C++ file.
-        failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd,
-                                file_path)
+        failed = cls.launch_cmd(config.tiramisu.compile_tiramisu_cmd, file_path)
 
         # Print the program that failed to compile.
         if failed:
@@ -48,20 +41,21 @@ class CPP_File(object):
             return False
         else:
             # Run the compiled program.
-            failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd,
-                                    file_path)
+            failed = cls.launch_cmd(config.tiramisu.run_tiramisu_cmd, file_path)
             if failed:
                 print(f"Error occured while running {file_path}")
                 return False
         return True
 
     @classmethod
-    def launch_cmd(cls,
-                   step_cmd,
-                   file_path,
-                   cmd_type=None,
-                   nb_executions=None,
-                   initial_exec_time=None):
+    def launch_cmd(
+        cls,
+        step_cmd,
+        file_path,
+        cmd_type=None,
+        nb_executions=None,
+        initial_exec_time=None,
+    ):
         """Execute a command on the shell.
 
         Args:
@@ -114,8 +108,8 @@ class CPP_File(object):
 
         except Exception as e:
             print(
-                f"\n# {str(datetime.now())} ---> Error running {step_cmd} \n" +
-                e.stderr.decode("UTF-8"),
+                f"\n# {str(datetime.now())} ---> Error running {step_cmd} \n"
+                + e.stderr.decode("UTF-8"),
                 file=sys.stderr,
                 flush=True,
             )
@@ -131,12 +125,19 @@ class CPP_File(object):
                 )
                 failed = True
         if failed:
-            func_folder = ("/".join(Path(file_path).parts[:-1])
-                           if len(Path(file_path).parts) > 1 else ".") + "/"
+            func_folder = (
+                "/".join(Path(file_path).parts[:-1])
+                if len(Path(file_path).parts) > 1
+                else "."
+            ) + "/"
             with open(func_folder + "error.txt", "a") as f:
-                f.write("\nError running " + step_cmd +
-                        "\n---------------------------\n" +
-                        out.stderr.decode("UTF-8") + "\n")
+                f.write(
+                    "\nError running "
+                    + step_cmd
+                    + "\n---------------------------\n"
+                    + out.stderr.decode("UTF-8")
+                    + "\n"
+                )
         return failed
 
     @classmethod
@@ -162,12 +163,19 @@ class CPP_File(object):
             os.system("rm -r {}".format(target_path))
             # print("directory removed")
 
+        with open(original_path, "r") as f:
+            original_str = f.read()
+
+        original_str = original_str.replace(f'#include "{func_name}_wrapper.h"', "")
+
         os.mkdir(target_path)
-        os.system("cp -r {} {}".format(original_path, target_path))
+        with open(f"{target_path}/{file_name}", "w") as f:
+            f.write(original_str)
+        # os.system("cp -r {} {}".format(original_path, target_path))
         return target_path + "/" + file_name
 
     @classmethod
-    def clean_cpp_file(cls,  func_name):
+    def clean_cpp_file(cls, func_name):
         """Clean the files of the function to run from the existing dataset copy.
 
         Args:

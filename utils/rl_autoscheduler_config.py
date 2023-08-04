@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Literal
 
 import yaml
 
+from utils.dataset_utilities import DataSetFormat
+
 USE_WANDB = False
 
 
@@ -15,6 +17,8 @@ class RayConfig:
     base_path: str = "/data/scratch/hbenyamina/github/rl_autoscheduler"
     name: str = "Training_multi_enhanced"
     log_directory: str = "ray_results"
+    resume_training: bool = False
+    log_level: str = "WARN"
 
 
 @dataclass
@@ -22,6 +26,15 @@ class EnvironmentConfig:
     dataset_path: str = "../../Dataset_multi/"
     programs_file: str = "./multicomp.json"
     clean_files: bool = True
+    json_dataset: dict = field(
+        default_factory=lambda: {
+            "path": None,
+            "cpps_path": None,
+            "path_to_save_sataset": None,
+            "dataset_format": DataSetFormat.PICKLE,
+        }
+    )
+    use_dataset: bool = False
 
 
 @dataclass
@@ -36,9 +49,9 @@ class TiramisuConfig:
     run_tiramisu_cmd: str = 'printf "Running ${FILE_PATH}.out\n">> ${FUNC_DIR}log.txt;\
         ./${FILE_PATH}.out>> ${FUNC_DIR}log.txt;'
 
-    compile_wrapper_cmd = 'cd ${FUNC_DIR};\
+    compile_wrapper_cmd = "cd ${FUNC_DIR};\
             ${GXX} -shared -o ${FUNC_NAME}.o.so ${FUNC_NAME}.o;\
-            ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O3 -o ${FUNC_NAME}_wrapper ${FUNC_NAME}_wrapper.cpp ./${FUNC_NAME}.o.so -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl'
+            ${CXX} -I${TIRAMISU_ROOT}/3rdParty/Halide/include -I${TIRAMISU_ROOT}/include -I${TIRAMISU_ROOT}/3rdParty/isl/include -Wl,--no-as-needed -ldl -g -fno-rtti -lpthread -std=c++11 -O3 -o ${FUNC_NAME}_wrapper ${FUNC_NAME}_wrapper.cpp ./${FUNC_NAME}.o.so -L${TIRAMISU_ROOT}/build  -L${TIRAMISU_ROOT}/3rdParty/Halide/lib  -L${TIRAMISU_ROOT}/3rdParty/isl/build/lib  -Wl,-rpath,${TIRAMISU_ROOT}/build:${TIRAMISU_ROOT}/3rdParty/Halide/lib:${TIRAMISU_ROOT}/3rdParty/isl/build/lib -ltiramisu -ltiramisu_auto_scheduler -lHalide -lisl"
 
 
 @dataclass
@@ -51,10 +64,8 @@ class TrainingConfig:
 
 @dataclass
 class ModelConfig:
-    layer_sizes: List[int] = field(
-        default_factory=lambda: [600, 350, 200, 180])
-    drops: List[float] = field(
-        default_factory=lambda: [0.225, 0.225, 0.225, 0.225])
+    layer_sizes: List[int] = field(default_factory=lambda: [600, 350, 200, 180])
+    drops: List[float] = field(default_factory=lambda: [0.225, 0.225, 0.225, 0.225])
 
 
 @dataclass

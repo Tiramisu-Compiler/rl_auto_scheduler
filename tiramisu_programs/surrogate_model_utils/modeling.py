@@ -6,7 +6,7 @@ def seperate_vector(
     X: torch.Tensor, num_matrices: int = 4, pad: bool = True, pad_amount: int = 5
 ) -> torch.Tensor:
     batch_size, _ = X.shape
-    tags_num =  (6*num_matrices+3)
+    tags_num = 6 * num_matrices + 3
     first_part = X[:, :tags_num]
     second_part = X[:, tags_num : tags_num + 36 * num_matrices]
     third_part = X[:, tags_num + 36 * num_matrices :]
@@ -82,7 +82,11 @@ class Model_Recursive_LSTM_v2(nn.Module):
             nn.init.zeros_(self.concat_layers[i].weight)
             self.concat_dropouts.append(nn.Dropout(drops[i]))
         self.predict = nn.Linear(regression_layer_sizes[-1], output_size, bias=True)
-        self.encode_vectors = nn.Linear(transformation_matrix_dimension**2, transformation_matrix_dimension**2, bias=True)
+        self.encode_vectors = nn.Linear(
+            transformation_matrix_dimension**2,
+            transformation_matrix_dimension**2,
+            bias=True,
+        )
         nn.init.xavier_uniform_(self.predict.weight)
         # nn.init.zeros_(self.predict.weight)
         self.ELU = nn.ELU()
@@ -113,8 +117,6 @@ class Model_Recursive_LSTM_v2(nn.Module):
         else:
             self.embedding_generator = lambda x: x
 
-
-
     def get_hidden_state(self, node, comps_embeddings, loops_tensor):
         nodes_list = []
         for n in node["child_list"]:
@@ -129,7 +131,9 @@ class Model_Recursive_LSTM_v2(nn.Module):
             )
         if node["has_comps"]:
             selected_comps_tensor = torch.index_select(
-                comps_embeddings, 1, torch.tensor(node["computations_indices"]).to(self.train_device)
+                comps_embeddings,
+                1,
+                torch.tensor(node["computations_indices"]).to(self.train_device),
             )
             lstm_out, (comps_h_n, comps_c_n) = self.comps_lstm(selected_comps_tensor)
             comps_h_n = comps_h_n.permute(1, 0, 2)
@@ -161,7 +165,7 @@ class Model_Recursive_LSTM_v2(nn.Module):
         # vectors = vectors[~mask,:,:]
         # final_matrix = final_matrix[~mask,:,:]
         # batch_size, num_comps, _ = final_matrix.shape
-        vectors =  self.encode_vectors(vectors)
+        vectors = self.encode_vectors(vectors)
         # self.ELU(vectors)
         # print(vectors.shape)
         lstm_out, (prog_embedding, comps_c_n) = self.comps_embed(vectors)
@@ -200,4 +204,3 @@ class Model_Recursive_LSTM_v2(nn.Module):
             x = self.regression_dropouts[i](self.ELU(x))
         out = self.predict(x)
         return self.ELU(out[:, 0, 0])
-

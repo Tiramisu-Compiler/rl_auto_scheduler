@@ -16,3 +16,6 @@ scripts/env.sh
 Dataset*
 .vscode
 .idea
+dataset
+cpps
+dataset_*

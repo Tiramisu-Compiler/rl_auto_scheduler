@@ -5,7 +5,6 @@ import numpy as np
 import torch
 
 
-
 device = "cpu"
 train_device = torch.device("cpu")
 
@@ -186,9 +185,8 @@ def get_sched_rep(program_json, sched_json, max_depth):
         node["loop_index"] = loops_indices_dict[node["loop_name"]]
         if node["computations_list"] != []:
             node["computations_indices"] = [
-                    comps_indices_dict[comp_name]
-                    for comp_name in node["computations_list"]
-                ]
+                comps_indices_dict[comp_name] for comp_name in node["computations_list"]
+            ]
             node["has_comps"] = True
         else:
             node["has_comps"] = False
@@ -443,7 +441,7 @@ def get_schedule_representation(
             iterator = fusion[-1]
             for loop in fusion[:-1]:
                 fused_loop = computations_dict[loop]["iterators"][iterator]
-            # fused_loop2 = computations_dict[fusion[1]]["iterators"][fusion[2]]
+                # fused_loop2 = computations_dict[fusion[1]]["iterators"][fusion[2]]
                 loop_schedules_dict[fused_loop]["fused"] = 1
             # loop_schedules_dict[fused_loop2]["fused"] = 1
     for loop_name in program_json["iterators"]:
@@ -505,9 +503,11 @@ def get_padded_transformation_matrix(
     if "transformation_matrices" in comp_schedule_dict:
         if comp_schedule_dict["transformation_matrices"] != []:
             if ("transformation_matrix" in comp_schedule_dict) and (
-                comp_schedule_dict["transformation_matrix"] is not None 
+                comp_schedule_dict["transformation_matrix"] is not None
             ):
-                final_transformation_matrix = comp_schedule_dict["transformation_matrix"].reshape(nb_iterators, nb_iterators)
+                final_transformation_matrix = comp_schedule_dict[
+                    "transformation_matrix"
+                ].reshape(nb_iterators, nb_iterators)
             else:
                 final_transformation_matrix = identity.copy()
             final_mat = final_transformation_matrix
@@ -570,7 +570,9 @@ def get_padded_transformation_matrix(
             ).reshape(1, -1)
         comparison_matrix = identity.copy()
         for mat in comp_schedule_dict["transformation_matrices"][::-1]:
-            comparison_matrix = comparison_matrix @ mat.reshape(nb_iterators, nb_iterators)
+            comparison_matrix = comparison_matrix @ mat.reshape(
+                nb_iterators, nb_iterators
+            )
         assert (comparison_matrix == final_transformation_matrix).all()
     else:
         interchange_matrix = identity.copy()
@@ -647,35 +649,42 @@ def get_padded_transformation_matrix(
             print(padding_ranges)
     return padded_mat
 
+
 def nest_iterators(root_iterator, iterators):
-    if root_iterator['child_iterators'] == []:
-        return {'loop_name': root_iterator["loop_name"],
-                 'computations_list': root_iterator['computations_list'],
-                 'child_list': []}
+    if root_iterator["child_iterators"] == []:
+        return {
+            "loop_name": root_iterator["loop_name"],
+            "computations_list": root_iterator["computations_list"],
+            "child_list": [],
+        }
     subtrees = []
-    for loop_name in root_iterator['child_iterators']:
+    for loop_name in root_iterator["child_iterators"]:
         child_iterator = iterators[loop_name]
         child_iterator["loop_name"] = loop_name
         sub_tree = nest_iterators(child_iterator, iterators)
         subtrees.append(sub_tree)
-    return {'loop_name': root_iterator["loop_name"],
-             'computations_list': root_iterator['computations_list'],
-             'child_list': subtrees}
+    return {
+        "loop_name": root_iterator["loop_name"],
+        "computations_list": root_iterator["computations_list"],
+        "child_list": subtrees,
+    }
+
 
 def get_tree_structure(prog_dict):
     iterators = prog_dict["iterators"]
 
     mentionned = []
     for loop, content in iterators.items():
-        mentionned.extend(content['child_iterators'])
+        mentionned.extend(content["child_iterators"])
 
-    possible_root  = [loop for loop in iterators if loop not in mentionned]
+    possible_root = [loop for loop in iterators if loop not in mentionned]
     assert len(possible_root) == 1
     root_loop_name = possible_root[0]
 
     root_iterator = prog_dict["iterators"][root_loop_name]
     root_iterator["loop_name"] = root_loop_name
     return nest_iterators(root_iterator, iterators)
+
 
 def get_tree_footprint(tree):
     footprint = "<L" + str(int(tree["loop_index"])) + ">"
